@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ai_developer_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ai_developer}
+      POSTGRES_USER: ${DB_USER:-ai_developer}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ai_developer}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ai_developer} -d ${DB_NAME:-ai_developer}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
