@@ -1,6 +1,8 @@
 import "../../../src/modules/dashboard/dashboard.css";
-import { WorkspacePlaceholderShell } from "../../../src/modules/dashboard/components/WorkspacePlaceholderShell";
+import "../../../src/modules/settings/settings.css";
+import "../../../src/modules/integrations/integrations.css";
+import { IntegrationsWorkspace } from "../../../src/modules/integrations/components/IntegrationsWorkspace";
 
 export default function IntegrationsPage() {
-  return <WorkspacePlaceholderShell title="Integrations" description="Integrations tab is active in sidebar and ready for provider catalog implementation." />;
+  return <IntegrationsWorkspace />;
 }

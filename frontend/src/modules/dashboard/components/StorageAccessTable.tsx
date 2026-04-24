@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AvatarStack } from "./AvatarStack";
 import type { Account, StorageProject } from "../types";
 
@@ -8,6 +10,14 @@ interface StorageAccessTableProps {
 
 function getProjectMembers(project: StorageProject, accountById: Record<string, Account>): Account[] {
   return project.memberAccountIds.map((id) => accountById[id]).filter(Boolean);
+}
+
+function inferProjectView(project: StorageProject): "overview" | "review" | "deployments" {
+  const loweredName = project.name.toLowerCase();
+  if (loweredName.includes("testing") || loweredName.includes("qc") || loweredName.includes("support")) {
+    return "review";
+  }
+  return "overview";
 }
 
 export function StorageAccessTable({ projects, accountById }: StorageAccessTableProps) {
@@ -31,9 +41,11 @@ export function StorageAccessTable({ projects, accountById }: StorageAccessTable
             <span>{project.usedStorageGb} GB</span>
             <span>{project.filesTotal} files</span>
             <AvatarStack members={getProjectMembers(project, accountById)} />
-            <button type="button" className="row-action-btn">
-              Share Access
-            </button>
+            <Link className="row-action-btn" href={`/projects/${project.id}?view=${inferProjectView(project)}`} aria-label={`Open ${project.name}`} title="Open Project">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3.5 7.8c0-1.1.9-2 2-2h4l1.6 1.7h7.4c1.1 0 2 .9 2 2v6.8c0 1.1-.9 2-2 2H5.5c-1.1 0-2-.9-2-2V7.8Z" fill="none" stroke="currentColor" strokeWidth="1.7"/>
+              </svg>
+            </Link>
           </div>
         ))}
       </div>

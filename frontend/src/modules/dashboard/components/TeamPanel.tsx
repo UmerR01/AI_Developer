@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { Account, Team } from "../types";
 
 interface TeamPanelProps {
@@ -11,9 +13,9 @@ export function TeamPanel({ team, owner, members }: TeamPanelProps) {
     <section className="dashboard-card team-card">
       <div className="card-head">
         <h2>Member List</h2>
-        <button type="button" className="plus-btn" title="Add member">
+        <Link className="plus-btn" title="Add member" aria-label="Invite member" href="/member">
           +
-        </button>
+        </Link>
       </div>
 
       <p className="team-title">{team.name}</p>

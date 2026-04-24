@@ -1,6 +1,7 @@
 import "../../../src/modules/dashboard/dashboard.css";
-import { WorkspacePlaceholderShell } from "../../../src/modules/dashboard/components/WorkspacePlaceholderShell";
+import "../../../src/modules/settings/settings.css";
+import { SettingsWorkspace } from "../../../src/modules/settings/components/SettingsWorkspace";
 
 export default function SubscriptionPage() {
-  return <WorkspacePlaceholderShell title="Subscription" description="Subscription tab is active in sidebar and ready for plan, billing, and quota controls." />;
+  return <SettingsWorkspace initialTab="subscription" />;
 }

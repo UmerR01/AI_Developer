@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { getStoredAccessToken, getStoredUsername } from "../../auth/session";
 import { DASHBOARD_DATA } from "../data/mockDashboardData";
@@ -12,9 +13,11 @@ import { DashboardTopBar } from "./DashboardTopBar";
 interface WorkspacePlaceholderShellProps {
   title: string;
   description: string;
+  children?: ReactNode;
+  compact?: boolean;
 }
 
-export function WorkspacePlaceholderShell({ title, description }: WorkspacePlaceholderShellProps) {
+export function WorkspacePlaceholderShell({ title, description, children, compact = false }: WorkspacePlaceholderShellProps) {
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
   const [activeUsername, setActiveUsername] = useState<string>("ibrahim");
@@ -61,12 +64,16 @@ export function WorkspacePlaceholderShell({ title, description }: WorkspacePlace
         <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title={title} />
 
         <div className="dashboard-scroll-area">
-          <section className="dashboard-card">
-            <div className="card-head">
-              <h2>{title}</h2>
-            </div>
-            <p className="team-subtitle">{description}</p>
-          </section>
+          {compact ? (
+            children ? children : <p className="team-subtitle">{description}</p>
+          ) : (
+            <section className="dashboard-card">
+              <div className="card-head">
+                <h2>{title}</h2>
+              </div>
+              {children ? children : <p className="team-subtitle">{description}</p>}
+            </section>
+          )}
         </div>
       </section>
     </main>
