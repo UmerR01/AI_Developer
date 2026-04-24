@@ -107,6 +107,14 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-icon svg {
+  width: 17px;
+  height: 17px;
 }
 
 .dashboard-main {
@@ -429,6 +437,19 @@
   background: rgba(31, 53, 105, 0.42);
 }
 
+.chip-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.chip-action:hover {
+  background: rgba(42, 66, 130, 0.62);
+  color: #fff;
+}
+
 .storage-value-row {
   display: flex;
   align-items: baseline;
@@ -473,6 +494,10 @@
   background: rgba(42, 66, 130, 0.6);
   color: var(--text);
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .team-title {
@@ -563,17 +588,25 @@
 }
 
 .row-action-btn {
-  width: auto;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(117, 151, 247, 0.36);
   background: rgba(70, 103, 197, 0.35);
   color: #dce9ff;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.78rem;
+  border-radius: 10px;
+  padding: 0;
 }
 
 .row-action-btn:hover {
   background: rgba(85, 117, 212, 0.45);
+}
+
+.row-action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .avatar-stack {

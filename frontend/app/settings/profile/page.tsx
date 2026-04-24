@@ -1,6 +1,7 @@
 import "../../../src/modules/dashboard/dashboard.css";
-import { WorkspacePlaceholderShell } from "../../../src/modules/dashboard/components/WorkspacePlaceholderShell";
+import "../../../src/modules/settings/settings.css";
+import { SettingsWorkspace } from "../../../src/modules/settings/components/SettingsWorkspace";
 
 export default function ProfileSettingsPage() {
-  return <WorkspacePlaceholderShell title="Profile Settings" description="Profile settings page is routed and available for preference and account controls." />;
+  return <SettingsWorkspace initialTab="account" />;
 }

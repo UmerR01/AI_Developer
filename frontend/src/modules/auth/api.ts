@@ -18,39 +18,56 @@ const LOGIN_MUTATION = `
 `;
 
 export async function performLogin(username: string, password: string): Promise<LoginPayload> {
-  const response = await fetch(`${API_BASE_URL}/graphql/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query: LOGIN_MUTATION,
-      variables: {
-        input: { username, password },
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/graphql/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
-
-  if (!response.ok) {
+      body: JSON.stringify({
+        query: LOGIN_MUTATION,
+        variables: {
+          input: { username, password },
+        },
+      }),
+    });
+  } catch {
     return {
       success: false,
-      message: "Unable to reach authentication service.",
+      message: "Authentication service is unreachable. Please ensure backend is running on port 8011.",
     };
   }
 
-  const data: LoginMutationResponse = await response.json();
-
-  if (data.errors?.length) {
-    return {
-      success: false,
-      message: data.errors[0].message,
-    };
-  }
-
-  return (
-    data.data?.login ?? {
-      success: false,
-      message: "Unexpected login response.",
+    if (!response.ok) {
+      return {
+        success: false,
+        message: "Unable to reach authentication service.",
+      };
     }
-  );
+
+    let data: LoginMutationResponse;
+    try {
+      data = await response.json();
+    } catch {
+    return {
+      success: false,
+        message: "Authentication service returned an invalid response.",
+    };
+  }
+
+    if (data.errors?.length) {
+      return {
+        success: false,
+        message: data.errors[0].message,
+      };
+    }
+
+    return (
+      data.data?.login ?? {
+        success: false,
+        message: "Unexpected login response.",
+      }
+    );
 }

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { performLogin } from "../api";
+import { setStoredSession } from "../session";
 
 export function LoginForm() {
   const router = useRouter();
@@ -25,8 +26,7 @@ export function LoginForm() {
       return;
     }
 
-    localStorage.setItem("ai_dev_access_token", result.accessToken);
-    localStorage.setItem("ai_dev_user", JSON.stringify(result.user || null));
+    setStoredSession(result.accessToken, result.user || null);
     router.push("/dashboard");
   };
 

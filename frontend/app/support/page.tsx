@@ -1,6 +1,8 @@
 import "../../src/modules/dashboard/dashboard.css";
-import { WorkspacePlaceholderShell } from "../../src/modules/dashboard/components/WorkspacePlaceholderShell";
+import "../../src/modules/settings/settings.css";
+import "../../src/modules/support/support.css";
+import { SupportWorkspace } from "../../src/modules/support/components/SupportWorkspace";
 
 export default function SupportPage() {
-  return <WorkspacePlaceholderShell title="Support" description="Support ticket module is now routed and ready for workflow development." />;
+  return <SupportWorkspace />;
 }

@@ -13,13 +13,20 @@ import { StorageWidget } from "../../src/modules/dashboard/components/StorageWid
 import { TeamPanel } from "../../src/modules/dashboard/components/TeamPanel";
 import { DASHBOARD_DATA } from "../../src/modules/dashboard/data/mockDashboardData";
 import type { Account } from "../../src/modules/dashboard/types";
+import { fetchCurrentUser, fetchStorageStats } from "../../src/modules/platform/api";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
   const [activeUsername, setActiveUsername] = useState<string>("ibrahim");
+  const [storageSnapshot, setStorageSnapshot] = useState(() => ({
+    usedSpace: DASHBOARD_DATA.monthlyUsageGb * 1024 * 1024 * 1024,
+    totalQuota: DASHBOARD_DATA.monthlyLimitGb * 1024 * 1024 * 1024,
+  }));
 
   useEffect(() => {
+    let mounted = true;
+
     const token = getStoredAccessToken();
     if (!token) {
       router.replace("/login");
@@ -32,6 +39,28 @@ export default function DashboardPage() {
     }
 
     setTokenReady(true);
+
+    async function loadStorage() {
+      try {
+        const currentUser = await fetchCurrentUser();
+        if (!currentUser) {
+          return;
+        }
+        const storageStats = await fetchStorageStats(currentUser.id);
+        if (!mounted || !storageStats) {
+          return;
+        }
+        setStorageSnapshot({ usedSpace: storageStats.usedSpace, totalQuota: storageStats.totalQuota });
+      } catch {
+        // Keep dashboard usable with current snapshot if storage fetch fails.
+      }
+    }
+
+    void loadStorage();
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   const accountById = useMemo(
@@ -86,7 +115,7 @@ export default function DashboardPage() {
           />
 
           <section className="dashboard-grid">
-            <StorageWidget monthlyUsageGb={DASHBOARD_DATA.monthlyUsageGb} monthlyLimitGb={DASHBOARD_DATA.monthlyLimitGb} />
+            <StorageWidget usedBytes={storageSnapshot.usedSpace} totalBytes={storageSnapshot.totalQuota} />
             <TeamPanel team={DASHBOARD_DATA.team} owner={teamOwner} members={teamMembers} />
             <StorageAccessTable projects={DASHBOARD_DATA.projects} accountById={accountById} />
           </section>
