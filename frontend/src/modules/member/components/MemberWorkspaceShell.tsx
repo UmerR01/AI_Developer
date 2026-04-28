@@ -11,6 +11,7 @@ import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
 import "../../dashboard/dashboard.css";
 import "../member.css";
+import { AnimatedBackground } from "../../platform/components/AnimatedBackground";
 
 type MemberRoleFilter = "all" | "admin" | "developer" | "qa" | "pending";
 type MemberStatusFilter = "all" | "active" | "pending";
@@ -297,6 +298,7 @@ export function MemberWorkspaceShell() {
   if (activeAccount.role === "support") {
     return (
       <main className="dashboard-shell">
+        <AnimatedBackground />
         <DashboardSidebar activeRole={activeAccount.role} />
         <section className="dashboard-main">
           <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Member" />
@@ -318,6 +320,7 @@ export function MemberWorkspaceShell() {
 
   return (
     <main className="dashboard-shell">
+      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
 
       <section className="dashboard-main">

@@ -300,14 +300,18 @@ async function graphqlRequest<T>(query: string, variables?: Record<string, unkno
 }
 
 export async function fetchCurrentUser(): Promise<CurrentUser | null> {
-  const payload = await graphqlRequest<GraphQLPayload<{ me: CurrentUser | null }>>(ME_QUERY);
-  if (payload.errors?.length) {
-    throw new Error(payload.errors[0].message);
-  }
+  try {
+    const payload = await graphqlRequest<GraphQLPayload<{ me: CurrentUser | null }>>(ME_QUERY);
+    if (payload.errors?.length) {
+      throw new Error(payload.errors[0].message);
+    }
 
-  const me = payload.data?.me ?? null;
-  if (me) {
-    return me;
+    const me = payload.data?.me ?? null;
+    if (me) {
+      return me;
+    }
+  } catch {
+    // Fall through to the stored session snapshot when the token or me query is unavailable.
   }
 
   const storedUser = getStoredUser();

@@ -2,10 +2,10 @@ import "../../src/modules/auth/login.css";
 import { AuthPage } from "../../src/modules/auth/components/AuthPage";
 
 export const metadata = {
-  title: "Sign in to your workspace",
-  description: "Login to AI Developer workspace",
+  title: "Sign in or create account",
+  description: "Unified authentication page for AI Developer workspace",
 };
 
-export default function LoginPage() {
+export default function UnifiedAuthPage() {
   return <AuthPage initialMode="login" />;
 }

@@ -235,6 +235,10 @@
 
 .align-right { text-align: right; }
 
+.sp-activity-cell {
+  text-align: left;
+}
+
 .sp-ticket-id {
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   font-size: 0.78rem;
@@ -283,7 +287,8 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  min-width: 0;
 }
 
 .activity-date {
@@ -1057,6 +1062,8 @@
 
   .sp-table th:nth-child(3),
   .sp-table td:nth-child(3),
-  .sp-table th:nth-child(5),
-  .sp-table td:nth-child(5) { display: none; }
+  .sp-table th:nth-child(4),
+  .sp-table td:nth-child(4),
+  .sp-table th:nth-child(6),
+  .sp-table td:nth-child(6) { display: none; }
 }

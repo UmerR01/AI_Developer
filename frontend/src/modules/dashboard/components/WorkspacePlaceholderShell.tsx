@@ -9,6 +9,7 @@ import { DASHBOARD_DATA } from "../data/mockDashboardData";
 import type { Account } from "../types";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardTopBar } from "./DashboardTopBar";
+import { AnimatedBackground } from "../../platform/components/AnimatedBackground";
 
 interface WorkspacePlaceholderShellProps {
   title: string;
@@ -58,6 +59,7 @@ export function WorkspacePlaceholderShell({ title, description, children, compac
 
   return (
     <main className="dashboard-shell">
+      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
 
       <section className="dashboard-main">

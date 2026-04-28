@@ -477,6 +477,11 @@ export function SupportWorkspace() {
                 </div>
 
                 <div className="td-detail-meta">
+                  <span className="td-detail-meta-label">Raised By</span>
+                  <span className="td-detail-meta-val">{selectedTicket.raisedByName}</span>
+                </div>
+
+                <div className="td-detail-meta">
                   <span className="td-detail-meta-label">Created</span>
                   <span className="td-detail-meta-val">{formatDateLabel(selectedTicket.createdAt)}</span>
                 </div>
@@ -635,9 +640,10 @@ export function SupportWorkspace() {
                 <tr>
                   <th>Ticket ID</th>
                   <th>Subject</th>
+                  <th>Raised By</th>
                   <th>Category</th>
                   <th>Status</th>
-                  <th className="align-right">Activity</th>
+                  <th>Activity</th>
                 </tr>
               </thead>
               <tbody>
@@ -649,9 +655,10 @@ export function SupportWorkspace() {
                         {ticket.subject}
                       </span>
                     </td>
+                    <td>{ticket.raisedByName}</td>
                     <td>{categoryChip(ticket.category)}</td>
                     <td>{statusChip(ticket.status)}</td>
-                    <td className="align-right">
+                    <td className="sp-activity-cell">
                       <div className="activity-wrap">
                         <span className="activity-date">{formatDateLabel(ticket.updatedAt)}</span>
                         <span className="activity-badge">
@@ -663,7 +670,7 @@ export function SupportWorkspace() {
                   </tr>
                 ))}
                 {filteredTickets.length === 0 && (
-                  <tr><td colSpan={5} className="sp-empty">No tickets found.</td></tr>
+                  <tr><td colSpan={6} className="sp-empty">No tickets found.</td></tr>
                 )}
               </tbody>
             </table>
