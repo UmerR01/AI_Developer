@@ -3,12 +3,13 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { performLogin } from "../api";
+import { performSignup } from "../api";
 import { setStoredSession } from "../session";
 
-export function LoginForm() {
+export function SignupForm() {
   const router = useRouter();
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,10 +20,10 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const result = await performLogin(username, password);
+    const result = await performSignup(username, email, password);
 
     if (!result.success || !result.accessToken) {
-      setError(result.message || "Invalid credentials.");
+      setError(result.message || "Unable to create account.");
       setLoading(false);
       return;
     }
@@ -34,33 +35,49 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="auth-form">
       <div className="auth-field">
-        <label className="auth-form-label" htmlFor="username">
+        <label className="auth-form-label" htmlFor="signup-username">
           Username
         </label>
         <input
           className="auth-form-input"
-          id="username"
+          id="signup-username"
           name="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
-          placeholder="your username"
+          placeholder="choose a username"
         />
       </div>
 
       <div className="auth-field">
-        <label className="auth-form-label" htmlFor="password">
+        <label className="auth-form-label" htmlFor="signup-email">
+          Email
+        </label>
+        <input
+          className="auth-form-input"
+          id="signup-email"
+          name="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          placeholder="you@example.com"
+        />
+      </div>
+
+      <div className="auth-field">
+        <label className="auth-form-label" htmlFor="signup-password">
           Password
         </label>
         <div className="auth-input-wrap">
           <input
             className="auth-form-input"
-            id="password"
+            id="signup-password"
             name="password"
             type={showPw ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
+            autoComplete="new-password"
             placeholder="••••••••"
           />
           <button
@@ -91,10 +108,10 @@ export function LoginForm() {
         {loading ? (
           <>
             <span className="auth-spinner" aria-hidden="true" />
-            Signing in…
+            Creating account…
           </>
         ) : (
-          "Sign in"
+          "Create Account"
         )}
       </button>
     </form>

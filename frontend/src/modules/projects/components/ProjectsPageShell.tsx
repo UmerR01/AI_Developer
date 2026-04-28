@@ -12,6 +12,7 @@ import type { Account } from "../../dashboard/types";
 import "../../dashboard/dashboard.css";
 import "../projects.css";
 import { ProjectsWorkspace } from "./ProjectsWorkspace";
+import { AnimatedBackground } from "../../platform/components/AnimatedBackground";
 
 interface ProjectsPageShellProps {
   selectedProjectId?: string;
@@ -59,6 +60,7 @@ export function ProjectsPageShell({ selectedProjectId }: ProjectsPageShellProps)
   if (activeAccount.role === "support") {
     return (
       <main className="dashboard-shell">
+        <AnimatedBackground />
         <DashboardSidebar activeRole={activeAccount.role} />
         <section className="dashboard-main">
           <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Projects" />
@@ -80,6 +82,7 @@ export function ProjectsPageShell({ selectedProjectId }: ProjectsPageShellProps)
 
   return (
     <main className="dashboard-shell">
+      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
 
       <section className="dashboard-main">

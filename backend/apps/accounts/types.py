@@ -16,6 +16,13 @@ class LoginInput:
     password: str
 
 
+@strawberry.input
+class SignupInput:
+    username: str
+    email: str | None = None
+    password: str
+
+
 @strawberry.type
 class AuthPayload:
     success: bool

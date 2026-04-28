@@ -14,14 +14,15 @@ import { TeamPanel } from "../../src/modules/dashboard/components/TeamPanel";
 import { DASHBOARD_DATA } from "../../src/modules/dashboard/data/mockDashboardData";
 import type { Account } from "../../src/modules/dashboard/types";
 import { fetchCurrentUser, fetchStorageStats } from "../../src/modules/platform/api";
+import { AnimatedBackground } from "../../src/modules/platform/components/AnimatedBackground";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
   const [activeUsername, setActiveUsername] = useState<string>("ibrahim");
   const [storageSnapshot, setStorageSnapshot] = useState(() => ({
-    usedSpace: DASHBOARD_DATA.monthlyUsageGb * 1024 * 1024 * 1024,
-    totalQuota: DASHBOARD_DATA.monthlyLimitGb * 1024 * 1024 * 1024,
+    usedSpace: 0,
+    totalQuota: 0,
   }));
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export default function DashboardPage() {
 
   return (
     <main className="dashboard-shell">
+      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
 
       <section className="dashboard-main">

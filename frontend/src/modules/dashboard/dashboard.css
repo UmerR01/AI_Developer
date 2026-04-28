@@ -1,7 +1,12 @@
+@import "../platform/animated-background.css";
+
 .dashboard-shell {
+  position: relative;
   min-height: 100vh;
   display: flex;
   color: var(--text);
+  background: #020713;
+  overflow: hidden;
 }
 
 .dashboard-loading-wrap {
@@ -118,6 +123,8 @@
 }
 
 .dashboard-main {
+  position: relative;
+  z-index: 1;
   margin-left: 88px;
   height: 100vh;
   width: calc(100% - 88px);

@@ -13,7 +13,7 @@ def authenticate_user(username: str, password: str):
 
 
 def create_access_token(user) -> str:
-    expires_at = datetime.now(tz=UTC) + timedelta(hours=8)
+    expires_at = datetime.now(tz=UTC) + timedelta(days=30)
     payload = {
         "sub": str(user.id),
         "username": user.username,
