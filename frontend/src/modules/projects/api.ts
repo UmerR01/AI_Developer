@@ -1,9 +1,12 @@
 import { getStoredAccessToken } from "../auth/session";
 import type {
+  CreateProjectInput,
+  ProjectBriefReviewResult,
   ProjectMutationResponse,
   ProjectMutationResult,
   ProjectQueryResponse,
   ProjectRecord,
+  ReviewProjectBriefInput,
   ProjectsQueryResponse,
 } from "./types";
 
@@ -109,6 +112,21 @@ const CREATE_PROJECT_MUTATION = `
   }
 `;
 
+const REVIEW_PROJECT_BRIEF_MUTATION = `
+  mutation ReviewProjectBrief($input: ReviewProjectBriefInput!) {
+    reviewProjectBrief(input: $input) {
+      success
+      message
+      needsSession
+      missingSections
+      questions
+      refinedBrief
+      wordCount
+      readTimeMinutes
+    }
+  }
+`;
+
 const ADD_COMMENT_MUTATION = `
   mutation AddProjectComment($input: AddProjectCommentInput!) {
     addProjectComment(input: $input) {
@@ -141,6 +159,15 @@ const DELETE_PROJECT_MUTATION = `
       project {
         ${PROJECT_FIELDS}
       }
+    }
+  }
+`;
+
+const HARD_DELETE_PROJECT_MUTATION = `
+  mutation HardDeleteProject($input: ProjectActionInput!) {
+    hardDeleteProject(input: $input) {
+      success
+      message
     }
   }
 `;
@@ -278,10 +305,62 @@ export async function fetchProjectById(projectId: string): Promise<ProjectRecord
   return payload.data?.project ?? null;
 }
 
-export async function createProject(name: string, description: string): Promise<ProjectMutationResult> {
+export async function reviewProjectBrief(input: ReviewProjectBriefInput): Promise<ProjectBriefReviewResult> {
   try {
+    const payload = await graphqlRequest<ProjectMutationResponse>(REVIEW_PROJECT_BRIEF_MUTATION, {
+      input,
+    });
+
+    if (payload.errors?.length) {
+      return {
+        success: false,
+        message: payload.errors[0].message,
+        needsSession: false,
+        missingSections: [],
+        questions: [],
+        refinedBrief: "",
+        wordCount: 0,
+        readTimeMinutes: 0,
+      };
+    }
+
+    return payload.data?.reviewProjectBrief ?? {
+      success: false,
+      message: "Unexpected review project response.",
+      needsSession: false,
+      missingSections: [],
+      questions: [],
+      refinedBrief: "",
+      wordCount: 0,
+      readTimeMinutes: 0,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Review project request failed.",
+      needsSession: false,
+      missingSections: [],
+      questions: [],
+      refinedBrief: "",
+      wordCount: 0,
+      readTimeMinutes: 0,
+    };
+  }
+}
+
+export async function createProject(name: string, description: string): Promise<ProjectMutationResult>;
+export async function createProject(input: CreateProjectInput): Promise<ProjectMutationResult>;
+export async function createProject(
+  nameOrInput: string | CreateProjectInput,
+  description?: string,
+): Promise<ProjectMutationResult> {
+  try {
+    const input = typeof nameOrInput === "string"
+      ? { name: nameOrInput, description }
+      : nameOrInput;
+
     const payload = await graphqlRequest<ProjectMutationResponse>(CREATE_PROJECT_MUTATION, {
-      input: { name, description },
+      input,
     });
 
     if (payload.errors?.length) {
@@ -338,6 +417,20 @@ export async function archiveProject(projectId: string): Promise<ProjectMutation
     return response.data?.deleteProject ?? toErrorResult("Unexpected archive project response.");
   } catch (error) {
     return toErrorResult(error instanceof Error ? error.message : "Archive project request failed.");
+  }
+}
+
+export async function hardDeleteProject(projectId: string): Promise<ProjectMutationResult> {
+  try {
+    const response = await graphqlRequest<ProjectMutationResponse>(HARD_DELETE_PROJECT_MUTATION, {
+      input: { projectId },
+    });
+    if (response.errors?.length) {
+      return toErrorResult(response.errors[0].message);
+    }
+    return response.data?.hardDeleteProject ?? toErrorResult("Unexpected delete project response.");
+  } catch (error) {
+    return toErrorResult(error instanceof Error ? error.message : "Delete project request failed.");
   }
 }
 

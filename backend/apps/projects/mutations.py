@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+
 from django.db import transaction
 from django.utils import timezone
 import strawberry
@@ -28,6 +31,8 @@ from apps.projects.services import (
     toggle_user_integration,
     user_by_id,
 )
+from apps.projects.new_project import analyze_project_brief, compile_project_brief
+
 from apps.projects.types import (
     AddProjectCommentInput,
     AssignTeamMemberInput,
@@ -38,6 +43,8 @@ from apps.projects.types import (
     CreateSupportTicketInput,
     ProjectActionInput,
     ProjectMutationPayload,
+    ReviewProjectBriefInput,
+    ReviewProjectBriefPayload,
     ReplySupportTicketInput,
     RemoveTeamMemberInput,
     SelectPlanInput,
@@ -84,6 +91,47 @@ def _team_member_to_payload(member: TeamMember) -> TeamMemberMutationPayload:
 
 @strawberry.type
 class ProjectMutation:
+    @strawberry.mutation
+    def review_project_brief(self, info: strawberry.Info, input: ReviewProjectBriefInput) -> ReviewProjectBriefPayload:
+        actor = get_authenticated_user(info)
+        if actor is None:
+            return ReviewProjectBriefPayload(
+                success=False,
+                message="Authentication required.",
+                needs_session=False,
+                missing_sections=[],
+                questions=[],
+                refined_brief="",
+                word_count=0,
+                read_time_minutes=0,
+            )
+
+        analysis = analyze_project_brief(
+            input.description,
+            input.document_text,
+            input.repository_url,
+            list(input.session_answers or []),
+        )
+        refined_brief = compile_project_brief(
+            name=input.name,
+            description=input.description,
+            source_type=input.source_type,
+            repository_url=input.repository_url,
+            session_answers=list(input.session_answers or []),
+            revision_notes=input.revision_notes,
+        )
+
+        return ReviewProjectBriefPayload(
+            success=True,
+            message="Brief review completed.",
+            needs_session=analysis.needs_session,
+            missing_sections=analysis.missing_sections,
+            questions=analysis.questions,
+            refined_brief=refined_brief,
+            word_count=analysis.word_count,
+            read_time_minutes=analysis.read_time_minutes,
+        )
+
     @strawberry.mutation
     def select_plan(self, info: strawberry.Info, input: SelectPlanInput) -> SelectPlanPayload:
         actor = get_authenticated_user(info)
@@ -155,29 +203,35 @@ class ProjectMutation:
                 storage = get_or_create_storage_for_user(owner)
                 slug = make_slug(name)
                 folder_path = create_project_folder(storage, slug)
+                final_description = (input.brief or input.description or "").strip()
 
                 project = Project.objects.create(
                     slug=slug,
                     name=name,
-                    description=(input.description or "").strip(),
+                    description=final_description,
                     owner=owner,
                     storage=storage,
                     folder_path=folder_path,
-                    state=Project.STATE_DRAFT,
+                    state=Project.STATE_IN_PROGRESS if input.start_development else Project.STATE_DRAFT,
                     tasks_json=[],
                     artifacts_json=[],
                     deployments_json=[],
                     used_storage=0,
                 )
-                append_activity(project, "Project created in Draft state")
-                project.save(update_fields=["activity_json", "updated_at"])
-                append_activity_log(
+                # Ensure the initial project has no pre-seeded timeline entries
+                # and ensure only the owner is a team member at creation.
+                TeamMember.objects.filter(project=project).exclude(user=owner).delete()
+                TeamMember.objects.update_or_create(
                     project=project,
-                    action_type=ActivityLog.ACTION_PROJECT_CREATED,
-                    description=f"Project '{project.name}' created.",
-                    performed_by=actor,
-                    metadata={"projectSlug": project.slug},
+                    user=owner,
+                    defaults={
+                        "role": TeamMember.ROLE_DEVELOPER,
+                        "invited_by": actor,
+                        "status": TeamMember.STATUS_ACTIVE,
+                        "date_joined": timezone.now(),
+                    },
                 )
+
         except Exception as exc:
             return ProjectMutationPayload(success=False, message=str(exc), project=None)
 
@@ -252,6 +306,26 @@ class ProjectMutation:
         )
 
         return ProjectMutationPayload(success=True, message="Project archived.", project=to_project_type(project))
+
+    @strawberry.mutation
+    def hard_delete_project(self, info: strawberry.Info, input: ProjectActionInput) -> ProjectMutationPayload:
+        actor = get_authenticated_user(info)
+        if actor is None:
+            return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
+
+        project = find_project_or_none(str(input.project_id))
+        if project is None:
+            return ProjectMutationPayload(success=False, message="Project not found.", project=None)
+
+        folder_path = project.folder_path
+        project.delete()
+
+        if folder_path:
+            folder = Path(folder_path)
+            if folder.exists():
+                shutil.rmtree(folder, ignore_errors=True)
+
+        return ProjectMutationPayload(success=True, message="Project deleted.", project=None)
 
     @strawberry.mutation
     def restore_project(self, info: strawberry.Info, input: ProjectActionInput) -> ProjectMutationPayload:

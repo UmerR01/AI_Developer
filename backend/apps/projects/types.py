@@ -131,11 +131,43 @@ class ProjectMutationPayload:
     project: ProjectType | None
 
 
+@strawberry.type
+class ReviewProjectBriefPayload:
+    success: bool
+    message: str
+    needs_session: bool
+    missing_sections: list[str]
+    questions: list[str]
+    refined_brief: str
+    word_count: int
+    read_time_minutes: int
+
+
 @strawberry.input
 class CreateProjectInput:
     name: str
     description: str | None = None
     owner_id: strawberry.ID | None = None
+    source_type: str | None = None
+    source_mode: str | None = None
+    repository_url: str | None = None
+    access_token: str | None = None
+    document_text: str | None = None
+    brief: str | None = None
+    session_answers: JSON | None = None
+    revision_notes: str | None = None
+    start_development: bool = False
+
+
+@strawberry.input
+class ReviewProjectBriefInput:
+    name: str
+    description: str
+    source_type: str | None = None
+    repository_url: str | None = None
+    document_text: str | None = None
+    session_answers: JSON | None = None
+    revision_notes: str | None = None
 
 
 @strawberry.input

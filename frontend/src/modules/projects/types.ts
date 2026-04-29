@@ -96,6 +96,17 @@ export interface ProjectMutationResult {
   project?: ProjectRecord | null;
 }
 
+export interface ProjectBriefReviewResult {
+  success: boolean;
+  message: string;
+  needsSession: boolean;
+  missingSections: string[];
+  questions: string[];
+  refinedBrief: string;
+  wordCount: number;
+  readTimeMinutes: number;
+}
+
 export interface ProjectsQueryResponse {
   data?: {
     projects: ProjectRecord[];
@@ -112,9 +123,11 @@ export interface ProjectQueryResponse {
 
 export interface ProjectMutationResponse {
   data?: {
+    reviewProjectBrief?: ProjectBriefReviewResult;
     createProject?: ProjectMutationResult;
     updateProject?: ProjectMutationResult;
     deleteProject?: ProjectMutationResult;
+    hardDeleteProject?: ProjectMutationResult;
     restoreProject?: ProjectMutationResult;
     addProjectComment?: ProjectMutationResult;
     deployProject?: ProjectMutationResult;
@@ -133,4 +146,28 @@ export interface ProjectMutationResponse {
     };
   };
   errors?: Array<{ message: string }>;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description?: string;
+  sourceType?: string;
+  sourceMode?: string;
+  repositoryUrl?: string;
+  accessToken?: string;
+  documentText?: string;
+  brief?: string;
+  sessionAnswers?: Array<{ question: string; answer: string }>;
+  revisionNotes?: string;
+  startDevelopment?: boolean;
+}
+
+export interface ReviewProjectBriefInput {
+  name: string;
+  description: string;
+  sourceType?: string;
+  repositoryUrl?: string;
+  documentText?: string;
+  sessionAnswers?: Array<{ question: string; answer: string }>;
+  revisionNotes?: string;
 }
