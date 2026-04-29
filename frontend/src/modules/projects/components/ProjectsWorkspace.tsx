@@ -10,6 +10,7 @@ import {
   deleteProjectFile,
   fetchProjectById,
   fetchProjects,
+  hardDeleteProject,
   restoreProject,
   updateProject,
   uploadProjectFile,
@@ -17,6 +18,7 @@ import {
 import type { ProjectRecord, ProjectState } from "../types";
 import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
+import { ProjectCreateWizard } from "./new-project/ProjectCreateWizard";
 
 interface ProjectsWorkspaceProps {
   selectedProjectId?: string;
@@ -129,8 +131,6 @@ const COLUMN_VISIBLE_DEFAULT: Record<TaskColumn, number> = {
 
 const VISIT_STORAGE_KEY = "projects:lastVisitedMap";
 
-const DEFAULT_MEMBER_IDS = ["acc-ibrahim", "acc-ismail", "acc-zahid", "acc-faizan"];
-
 const PROJECT_META_BY_ID: Record<string, ProjectMeta> = {
   "ai-agent-workspace": {
     createdAt: "2026-03-24",
@@ -229,9 +229,21 @@ function getMetadata(project: ProjectRecord): ProjectMeta {
     PROJECT_META_BY_ID[project.id] ?? {
       createdAt: project.updatedAt.split(" ")[0] ?? "2026-04-01",
       startDate: project.updatedAt.split(" ")[0] ?? "2026-04-01",
-      memberAccountIds: DEFAULT_MEMBER_IDS,
+      memberAccountIds: [],
     }
   );
+}
+
+function getProjectMemberIds(project: ProjectRecord, accountByUsername: Record<string, Account>): string[] {
+  const realMemberIds = project.teamMembers
+    .map((member) => accountByUsername[member.username]?.id ?? accountByUsername[member.displayName]?.id ?? member.userId)
+    .filter((memberId): memberId is string => Boolean(memberId));
+
+  if (realMemberIds.length > 0) {
+    return realMemberIds;
+  }
+
+  return getMetadata(project).memberAccountIds;
 }
 
 function buildTaskCards(project: ProjectRecord, memberIds: string[]): ProjectTaskCard[] {
@@ -245,7 +257,7 @@ function buildTaskCards(project: ProjectRecord, memberIds: string[]): ProjectTas
     priority: priorityCycle[index % priorityCycle.length],
     type: typeCycle[index % typeCycle.length],
     status: mapTaskStatus(task.status, index),
-    assigneeIds: [memberIds[index % memberIds.length] ?? memberIds[0] ?? DEFAULT_MEMBER_IDS[0]],
+    assigneeIds: memberIds.length ? [memberIds[index % memberIds.length] ?? memberIds[0] ?? ""] : [],
     createdAt: project.updatedAt,
     commentsCount: index + 1,
     mentionsCount: index % 3,
@@ -254,8 +266,8 @@ function buildTaskCards(project: ProjectRecord, memberIds: string[]): ProjectTas
   const generated: ProjectTaskCard[] = Array.from({ length: 10 }).map((_, index) => {
     const statusPool: TaskColumn[] = ["todo", "todo", "in_progress", "in_review", "done"];
     const status = statusPool[index % statusPool.length];
-    const firstMember = memberIds[index % memberIds.length] ?? memberIds[0] ?? DEFAULT_MEMBER_IDS[0];
-    const secondMember = memberIds[(index + 1) % memberIds.length] ?? firstMember;
+    const firstMember = memberIds.length ? memberIds[index % memberIds.length] ?? memberIds[0] ?? "" : "";
+    const secondMember = memberIds.length ? memberIds[(index + 1) % memberIds.length] ?? firstMember : "";
 
     return {
       id: `generated-${project.id}-${index + 1}`,
@@ -416,6 +428,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
 
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [fileDeleteConfirmId, setFileDeleteConfirmId] = useState<string | null>(null);
   const [timelineFilter, setTimelineFilter] = useState("All");
 
@@ -438,6 +451,13 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const accountById = useMemo(() => {
     return DASHBOARD_DATA.accounts.reduce<Record<string, Account>>((accumulator, account) => {
       accumulator[account.id] = account;
+      return accumulator;
+    }, {});
+  }, []);
+
+  const accountByUsername = useMemo(() => {
+    return DASHBOARD_DATA.accounts.reduce<Record<string, Account>>((accumulator, account) => {
+      accumulator[account.username] = account;
       return accumulator;
     }, {});
   }, []);
@@ -519,6 +539,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const enrichedProjects = useMemo<EnrichedProject[]>(() => {
     return projects.map((project) => {
       const metadata = getMetadata(project);
+      const memberAccountIds = getProjectMemberIds(project, accountByUsername);
       const modifiedTimestamp = parseDateToTimestamp(project.updatedAt);
       const visitTimestamp = visitMap[project.id] ?? 0;
 
@@ -527,13 +548,13 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
         normalizedState: normalizeState(project.state),
         createdAt: metadata.createdAt,
         startDate: metadata.startDate,
-        memberAccountIds: metadata.memberAccountIds,
+        memberAccountIds,
         logoText: initials(project.name),
         modifiedTimestamp,
         recentScore: Math.max(modifiedTimestamp, visitTimestamp),
       };
     });
-  }, [projects, visitMap]);
+  }, [accountByUsername, projects, visitMap]);
 
   const selectedProject = useMemo(() => {
     if (!selectedProjectId) {
@@ -547,8 +568,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       return;
     }
 
-    const memberIds = selectedProject.memberAccountIds.length ? selectedProject.memberAccountIds : DEFAULT_MEMBER_IDS;
-    setTaskCards(buildTaskCards(selectedProject, memberIds));
+    setTaskCards(buildTaskCards(selectedProject, selectedProject.memberAccountIds));
     setColumnVisible(COLUMN_VISIBLE_DEFAULT);
   }, [selectedProject]);
 
@@ -557,8 +577,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       setTeamMemberIds([]);
       return;
     }
-    const memberIds = selectedProject.memberAccountIds.length ? selectedProject.memberAccountIds : DEFAULT_MEMBER_IDS;
-    setTeamMemberIds(memberIds);
+    setTeamMemberIds(selectedProject.memberAccountIds);
   }, [selectedProject]);
 
   const visibleProjectSet = useMemo(() => {
@@ -729,7 +748,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       return;
     }
 
-    const defaultMemberId = selectedMembers[0]?.id ?? DEFAULT_MEMBER_IDS[0];
+    const defaultMemberId = selectedMembers[0]?.id ?? "";
 
     setTaskCards((current) => [
       {
@@ -799,6 +818,26 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       }
       applyProjectPatch(result.project);
       setShowArchiveConfirm(false);
+      setHeaderMenuOpen(false);
+      if (selectedProjectId === projectId) {
+        router.push("/projects");
+      }
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    setBusyAction(`delete-${projectId}`);
+    setErrorMessage(null);
+    try {
+      const result = await hardDeleteProject(projectId);
+      if (!result.success) {
+        setErrorMessage(result.message);
+        return;
+      }
+      setProjects((current) => current.filter((project) => project.id !== projectId));
+      setShowDeleteConfirm(false);
       setHeaderMenuOpen(false);
       if (selectedProjectId === projectId) {
         router.push("/projects");
@@ -1088,40 +1127,14 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           </div>
         </section>
 
-        {createModalOpen ? (
-          <div className="projects-modal-backdrop" role="dialog" aria-modal="true" aria-label="Create project">
-            <section className="projects-modal">
-              <h3>Create Project</h3>
-              <label>
-                Project Name
-                <input value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder="Project name" />
-              </label>
-              <label>
-                Description
-                <textarea
-                  rows={4}
-                  value={createDescription}
-                  onChange={(event) => setCreateDescription(event.target.value)}
-                  placeholder="Describe this project"
-                />
-              </label>
-              <label>
-                Project Avatar (optional)
-                <input type="file" accept="image/*" onChange={(event) => setCreateAvatarFile(event.target.files?.[0] ?? null)} />
-              </label>
-              {createAvatarFile ? <p className="projects-modal-subtitle">Selected: {createAvatarFile.name}</p> : null}
-              {errorMessage ? <p className="projects-modal-error">{errorMessage}</p> : null}
-              <div className="modal-actions">
-                <button type="button" className="projects-secondary-btn" onClick={() => setCreateModalOpen(false)} disabled={busyAction === "create-project"}>
-                  Cancel
-                </button>
-                <button type="button" className="projects-primary-btn" onClick={() => void handleCreateProject()} disabled={busyAction === "create-project"}>
-                  {busyAction === "create-project" ? "Creating..." : "Create Project"}
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
+        <ProjectCreateWizard
+          open={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          onCreated={(project) => {
+            applyProjectPatch(project);
+            setCreateModalOpen(false);
+          }}
+        />
       </section>
     );
   };
@@ -1173,6 +1186,9 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   </button>
                   <button type="button" className="danger" onClick={() => setShowArchiveConfirm(true)}>
                     Archive Project
+                  </button>
+                  <button type="button" className="danger" onClick={() => setShowDeleteConfirm(true)}>
+                    Delete Project
                   </button>
                 </div>
               ) : null}
@@ -1579,39 +1595,14 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           </div>
         ) : null}
 
-        {createModalOpen ? (
-          <div className="projects-modal-backdrop" role="dialog" aria-modal="true" aria-label="Create project">
-            <section className="projects-modal">
-              <h3>Create Project</h3>
-              <label>
-                Project Name
-                <input value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder="Project name" />
-              </label>
-              <label>
-                Description
-                <textarea
-                  rows={4}
-                  value={createDescription}
-                  onChange={(event) => setCreateDescription(event.target.value)}
-                  placeholder="Describe this project"
-                />
-              </label>
-              <label>
-                Project Avatar (optional)
-                <input type="file" accept="image/*" onChange={(event) => setCreateAvatarFile(event.target.files?.[0] ?? null)} />
-              </label>
-              {createAvatarFile ? <p className="projects-modal-subtitle">Selected: {createAvatarFile.name}</p> : null}
-              <div className="modal-actions">
-                <button type="button" className="projects-secondary-btn" onClick={() => setCreateModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="projects-primary-btn" onClick={() => void handleCreateProject()}>
-                  {busyAction === "create-project" ? "Creating..." : "Create Project"}
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
+        <ProjectCreateWizard
+          open={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          onCreated={(project) => {
+            applyProjectPatch(project);
+            setCreateModalOpen(false);
+          }}
+        />
 
         {editModalOpen ? (
           <div className="projects-modal-backdrop" role="dialog" aria-modal="true" aria-label="Edit project">
@@ -1660,6 +1651,26 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   onClick={() => void handleArchiveProject(selectedProject.id)}
                 >
                   Archive
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+        {showDeleteConfirm && selectedProject ? (
+          <div className="projects-modal-backdrop" role="dialog" aria-modal="true" aria-label="Delete project">
+            <section className="projects-modal confirm-modal">
+              <h3>Delete Project</h3>
+              <p>This project will be deleted. This action cannot be undone.</p>
+              <div className="modal-actions">
+                <button type="button" className="projects-secondary-btn" onClick={() => setShowDeleteConfirm(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="projects-danger-btn"
+                  onClick={() => void handleDeleteProject(selectedProject.id)}
+                >
+                  Delete
                 </button>
               </div>
             </section>
