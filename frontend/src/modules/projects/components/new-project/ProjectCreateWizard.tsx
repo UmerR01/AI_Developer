@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createProject, reviewProjectBrief } from "../../api";
@@ -30,9 +30,11 @@ function extractRepositoryName(value: string): string {
   return parts[parts.length - 1] || "repository";
 }
 
+/*
 function normalizeSlug(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+*/
 
 function makeAvatar(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -80,7 +82,7 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
   const [sessionProgressLabel, setSessionProgressLabel] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const slugPreview = useMemo(() => normalizeSlug(projectName) || "project", [projectName]);
+  // const slugPreview = useMemo(() => normalizeSlug(projectName) || "project", [projectName]);
 
   useEffect(() => {
     if (!open) {

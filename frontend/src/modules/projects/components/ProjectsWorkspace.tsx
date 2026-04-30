@@ -6,7 +6,7 @@ import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from "react";
 
 import {
   archiveProject,
-  createProject,
+  // createProject,
   deleteProjectFile,
   fetchProjectById,
   fetchProjects,
@@ -417,9 +417,11 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  /*
   const [createName, setCreateName] = useState("");
   const [createDescription, setCreateDescription] = useState("");
-  const [createAvatarFile, setCreateAvatarFile] = useState<File | null>(null);
+  const [, setCreateAvatarFile] = useState<File | null>(null);
+  */
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -780,6 +782,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
     });
   };
 
+  /*
   const handleCreateProject = async () => {
     if (!createName.trim() || !createDescription.trim()) {
       setErrorMessage("Project name and description are required.");
@@ -806,6 +809,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       setBusyAction(null);
     }
   };
+  */
 
   const handleArchiveProject = async (projectId: string) => {
     setBusyAction(`archive-${projectId}`);
