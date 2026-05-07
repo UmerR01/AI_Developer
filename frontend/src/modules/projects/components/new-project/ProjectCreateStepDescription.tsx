@@ -37,7 +37,7 @@ export function ProjectCreateStepDescription({
   onDescriptionModeChange,
   onDescriptionChange,
   onDocumentUpload,
-  onDocumentTextChange,
+  /* onDocumentTextChange, */
   onAdditionalContextChange,
   onAnalyze,
   onBack,
