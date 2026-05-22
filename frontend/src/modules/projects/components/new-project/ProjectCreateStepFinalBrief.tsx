@@ -74,7 +74,7 @@ export function ProjectCreateStepFinalBrief({
             Request Changes
           </button>
           <button type="button" className="project-create-primary-success-btn" onClick={onApprove} disabled={busy}>
-            ✓ Approve & Start Development
+            ✓ Approve & Create Project
           </button>
         </div>
       </footer>

@@ -82,6 +82,18 @@ function PlugIcon() {
   );
 }
 
+function BotIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="5" y="8" width="14" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 4v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <circle cx="10" cy="13" r="1" fill="currentColor" />
+      <circle cx="14" cy="13" r="1" fill="currentColor" />
+      <path d="M9.2 16h5.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ProfileIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -97,6 +109,7 @@ const NAV_ITEMS: SidebarItem[] = [
   { key: "member", label: "Member", icon: <MembersIcon />, path: "/member", roles: ["admin", "developer", "qa"] },
   { key: "tasks", label: "Tasks", icon: <TasksIcon />, path: "/tasks", roles: ["admin", "developer", "qa"] },
   { key: "support", label: "Support", icon: <SupportIcon />, path: "/support", roles: ["admin", "developer", "qa", "support"] },
+  { key: "agents", label: "AI Agent", icon: <BotIcon />, path: "/agents", roles: ["admin", "developer", "qa"] },
   { key: "integrations", label: "Integrations", icon: <PlugIcon />, path: "/settings/integrations", roles: ["admin", "developer"] },
   { key: "settings", label: "Settings", icon: <ProfileIcon />, path: "/settings", roles: ["admin", "developer", "qa", "support"] },
 ];

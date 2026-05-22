@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 
 from django.db import transaction
+
+logger = logging.getLogger("apps.projects")
 from django.utils import timezone
 import strawberry
 
@@ -30,6 +33,13 @@ from apps.projects.services import (
     to_project_type,
     toggle_user_integration,
     user_by_id,
+)
+from apps.projects.ai_bridge import (
+    bootstrap_agent_session,
+    build_agent_workspace_url,
+    build_development_prompt,
+    resolve_project_working_directory,
+    review_brief_with_ai,
 )
 from apps.projects.new_project import analyze_project_brief, compile_project_brief
 
@@ -106,30 +116,84 @@ class ProjectMutation:
                 read_time_minutes=0,
             )
 
-        analysis = analyze_project_brief(
-            input.description,
-            input.document_text,
-            input.repository_url,
-            list(input.session_answers or []),
+        session_answers = list(input.session_answers or [])
+        document_text = (input.document_text or "").strip()
+        document_chars = len(document_text)
+        combined_description = "\n\n".join(
+            part
+            for part in [
+                (input.description or "").strip(),
+                document_text,
+            ]
+            if part
         )
-        refined_brief = compile_project_brief(
+
+        logger.info(
+            "[brief-review] mutation name=%r desc_chars=%s document_chars=%s answers=%s",
+            input.name,
+            len(input.description or ""),
+            document_chars,
+            len(session_answers),
+        )
+
+        ai_review = review_brief_with_ai(
             name=input.name,
-            description=input.description,
-            source_type=input.source_type,
+            description=combined_description or input.description,
+            document_text=document_text or None,
             repository_url=input.repository_url,
-            session_answers=list(input.session_answers or []),
-            revision_notes=input.revision_notes,
+            session_answers=session_answers,
+        )
+
+        refined_brief = ""
+        review_source = "heuristic"
+        if ai_review is not None:
+            analysis, refined_brief, review_source = ai_review
+            message = "AI brief review completed."
+        else:
+            analysis = analyze_project_brief(
+                combined_description or input.description,
+                document_text or None,
+                input.repository_url,
+                session_answers,
+            )
+            refined_brief = compile_project_brief(
+                name=input.name,
+                description=combined_description or input.description,
+                source_type=input.source_type,
+                repository_url=input.repository_url,
+                session_answers=session_answers,
+                revision_notes=input.revision_notes,
+            )
+            message = "Brief review completed (rule-based fallback — AI unavailable or returned invalid data)."
+
+        if not refined_brief:
+            refined_brief = compile_project_brief(
+                name=input.name,
+                description=combined_description or input.description,
+                source_type=input.source_type,
+                repository_url=input.repository_url,
+                session_answers=session_answers,
+                revision_notes=input.revision_notes,
+            )
+
+        logger.info(
+            "[brief-review] result source=%s needs_session=%s questions=%s",
+            review_source,
+            analysis.needs_session,
+            analysis.questions,
         )
 
         return ReviewProjectBriefPayload(
             success=True,
-            message="Brief review completed.",
+            message=message,
             needs_session=analysis.needs_session,
             missing_sections=analysis.missing_sections,
             questions=analysis.questions,
             refined_brief=refined_brief,
             word_count=analysis.word_count,
             read_time_minutes=analysis.read_time_minutes,
+            review_source=review_source,
+            document_chars_received=document_chars,
         )
 
     @strawberry.mutation
@@ -747,10 +811,42 @@ class ProjectMutation:
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
+        session_id = f"project-{project.id}"
+        development_prompt = build_development_prompt(
+            project_name=project.name,
+            brief=project.description,
+            repository_url=None,
+        )
+        resolved_workdir = resolve_project_working_directory(project.folder_path)
+        bootstrap_result = bootstrap_agent_session(
+            session_id=session_id,
+            prompt=development_prompt,
+            working_directory=resolved_workdir,
+            project_id=str(project.id),
+            project_name=project.name,
+        )
+        workspace_url = build_agent_workspace_url(
+            project_id=str(project.id),
+            project_name=project.name,
+            session_id=session_id,
+        )
+
         project.state = Project.STATE_IN_PROGRESS
-        append_activity(project, "Agent run started from Projects workspace")
+        append_activity(project, "AI development agent started")
         project.save(update_fields=["state", "activity_json", "updated_at"])
-        return ProjectMutationPayload(success=True, message="Agent run started.", project=to_project_type(project))
+        bootstrap_ok = bootstrap_result.get("success", False)
+        message = "AI development agent ready. Open the workspace tab to watch progress."
+        if not bootstrap_ok:
+            message = (
+                "Project marked in progress, but the agent server could not store the development prompt. "
+                f"Ensure the agent API is running on port 8001. ({bootstrap_result.get('message', 'unknown')})"
+            )
+        return ProjectMutationPayload(
+            success=True,
+            message=message,
+            project=to_project_type(project),
+            agent_workspace_url=workspace_url,
+        )
 
     @strawberry.mutation
     def add_project_comment(self, info: strawberry.Info, input: AddProjectCommentInput) -> ProjectMutationPayload:

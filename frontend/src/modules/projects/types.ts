@@ -94,6 +94,7 @@ export interface ProjectMutationResult {
   success: boolean;
   message: string;
   project?: ProjectRecord | null;
+  agentWorkspaceUrl?: string | null;
 }
 
 export interface ProjectBriefReviewResult {
@@ -105,6 +106,8 @@ export interface ProjectBriefReviewResult {
   refinedBrief: string;
   wordCount: number;
   readTimeMinutes: number;
+  reviewSource?: "ai" | "heuristic" | string;
+  documentCharsReceived?: number;
 }
 
 export interface ProjectsQueryResponse {

@@ -12,6 +12,7 @@ import {
   fetchProjects,
   hardDeleteProject,
   restoreProject,
+  startAgentRun,
   updateProject,
   uploadProjectFile,
 } from "../api";
@@ -121,6 +122,15 @@ const TAB_LABELS: Record<ProjectTab, string> = {
   timeline: "Timeline",
   logs: "Logs",
 };
+
+const FREE_AGENT_TOKENS = 100;
+const TOKENS_PER_GENERATED_FILE = 40;
+
+const GENERATED_FILE_BLUEPRINTS = [
+  { name: "projects-plan.md", type: "md", size: 14 * 1024 },
+  { name: "project-shell.tsx", type: "tsx", size: 32 * 1024 },
+  { name: "agent-workflow-notes.md", type: "md", size: 9 * 1024 },
+] as const;
 
 const COLUMN_VISIBLE_DEFAULT: Record<TaskColumn, number> = {
   todo: 4,
@@ -250,7 +260,7 @@ function buildTaskCards(project: ProjectRecord, memberIds: string[]): ProjectTas
   const priorityCycle: TaskPriority[] = ["high", "medium", "low"];
   const typeCycle: TaskType[] = ["research", "frontend", "backend", "audit", "db"];
 
-  const base = project.tasks.map((task, index) => ({
+  return project.tasks.map((task, index) => ({
     id: `task-${project.id}-${task.id}`,
     name: task.title,
     description: `${task.title} and align output quality with project delivery standards.`,
@@ -262,28 +272,6 @@ function buildTaskCards(project: ProjectRecord, memberIds: string[]): ProjectTas
     commentsCount: index + 1,
     mentionsCount: index % 3,
   }));
-
-  const generated: ProjectTaskCard[] = Array.from({ length: 10 }).map((_, index) => {
-    const statusPool: TaskColumn[] = ["todo", "todo", "in_progress", "in_review", "done"];
-    const status = statusPool[index % statusPool.length];
-    const firstMember = memberIds.length ? memberIds[index % memberIds.length] ?? memberIds[0] ?? "" : "";
-    const secondMember = memberIds.length ? memberIds[(index + 1) % memberIds.length] ?? firstMember : "";
-
-    return {
-      id: `generated-${project.id}-${index + 1}`,
-      name: `${project.name} Task ${index + 1}`,
-      description: "Refine the implementation slice and attach validation notes before handoff.",
-      priority: priorityCycle[(index + 1) % priorityCycle.length],
-      type: typeCycle[(index + 2) % typeCycle.length],
-      status,
-      assigneeIds: [firstMember, secondMember],
-      createdAt: project.updatedAt,
-      commentsCount: (index % 5) + 1,
-      mentionsCount: index % 2,
-    };
-  });
-
-  return [...base, ...generated];
 }
 
 function buildFileRows(project: ProjectRecord): ProjectFileRow[] {
@@ -449,6 +437,11 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const [taskCards, setTaskCards] = useState<ProjectTaskCard[]>([]);
   const [columnVisible, setColumnVisible] = useState<Record<TaskColumn, number>>(COLUMN_VISIBLE_DEFAULT);
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
+  const [developmentStartedByProject, setDevelopmentStartedByProject] = useState<Record<string, boolean>>({});
+  const [developmentProgressByProject, setDevelopmentProgressByProject] = useState<Record<string, number>>({});
+  const [generatedFilesByProject, setGeneratedFilesByProject] = useState<Record<string, ProjectFileRow[]>>({});
+  const [generatedTasksByProject, setGeneratedTasksByProject] = useState<Record<string, ProjectTaskCard[]>>({});
+  const [agentUpgradeModalOpen, setAgentUpgradeModalOpen] = useState(false);
 
   const accountById = useMemo(() => {
     return DASHBOARD_DATA.accounts.reduce<Record<string, Account>>((accumulator, account) => {
@@ -570,9 +563,10 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       return;
     }
 
-    setTaskCards(buildTaskCards(selectedProject, selectedProject.memberAccountIds));
+    const generated = generatedTasksByProject[selectedProject.id] ?? [];
+    setTaskCards([...generated, ...buildTaskCards(selectedProject, selectedProject.memberAccountIds)]);
     setColumnVisible(COLUMN_VISIBLE_DEFAULT);
-  }, [selectedProject]);
+  }, [generatedTasksByProject, selectedProject]);
 
   useEffect(() => {
     if (!selectedProject) {
@@ -725,8 +719,46 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
     if (!selectedProject) {
       return [] as ProjectFileRow[];
     }
-    return buildFileRows(selectedProject);
-  }, [selectedProject]);
+    const generatedRows = generatedFilesByProject[selectedProject.id] ?? [];
+    return [...buildFileRows(selectedProject), ...generatedRows];
+  }, [generatedFilesByProject, selectedProject]);
+
+  const developmentStarted = selectedProject ? Boolean(developmentStartedByProject[selectedProject.id]) : false;
+  const developmentProgress = selectedProject ? developmentProgressByProject[selectedProject.id] ?? 0 : 0;
+
+  const startProjectDevelopment = async () => {
+    if (!selectedProject || developmentStartedByProject[selectedProject.id]) {
+      return;
+    }
+
+    setErrorMessage(null);
+    const developmentPrompt = [
+      `Start development for the project "${selectedProject.name}".`,
+      "Use the approved README brief below as the single source of truth.",
+      "Create the initial scaffold and implement the first working version.",
+      "",
+      selectedProject.description,
+    ].join("\n");
+
+    const result = await startAgentRun(selectedProject.id);
+    if (!result.success) {
+      setErrorMessage(result.message || "Unable to start AI development.");
+      return;
+    }
+
+    if (result.project) {
+      setProjects((current) => current.map((item) => (item.id === result.project?.id ? { ...item, ...result.project } : item)));
+    }
+
+    const workspaceUrl =
+      result.agentWorkspaceUrl ||
+      `${process.env.NEXT_PUBLIC_AI_AGENT_URL ?? "http://localhost:8001"}/workspace?autostart=1&projectId=${encodeURIComponent(selectedProject.id)}&projectName=${encodeURIComponent(selectedProject.name)}&session=${encodeURIComponent(`project-${selectedProject.id}`)}`;
+
+    window.open(workspaceUrl, "_blank", "noopener,noreferrer");
+
+    setDevelopmentStartedByProject((current) => ({ ...current, [selectedProject.id]: true }));
+    setDevelopmentProgressByProject((current) => ({ ...current, [selectedProject.id]: 8 }));
+  };
 
   const handleTaskDrop = (targetColumn: TaskColumn) => {
     if (!dragTaskId) {
@@ -1223,6 +1255,34 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           );
         })()}
 
+        <section className="project-dev-trigger-row">
+          <div>
+            <strong>Project Development</strong>
+            <p>Trigger AI agents to generate initial implementation files and tasks.</p>
+          </div>
+          <button
+            type="button"
+            className="action-btn-primary"
+            onClick={startProjectDevelopment}
+            disabled={developmentStarted}
+          >
+            {developmentStarted ? "Development Started" : "Start Development"}
+          </button>
+        </section>
+
+        {developmentStarted ? (
+          <section className="project-dev-progress-row" aria-label="Project development progress">
+            <div className="project-dev-progress-head">
+              <strong>Project Development</strong>
+              <span>{developmentProgress}% complete</span>
+            </div>
+            <div className="project-dev-progress-bar">
+              <span style={{ width: `${developmentProgress}%` }} />
+            </div>
+            <p>Agents are preparing foundational files and task scaffolding for your team.</p>
+          </section>
+        ) : null}
+
         <div className="project-tabs-row" role="tablist" aria-label="Project tabs">
           {PROJECT_TABS.map((tab) => (
             <button
@@ -1675,6 +1735,34 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   onClick={() => void handleDeleteProject(selectedProject.id)}
                 >
                   Delete
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {agentUpgradeModalOpen ? (
+          <div className="projects-modal-backdrop" role="dialog" aria-modal="true" aria-label="Upgrade agent tokens">
+            <section className="projects-modal confirm-modal">
+              <h3>Free Agent Tokens Expired</h3>
+              <p>
+                Your free AI developer agents generated 3 files and 3 tasks at 40 tokens per file.
+                Total usage reached 120 tokens, which exceeds the 100-token free limit.
+              </p>
+              <p>Head to the AI Agents marketplace to upgrade and continue project development.</p>
+              <div className="modal-actions">
+                <button type="button" className="projects-secondary-btn" onClick={() => setAgentUpgradeModalOpen(false)}>
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="projects-primary-btn"
+                  onClick={() => {
+                    router.push("/agents");
+                    setAgentUpgradeModalOpen(false);
+                  }}
+                >
+                  Open AI Agents
                 </button>
               </div>
             </section>

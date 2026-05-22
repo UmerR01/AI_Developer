@@ -129,6 +129,7 @@ class ProjectMutationPayload:
     success: bool
     message: str
     project: ProjectType | None
+    agent_workspace_url: str | None = None
 
 
 @strawberry.type
@@ -141,6 +142,8 @@ class ReviewProjectBriefPayload:
     refined_brief: str
     word_count: int
     read_time_minutes: int
+    review_source: str = "heuristic"
+    document_chars_received: int = 0
 
 
 @strawberry.input

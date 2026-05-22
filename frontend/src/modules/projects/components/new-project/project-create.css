@@ -561,7 +561,26 @@
   background: rgba(79, 212, 181, 0.1);
 }
 
-.project-create-status-pill.is-error,
+.project-create-debug-banner {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.project-create-review-source {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted, #93a4bf);
+  font-size: 0.78rem;
+}
+
 .project-create-error-banner {
   color: #ff7272;
   border-color: rgba(255, 114, 114, 0.25);
@@ -876,6 +895,27 @@
 .project-create-history-list button:last-child,
 .project-create-history-list span:last-child {
   border-bottom: 0;
+}
+
+.project-create-debug-banner,
+.project-create-review-source {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.project-create-review-source {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted, #93a4bf);
+  font-size: 0.78rem;
 }
 
 .project-create-error-banner {

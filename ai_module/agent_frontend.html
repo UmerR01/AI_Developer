@@ -1,0 +1,1218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Coder Workspace</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --bg-soft: rgba(13, 19, 31, 0.82);
+      --panel: rgba(17, 24, 39, 0.9);
+      --panel-strong: #0f172a;
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #e5eefc;
+      --muted: #93a4bf;
+      --accent: #7c3aed;
+      --accent-2: #22c55e;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --code: #0b1020;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      --radius: 20px;
+      --radius-sm: 14px;
+      --radius-xs: 10px;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 26%),
+        linear-gradient(180deg, #060912 0%, #0a1020 55%, #060912 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 16px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 22px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.7));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #7c3aed, #0ea5e9);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32);
+      flex: 0 0 auto;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.12);
+    }
+
+    .dot.connected { background: var(--accent-2); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.14); }
+    .dot.error { background: var(--danger); box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.12); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.15fr) minmax(340px, 0.95fr);
+      gap: 16px;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .panel-header span {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .chat {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .chat-log {
+      flex: 1;
+      overflow: auto;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .message {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .message.user {
+      margin-left: auto;
+      max-width: 92%;
+      background: linear-gradient(180deg, rgba(124, 58, 237, 0.22), rgba(15, 23, 42, 0.9));
+      border-color: rgba(124, 58, 237, 0.3);
+    }
+
+    .message.agent {
+      margin-right: auto;
+      max-width: 92%;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.92));
+    }
+
+    .message.file-op {
+      margin-right: auto;
+      max-width: 100%;
+      padding: 10px 14px;
+      background: rgba(34, 197, 94, 0.08);
+      border-color: rgba(34, 197, 94, 0.28);
+    }
+
+    .message.file-op .message-meta {
+      color: #86efac;
+    }
+
+    .message.file-op .message-body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .message-body {
+      white-space: pre-wrap;
+      line-height: 1.65;
+      font-size: 0.95rem;
+    }
+
+    .composer {
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      background: rgba(15, 23, 42, 0.88);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    textarea, input, select, button {
+      font: inherit;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      color: var(--text);
+      background: rgba(8, 13, 25, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    textarea:focus, input:focus, select:focus {
+      border-color: rgba(124, 58, 237, 0.5);
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      padding: 14px;
+      line-height: 1.6;
+    }
+
+    .side-stack {
+      display: grid;
+      grid-template-rows: auto minmax(0, 0.55fr) minmax(0, 1fr);
+      gap: 16px;
+      min-height: 0;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    .controls {
+      padding: 16px 18px 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-weight: 600;
+      transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .primary {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      box-shadow: 0 16px 30px rgba(124, 58, 237, 0.25);
+    }
+
+    .secondary {
+      background: rgba(37, 99, 235, 0.9);
+    }
+
+    .stop {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+      box-shadow: 0 16px 30px rgba(239, 68, 68, 0.2);
+    }
+
+    .ghost {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--border);
+    }
+
+    .danger {
+      background: rgba(220, 38, 38, 0.95);
+    }
+
+    .debug-strip {
+      border: 1px dashed rgba(124, 58, 237, 0.45);
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(124, 58, 237, 0.08);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.6;
+    }
+
+    .section-list {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: 0;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 14px 16px 0;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: white;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.9), rgba(91, 33, 182, 0.9));
+      border-color: rgba(124, 58, 237, 0.35);
+    }
+
+    .file-list {
+      list-style: none;
+      margin: 0;
+      padding: 14px 16px 16px;
+      overflow: auto;
+      min-height: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(8, 13, 25, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    .file-item.active {
+      border-color: rgba(124, 58, 237, 0.45);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.13);
+    }
+
+    .file-path {
+      font-size: 0.9rem;
+      word-break: break-all;
+    }
+
+    .file-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .preview {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .preview-body {
+      padding: 16px;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      border-radius: 16px;
+      background: var(--code);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      color: #dbeafe;
+      overflow: auto;
+      line-height: 1.55;
+      font-size: 0.88rem;
+      tab-size: 2;
+      white-space: pre;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      border: 1px dashed rgba(148, 163, 184, 0.22);
+      background: rgba(8, 13, 25, 0.56);
+      border-radius: 16px;
+      padding: 22px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    .split-info {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(8, 13, 25, 0.72);
+    }
+
+    .mini-card .label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .mini-card .value {
+      font-size: 0.96rem;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 1fr; }
+      .side-stack { grid-template-rows: auto minmax(0, 0.45fr) minmax(0, 1fr); }
+      html, body { overflow: auto; }
+      .app { height: auto; max-height: none; overflow: visible; }
+      .layout { height: auto; overflow: visible; }
+    }
+
+    @media (max-width: 700px) {
+      .app { padding: 12px; }
+      .topbar { padding: 16px; flex-direction: column; align-items: flex-start; }
+      .status-row { width: 100%; justify-content: flex-start; }
+      .field-row, .grid-2, .split-info { grid-template-columns: 1fr; }
+      .panel-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">AC</div>
+        <div>
+          <h1>AI Coder Workspace</h1>
+          <p>Generate code, review files, and keep the whole project visible in one place.</p>
+        </div>
+      </div>
+      <div class="status-row">
+        <div class="pill"><span id="connDot" class="dot"></span><span id="connText">Disconnected</span></div>
+        <div class="pill">Session: <strong id="sessionText">none</strong></div>
+        <div class="pill">Files: <strong id="fileCount">0</strong></div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel chat">
+        <div class="panel-header">
+          <div>
+            <h2>Agent Chat</h2>
+            <span>Use this panel to prompt the agent and receive generation updates.</span>
+          </div>
+          <div class="btn-row">
+            <button class="ghost" id="connectBtn">Connect</button>
+            <button class="ghost" id="resetBtn">Reset Session</button>
+            <button class="danger" id="clearBtn">Clear Chat</button>
+          </div>
+        </div>
+
+        <div id="chatLog" class="chat-log"></div>
+
+        <div class="composer">
+          <div class="field-row">
+            <textarea id="promptInput" placeholder="Describe the app you want the agent to generate..."></textarea>
+            <div style="display:grid; gap: 10px; align-content: start; min-width: 160px;">
+              <button class="primary" id="sendBtn">Send Prompt</button>
+              <button class="stop" id="stopBtn" disabled>Stop Generation</button>
+              <button class="secondary" id="demoBtn">Insert Demo Prompt</button>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <input id="serverUrl" type="text" value="ws://localhost:8001/ws/chat" aria-label="WebSocket URL" />
+            </div>
+            <div>
+              <input id="sessionInput" type="text" placeholder="Optional session id" aria-label="Session ID" />
+            </div>
+          </div>
+          <p id="debugStrip" class="hint debug-strip">Debug: loading session bootstrap…</p>
+          <p class="hint">The server should send response messages over <strong>/ws/chat</strong>. This UI loads the development prompt from <strong>/api/session/{id}</strong> (not browser sessionStorage — different port).</p>
+        </div>
+      </section>
+
+      <section class="side-stack">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Workspace Controls</h2>
+              <span>Project generation settings and session metadata.</span>
+            </div>
+          </div>
+          <div class="controls">
+            <div class="split-info">
+              <div class="mini-card">
+                <div class="label">Agent mode</div>
+                <div class="value">Code generation</div>
+              </div>
+              <div class="mini-card">
+                <div class="label">Transport</div>
+                <div class="value">WebSocket chat</div>
+              </div>
+              <div class="mini-card">
+                <div class="label">Display</div>
+                <div class="value">Chat + file tree</div>
+              </div>
+            </div>
+            <div class="hint">
+              This layout is meant for a code-generation workflow: the left side handles prompts and responses, while the right side can show the generated file structure and preview content.
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section-list">
+          <div class="panel-header">
+            <div>
+              <h2>Generated Files</h2>
+              <span>Shows the latest file manifest returned by the agent.</span>
+            </div>
+            <div class="btn-row">
+              <button class="ghost" id="expandAllBtn">Refresh View</button>
+            </div>
+          </div>
+          <div class="tabs">
+            <button class="tab active" data-tab="files">Files</button>
+            <button class="tab" data-tab="preview">Preview</button>
+            <button class="tab" data-tab="raw">Raw Output</button>
+          </div>
+          <ul id="fileList" class="file-list"></ul>
+        </section>
+
+        <section class="panel preview">
+          <div class="panel-header">
+            <div>
+              <h2>File Preview</h2>
+              <span id="previewLabel">Select a file to inspect its content.</span>
+            </div>
+            <button class="ghost" id="copyBtn">Copy File</button>
+          </div>
+          <div class="preview-body">
+            <pre id="previewBox">No file selected.</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get('projectId') || '';
+    const launchConfig = {
+      autostart: urlParams.get('autostart') === '1',
+      prompt: '',
+      projectName: urlParams.get('projectName') || '',
+      projectId,
+      workingDirectory: '',
+      pendingAutostart: false,
+      bootstrapStatus: 'loading',
+    };
+
+    function apiBaseFromWs(wsUrl) {
+      const normalized = (wsUrl || 'ws://localhost:8001/ws/chat').replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+      try {
+        const parsed = new URL(normalized);
+        return `${parsed.protocol}//${parsed.host}`;
+      } catch (_) {
+        return 'http://localhost:8001';
+      }
+    }
+
+    function setDebug(message) {
+      const strip = document.getElementById('debugStrip');
+      if (strip) strip.textContent = message;
+      console.log('[agent-ui]', message);
+    }
+
+    async function loadSessionBootstrap() {
+      const session = urlParams.get('session') || state.sessionId;
+      const apiBase = apiBaseFromWs(els.serverUrl.value);
+      if (!session) {
+        launchConfig.bootstrapStatus = 'no-session';
+        setDebug('Debug: no session id in URL — autostart disabled.');
+        return;
+      }
+      try {
+        const response = await fetch(`${apiBase}/api/session/${encodeURIComponent(session)}`);
+        if (!response.ok) {
+          launchConfig.bootstrapStatus = 'miss';
+          setDebug(`Debug: bootstrap MISS for session=${session} (HTTP ${response.status}). Start Development must call POST /api/session/bootstrap first.`);
+          return;
+        }
+        const data = await response.json();
+        launchConfig.prompt = data.prompt || '';
+        launchConfig.workingDirectory = data.working_directory || '';
+        launchConfig.bootstrapStatus = 'ok';
+        if (data.project_name && !launchConfig.projectName) {
+          launchConfig.projectName = data.project_name;
+        }
+        if (launchConfig.prompt) {
+          els.promptInput.value = launchConfig.prompt;
+        }
+        launchConfig.pendingAutostart = launchConfig.autostart && Boolean(launchConfig.prompt);
+        setDebug(
+          `Debug: bootstrap OK | session=${session} | prompt_chars=${data.prompt_chars || launchConfig.prompt.length} | workdir=${launchConfig.workingDirectory || '(none)'} | autostart=${launchConfig.pendingAutostart}`
+        );
+        if (launchConfig.workingDirectory) {
+          addMessage('agent', `Project folder: ${launchConfig.workingDirectory}`, 'system');
+        }
+      } catch (error) {
+        launchConfig.bootstrapStatus = 'error';
+        setDebug(`Debug: bootstrap ERROR — ${error}. Is the agent server running on ${apiBase}?`);
+      }
+    }
+
+    const state = {
+      socket: null,
+      connected: false,
+      sessionId: urlParams.get('session') || localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
+      messages: [],
+      files: [],
+      selectedFileIndex: -1,
+      rawOutput: '',
+      generating: false,
+    };
+
+    const els = {
+      connDot: document.getElementById('connDot'),
+      connText: document.getElementById('connText'),
+      sessionText: document.getElementById('sessionText'),
+      fileCount: document.getElementById('fileCount'),
+      chatLog: document.getElementById('chatLog'),
+      promptInput: document.getElementById('promptInput'),
+      serverUrl: document.getElementById('serverUrl'),
+      sessionInput: document.getElementById('sessionInput'),
+      connectBtn: document.getElementById('connectBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      sendBtn: document.getElementById('sendBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      demoBtn: document.getElementById('demoBtn'),
+      expandAllBtn: document.getElementById('expandAllBtn'),
+      fileList: document.getElementById('fileList'),
+      previewBox: document.getElementById('previewBox'),
+      previewLabel: document.getElementById('previewLabel'),
+      copyBtn: document.getElementById('copyBtn'),
+      tabs: Array.from(document.querySelectorAll('.tab')),
+      debugStrip: document.getElementById('debugStrip'),
+    };
+
+    const demoPrompt = `Generate a modern food delivery frontend with these requirements:\n- WebSocket-driven chat experience\n- Generated file tree visible in the UI\n- Route-safe React layout with Outlet\n- Real dummy data for every page\n- Separate components for chat, files, and preview\n- Keep the project production ready and easy to extend`;
+
+    const FILE_WRITE_TOOLS = new Set([
+      'create_file',
+      'rewrite_file',
+      'replace_in_file',
+      'replace_lines_in_file',
+      'inject_code_at_line',
+      'append_to_file',
+      'create_project_scaffold',
+    ]);
+
+    function displayPath(value) {
+      if (!value) return 'file';
+      return String(value).replace(/\\/g, '/');
+    }
+
+    function shouldShowAgentText(text) {
+      const trimmed = String(text || '').trim();
+      return trimmed.length > 0 && trimmed.length < 1400;
+    }
+
+    function saveSessionId(sessionId) {
+      state.sessionId = sessionId;
+      localStorage.setItem('aiCoderSessionId', sessionId);
+      els.sessionText.textContent = sessionId;
+      els.sessionInput.value = sessionId;
+    }
+
+    function setConnection(connected, mode = 'neutral') {
+      state.connected = connected;
+      els.connDot.className = 'dot' + (connected ? ' connected' : mode === 'error' ? ' error' : '');
+      els.connText.textContent = connected ? 'Connected' : (mode === 'error' ? 'Error' : 'Disconnected');
+      els.connectBtn.textContent = connected ? 'Reconnect' : 'Connect';
+      updateGenerationControls();
+    }
+
+    function setGenerating(isGenerating) {
+      state.generating = isGenerating;
+      updateGenerationControls();
+    }
+
+    function updateGenerationControls() {
+      els.sendBtn.disabled = !state.connected || state.generating;
+      els.stopBtn.disabled = !state.connected || !state.generating;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function timeLabel() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function addMessage(role, content, meta = '') {
+      state.messages.push({ role, content, meta, timestamp: Date.now() });
+      renderMessages();
+    }
+
+    function renderMessages() {
+      els.chatLog.innerHTML = state.messages.map((message) => {
+        const roleLabel = message.role === 'user' ? 'You' : 'Agent';
+        return `
+          <article class="message ${message.role}">
+            <div class="message-meta">
+              <span>${roleLabel}</span>
+              <span>${escapeHtml(message.meta || timeLabel())}</span>
+            </div>
+            <div class="message-body">${escapeHtml(message.content)}</div>
+          </article>
+        `;
+      }).join('');
+      els.chatLog.scrollTop = els.chatLog.scrollHeight;
+    }
+
+    function renderFiles() {
+      els.fileCount.textContent = String(state.files.length);
+      if (!state.files.length) {
+        els.fileList.innerHTML = `
+          <li class="empty-state">
+            No files have been generated yet.<br />
+            When the agent returns a file manifest, this panel will show the project tree and the preview pane will open the selected file.
+          </li>
+        `;
+        els.previewBox.textContent = 'No file selected.';
+        els.previewLabel.textContent = 'Select a file to inspect its content.';
+        return;
+      }
+
+      els.fileList.innerHTML = state.files.map((file, index) => `
+        <li class="file-item ${index === state.selectedFileIndex ? 'active' : ''}" data-index="${index}">
+          <div class="file-path">${escapeHtml(file.path || file.name || `file-${index + 1}`)}</div>
+          <div class="file-meta">${escapeHtml(file.type || (file.content ? 'text' : 'data'))}</div>
+        </li>
+      `).join('');
+
+      if (state.selectedFileIndex < 0) {
+        state.selectedFileIndex = 0;
+      }
+      showSelectedFile();
+    }
+
+    function showSelectedFile() {
+      const file = state.files[state.selectedFileIndex];
+      if (!file) return;
+      els.previewBox.textContent = file.content || JSON.stringify(file, null, 2);
+      els.previewLabel.textContent = file.path || file.name || 'Selected file';
+      els.fileList.querySelectorAll('.file-item').forEach((item) => {
+        item.classList.toggle('active', Number(item.dataset.index) === state.selectedFileIndex);
+      });
+    }
+
+    function setRawOutput(output) {
+      state.rawOutput = output;
+      if (document.querySelector('.tab.active')?.dataset.tab === 'raw') {
+        els.previewBox.textContent = output || 'No raw output available.';
+        els.previewLabel.textContent = 'Agent raw output';
+      }
+    }
+
+    function pushStructuredFiles(payload) {
+      const incoming = Array.isArray(payload.files) ? payload.files : [];
+      if (!incoming.length) return;
+      console.log('[agent-ui] pushStructuredFiles count=', incoming.length, payload);
+      state.files = incoming.map((file) => ({
+        path: file.path || file.name || 'untitled',
+        name: file.name || file.path || 'untitled',
+        type: file.type || 'text',
+        content: file.content || '',
+      }));
+      state.selectedFileIndex = 0;
+      renderFiles();
+    }
+
+    function upsertGeneratedFile(filePayload) {
+      const path = filePayload.path || filePayload.name;
+      if (!path) return;
+      const normalized = {
+        path,
+        name: filePayload.name || path,
+        type: filePayload.type || 'text',
+        content: filePayload.content || '',
+      };
+      const index = state.files.findIndex((file) => file.path === path);
+      if (index >= 0) {
+        state.files[index] = normalized;
+      } else {
+        state.files.push(normalized);
+      }
+      if (state.selectedFileIndex < 0) state.selectedFileIndex = 0;
+      console.log('[agent-ui] upsertGeneratedFile path=', path, 'total=', state.files.length);
+      renderFiles();
+    }
+
+    function requestFileManifest() {
+      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+        console.warn('[agent-ui] requestFileManifest skipped: socket not open');
+        return;
+      }
+      const payload = {
+        type: 'list_files',
+        session_id: state.sessionId,
+      };
+      console.log('[agent-ui] -> list_files', payload);
+      state.socket.send(JSON.stringify(payload));
+    }
+
+    function connect() {
+      const url = els.serverUrl.value.trim();
+      if (!url) return;
+
+      if (state.socket) {
+        try { state.socket.close(); } catch (_) {}
+      }
+
+      const socket = new WebSocket(url);
+      state.socket = socket;
+      setConnection(false);
+
+      socket.addEventListener('open', () => {
+        setConnection(true);
+        console.log('[agent-ui] websocket open', url);
+        const intro = launchConfig.projectName
+          ? `Connected for project: ${launchConfig.projectName}`
+          : 'Socket connected. Ready to receive prompts.';
+        addMessage('agent', intro, 'system');
+        saveSessionId(state.sessionId);
+        requestFileManifest();
+        if (launchConfig.pendingAutostart && els.promptInput.value.trim()) {
+          launchConfig.pendingAutostart = false;
+          setDebug(`Debug: autostart sending prompt (${els.promptInput.value.length} chars) to session ${els.sessionInput.value.trim() || state.sessionId}`);
+          setTimeout(() => sendPrompt(), 400);
+        } else if (launchConfig.autostart) {
+          setDebug('Debug: autostart requested but prompt is empty — check Django bootstrap logs.');
+        }
+      });
+
+      socket.addEventListener('message', (event) => {
+        let payload = null;
+        try {
+          payload = JSON.parse(event.data);
+          console.log('[agent-ui] <- payload', payload);
+        } catch (_) {
+          console.log('[agent-ui] <- raw', event.data);
+          addMessage('agent', event.data, 'raw');
+          return;
+        }
+
+        if (payload.session_id && payload.session_id !== state.sessionId) {
+          saveSessionId(payload.session_id);
+        }
+
+        if (payload.type === 'ack') {
+          setGenerating(true);
+          addMessage('agent', 'Agent started working…', 'system');
+          return;
+        }
+
+        if (payload.type === 'stopping') {
+          addMessage('agent', 'Stop requested. The agent will halt as soon as it reaches a safe checkpoint.', 'stop');
+          return;
+        }
+
+        if (payload.type === 'tool_start') {
+          const tool = payload.tool || '';
+          const args = payload.args || {};
+          if (tool === 'create_file' || tool === 'rewrite_file') {
+            addMessage('agent', `Creating file ${displayPath(args.file_path)}`, 'file-op');
+          } else if (tool === 'create_project_scaffold') {
+            addMessage('agent', `Creating directories for ${displayPath(args.project_name)}`, 'file-op');
+          } else if (FILE_WRITE_TOOLS.has(tool) && args.file_path) {
+            addMessage('agent', `Creating file ${displayPath(args.file_path)}`, 'file-op');
+          }
+          return;
+        }
+
+        if (payload.type === 'retry') {
+          addMessage('agent', payload.message || 'Model busy, retrying…', 'system');
+          return;
+        }
+
+        if (payload.type === 'tool_result' || payload.type === 'thinking' || payload.type === 'user_input') {
+          console.debug('[agent-ui] event', payload.type, payload.tool || '', payload.preview || '');
+          return;
+        }
+
+        if (payload.type === 'assistant_message') {
+          if (payload.final) {
+            const text = payload.content || '';
+            if (shouldShowAgentText(text)) {
+              addMessage('agent', text, 'agent');
+            } else if (text.trim()) {
+              addMessage('agent', 'Agent completed. See Generated Files and Raw Output.', 'system');
+            }
+          }
+          return;
+        }
+
+        if (payload.type === 'response') {
+          const output = payload.output || '';
+          setRawOutput(output);
+          if (shouldShowAgentText(output)) {
+            addMessage('agent', output, 'agent');
+          } else if (output.trim()) {
+            addMessage('agent', 'Agent completed. See Generated Files and Raw Output.', 'system');
+          }
+          const maybeJson = tryParseStructuredFiles(output);
+          if (maybeJson) pushStructuredFiles(maybeJson);
+          requestFileManifest();
+          setGenerating(false);
+          return;
+        }
+
+        if (payload.type === 'generated_file') {
+          addMessage('agent', `Completed file ${displayPath(payload.path)}`, 'file-op');
+          upsertGeneratedFile(payload);
+          return;
+        }
+
+        if (payload.type === 'generated_file_error') {
+          addMessage('agent', `Failed file ${displayPath(payload.path)}: ${payload.error || 'error'}`, 'error');
+          return;
+        }
+
+        if (payload.type === 'files') {
+          pushStructuredFiles(payload);
+          return;
+        }
+
+        if (payload.type === 'stopped' || payload.type === 'run_complete') {
+          setGenerating(false);
+          if (payload.type === 'stopped') {
+            addMessage('agent', 'Generation stopped.', 'stop');
+          } else {
+            addMessage('agent', 'Agent run finished.', 'system');
+          }
+          return;
+        }
+
+        if (payload.type === 'reset') {
+          state.files = [];
+          state.selectedFileIndex = -1;
+          state.messages = [];
+          renderMessages();
+          renderFiles();
+          addMessage('agent', 'Session reset complete.', 'system');
+          return;
+        }
+
+        if (payload.type === 'error') {
+          setConnection(false, 'error');
+          addMessage('agent', payload.error || 'Unknown socket error.', 'error');
+          return;
+        }
+
+        if (payload.agent_complete) {
+          setGenerating(false);
+          return;
+        }
+
+        if (payload.files) {
+          pushStructuredFiles(payload);
+          return;
+        }
+
+        console.debug('[agent-ui] ignored event', payload.type || 'unknown', payload);
+      });
+
+      socket.addEventListener('close', () => {
+        setConnection(false);
+        setGenerating(false);
+        console.log('[agent-ui] websocket closed');
+        addMessage('agent', 'Socket closed.', 'system');
+      });
+
+      socket.addEventListener('error', () => {
+        console.error('[agent-ui] websocket error');
+        setConnection(false, 'error');
+        setGenerating(false);
+      });
+    }
+
+    function tryParseStructuredFiles(text) {
+      const trimmed = String(text || '').trim();
+      if (!trimmed) return null;
+
+      const fenced = trimmed.match(/```json\s*([\s\S]*?)```/i);
+      const candidate = fenced ? fenced[1] : trimmed;
+      try {
+        const parsed = JSON.parse(candidate);
+        if (parsed && (Array.isArray(parsed.files) || parsed.type === 'files')) {
+          return parsed;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function sendPrompt() {
+      const prompt = els.promptInput.value.trim();
+      if (!prompt) return;
+      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+        connect();
+        setTimeout(() => sendPrompt(), 250);
+        return;
+      }
+
+      const sessionId = els.sessionInput.value.trim() || state.sessionId;
+      saveSessionId(sessionId);
+      addMessage('user', prompt, 'you');
+      const workingDirectory = launchConfig.workingDirectory || null;
+      state.socket.send(JSON.stringify({
+        type: 'message',
+        prompt,
+        session_id: sessionId,
+        working_directory: workingDirectory || undefined,
+      }));
+      console.log('[agent-ui] -> message', { prompt_chars: prompt.length, session_id: sessionId, working_directory: workingDirectory });
+      setDebug(`Debug: sent prompt (${prompt.length} chars) session=${sessionId}`);
+      els.promptInput.value = '';
+      setGenerating(true);
+    }
+
+    function stopGeneration() {
+      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+        setGenerating(false);
+        return;
+      }
+      state.socket.send(JSON.stringify({
+        type: 'stop',
+        session_id: state.sessionId,
+      }));
+      console.log('[agent-ui] -> stop', { session_id: state.sessionId });
+    }
+
+    function resetSession() {
+      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+        connect();
+        return;
+      }
+      state.socket.send(JSON.stringify({
+        type: 'reset',
+        session_id: state.sessionId,
+      }));
+      console.log('[agent-ui] -> reset', { session_id: state.sessionId });
+    }
+
+    function clearChat() {
+      state.messages = [];
+      renderMessages();
+    }
+
+    function copyCurrentFile() {
+      const file = state.files[state.selectedFileIndex];
+      if (!file) return;
+      navigator.clipboard.writeText(file.content || '').catch(() => {});
+    }
+
+    els.connectBtn.addEventListener('click', connect);
+    els.resetBtn.addEventListener('click', resetSession);
+    els.clearBtn.addEventListener('click', clearChat);
+    els.sendBtn.addEventListener('click', sendPrompt);
+    els.stopBtn.addEventListener('click', stopGeneration);
+    els.demoBtn.addEventListener('click', () => {
+      els.promptInput.value = demoPrompt;
+      els.promptInput.focus();
+    });
+    els.copyBtn.addEventListener('click', copyCurrentFile);
+    els.expandAllBtn.addEventListener('click', () => {
+      renderFiles();
+      requestFileManifest();
+    });
+
+    els.fileList.addEventListener('click', (event) => {
+      const item = event.target.closest('.file-item');
+      if (!item) return;
+      state.selectedFileIndex = Number(item.dataset.index);
+      showSelectedFile();
+    });
+
+    els.tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        els.tabs.forEach((button) => button.classList.remove('active'));
+        tab.classList.add('active');
+        const mode = tab.dataset.tab;
+        if (mode === 'raw') {
+          els.previewBox.textContent = state.rawOutput || 'No raw output available.';
+          els.previewLabel.textContent = 'Agent raw output';
+        } else if (mode === 'preview') {
+          showSelectedFile();
+        } else {
+          renderFiles();
+        }
+      });
+    });
+
+    els.promptInput.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        sendPrompt();
+      }
+    });
+
+    if (urlParams.get('ws')) {
+      els.serverUrl.value = urlParams.get('ws');
+    }
+    if (launchConfig.projectName) {
+      document.querySelector('.brand h1').textContent = `AI Coder — ${launchConfig.projectName}`;
+    }
+
+    saveSessionId(state.sessionId);
+    renderMessages();
+    renderFiles();
+    setConnection(false);
+    updateGenerationControls();
+
+    (async () => {
+      await loadSessionBootstrap();
+      connect();
+    })();
+  </script>
+</body>
+</html>

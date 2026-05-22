@@ -1,14 +1,28 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
-from textwrap import dedent
+from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from ai_module.brief_policy import finalize_local_review, has_stack_mentioned
 
 KEYWORD_SETS = {
     "requirements": ("requirement", "requirements", "scope", "scope:", "deliverable", "deliverables"),
-    "stack": ("tech stack", "stack", "react", "next.js", "django", "graphql", "typescript", "python", "tailwind"),
-    "workflow": ("timeline", "milestone", "phase", "acceptance", "review", "qa", "approval"),
-    "integration": ("github", "repository", "repo", "sync", "integration", "clone", "token"),
+    "stack": (
+        "tech stack",
+        "stack",
+        "react",
+        "next.js",
+        "django",
+        "graphql",
+        "typescript",
+        "python",
+        "tailwind",
+    ),
 }
 
 
@@ -36,8 +50,7 @@ def analyze_project_brief(
     repository_url: str | None = None,
     session_answers: list[dict] | None = None,
 ) -> BriefAnalysis:
-    parts = [ _normalized_text(description), _normalized_text(document_text) ]
-    # include any session answer text to allow the analyzer to consider user-provided details
+    parts = [_normalized_text(description), _normalized_text(document_text)]
     if session_answers:
         for ans in session_answers:
             parts.append(_normalized_text(str(ans.get("answer", ""))))
@@ -51,38 +64,27 @@ def analyze_project_brief(
     missing_sections: list[str] = []
     questions: list[str] = []
 
-    if word_count < 80:
+    if word_count < 60:
         missing_sections.append("requirements")
-        questions.append("What should this project deliver in its first release?")
+        questions.append("What should this project deliver in its first local version?")
 
-    if not _contains_any(combined, KEYWORD_SETS["stack"]):
+    if not has_stack_mentioned(combined):
         missing_sections.append("stack")
-        questions.append("Which frontend, backend, or tooling stack should the AI Agent treat as the target implementation?")
-
-    if not _contains_any(combined, KEYWORD_SETS["workflow"]):
-        missing_sections.append("workflow")
-        questions.append("Are you planning to deploy this? If so, provide the hosting details.")
-
-    # Integration guidance: if a repository URL was provided, ask only whether to connect and start immediately (yes/no).
-    if repository_url:
-        # repository is known — ask for a connect/start confirmation rather than requesting repo details
-        if not _contains_any(combined, KEYWORD_SETS["integration"]):
-            missing_sections.append("integration")
-            questions.append("Connect and start working immediately?")
-    else:
-        if not _contains_any(combined, KEYWORD_SETS["integration"]):
-            missing_sections.append("integration")
-            questions.append("Should the project connect to GitHub immediately, and if so what repository or access method should be used?")
+        questions.append("Which frontend and backend stack should we use for this local project?")
 
     needs_session = bool(missing_sections)
-
-    if not questions:
-        questions.append("Is there any extra constraint or scope note the AI Agent should respect?")
+    session_count = len(session_answers or [])
+    needs_session, questions = finalize_local_review(
+        needs_session=needs_session,
+        questions=questions,
+        combined_text=combined,
+        session_answer_count=session_count,
+    )
 
     return BriefAnalysis(
         needs_session=needs_session,
-        missing_sections=missing_sections,
-        questions=questions[:3],
+        missing_sections=missing_sections if needs_session else [],
+        questions=questions,
         word_count=word_count,
         read_time_minutes=read_time_minutes,
     )
@@ -105,10 +107,10 @@ def compile_project_brief(
         sections.append(clean_description)
 
     if source_type or repository_url:
-        sections.append("## Source Connection")
-        source_lines = [f"- Source: {source_type or 'unknown'}"]
+        sections.append("## Source Connection (reference only)")
+        source_lines = [f"- Source: {source_type or 'local'}"]
         if repository_url:
-            source_lines.append(f"- Repository: {repository_url}")
+            source_lines.append(f"- Reference repository: {repository_url}")
         sections.extend(source_lines)
 
     if session_answers:
@@ -126,7 +128,8 @@ def compile_project_brief(
         sections.append("## Revision Notes")
         sections.append(revision_notes.strip())
 
-    sections.append("## Delivery Intent")
-    sections.append("Start with the approved brief and transition into development immediately after approval.")
+    sections.append("## Local Development Notes")
+    sections.append("- Build and run on the local developer machine.")
+    sections.append("- No deployment or hosting setup required for this phase.")
 
     return "\n\n".join(sections).strip() + "\n"
