@@ -3,55 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Coder Workspace</title>
+  <title>AI Developer — Agent Workspace</title>
   <style>
     :root {
-      --bg: #070b14;
-      --bg-soft: rgba(13, 19, 31, 0.82);
-      --panel: rgba(17, 24, 39, 0.9);
-      --panel-strong: #0f172a;
-      --border: rgba(148, 163, 184, 0.18);
-      --text: #e5eefc;
-      --muted: #93a4bf;
-      --accent: #7c3aed;
-      --accent-2: #22c55e;
-      --danger: #ef4444;
-      --warn: #f59e0b;
-      --code: #0b1020;
-      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-      --radius: 20px;
-      --radius-sm: 14px;
-      --radius-xs: 10px;
+      --bg: #020713;
+      --glass: rgba(10, 20, 44, 0.28);
+      --glass-strong: rgba(12, 21, 43, 0.72);
+      --line: rgba(153, 181, 255, 0.2);
+      --line-strong: rgba(153, 181, 255, 0.32);
+      --text: #e8efff;
+      --muted: #9db3e3;
+      --accent: #7ea0ff;
+      --accent-deep: #4668e8;
+      --success: #4fd4b5;
+      --danger: #ff7272;
+      --warn: #f0a05a;
+      --code-bg: rgba(6, 12, 28, 0.92);
+      --radius: 18px;
+      --radius-sm: 12px;
       font-synthesis: none;
       text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
     }
 
     * { box-sizing: border-box; }
+
     html, body {
       height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+    }
+
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
       overflow: hidden;
     }
-    body {
-      margin: 0;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(124, 58, 237, 0.18), transparent 28%),
-        radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 26%),
-        linear-gradient(180deg, #060912 0%, #0a1020 55%, #060912 100%);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(88px);
+    }
+
+    .blob--a {
+      width: 48vw;
+      height: 48vw;
+      top: -14%;
+      left: -8%;
+      background: radial-gradient(circle, rgba(95, 133, 255, 0.34) 0%, transparent 70%);
+      animation: drift-a 16s ease-in-out infinite alternate;
+    }
+
+    .blob--b {
+      width: 38vw;
+      height: 38vw;
+      bottom: -8%;
+      right: 0;
+      background: radial-gradient(circle, rgba(79, 212, 181, 0.2) 0%, transparent 70%);
+      animation: drift-b 20s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift-a {
+      from { transform: translate(0, 0); }
+      to { transform: translate(4vw, 3vh); }
+    }
+
+    @keyframes drift-b {
+      from { transform: translate(0, 0); }
+      to { transform: translate(-3vw, -2vh); }
     }
 
     .app {
+      position: relative;
+      z-index: 1;
       height: 100vh;
-      max-height: 100vh;
-      overflow: hidden;
       display: grid;
       grid-template-rows: auto 1fr;
-      gap: 16px;
-      padding: 20px;
-      box-sizing: border-box;
+      gap: 14px;
+      padding: 16px 18px 18px;
+    }
+
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(24px) saturate(1.5);
+      -webkit-backdrop-filter: blur(24px) saturate(1.5);
+      box-shadow:
+        inset 0 1px 0 rgba(153, 181, 255, 0.08),
+        0 18px 48px rgba(0, 0, 0, 0.35);
+      border-radius: var(--radius);
     }
 
     .topbar {
@@ -59,581 +105,495 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 18px 22px;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.7));
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
+      padding: 14px 18px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       min-width: 0;
     }
 
     .brand-mark {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(145deg, #7c3aed, #0ea5e9);
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #7ea0ff 0%, #4668e8 80%);
       display: grid;
       place-items: center;
-      font-weight: 800;
-      box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32);
-      flex: 0 0 auto;
+      font-weight: 700;
+      font-size: 0.82rem;
+      letter-spacing: 0.04em;
+      color: #fff;
+      flex-shrink: 0;
     }
 
     .brand h1 {
       margin: 0;
-      font-size: 1.15rem;
-      line-height: 1.2;
+      font-size: 1.02rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .brand p {
-      margin: 3px 0 0;
+      margin: 2px 0 0;
+      font-size: 0.8rem;
       color: var(--muted);
-      font-size: 0.88rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .status-row {
+    .status-group {
       display: flex;
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
-    .pill {
+    .status-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
+      gap: 7px;
+      padding: 7px 12px;
       border-radius: 999px;
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
+      background: rgba(8, 16, 36, 0.55);
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .status-pill strong {
       color: var(--text);
-      font-size: 0.85rem;
-      white-space: nowrap;
+      font-weight: 600;
     }
 
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--warn);
-      box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.12);
+      box-shadow: 0 0 0 4px rgba(240, 160, 90, 0.15);
     }
 
-    .dot.connected { background: var(--accent-2); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.14); }
-    .dot.error { background: var(--danger); box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.12); }
+    .dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(79, 212, 181, 0.18);
+    }
 
-    .layout {
+    .dot.error {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(255, 114, 114, 0.15);
+    }
+
+    .workspace {
       display: grid;
-      grid-template-columns: minmax(320px, 1.15fr) minmax(340px, 0.95fr);
-      gap: 16px;
+      grid-template-columns: minmax(300px, 1.05fr) minmax(320px, 0.95fr);
+      gap: 14px;
       min-height: 0;
-      height: 100%;
       overflow: hidden;
     }
 
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      backdrop-filter: blur(18px);
       display: flex;
       flex-direction: column;
       min-height: 0;
+      overflow: hidden;
     }
 
-    .panel-header {
+    .panel-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.72);
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 16, 36, 0.35);
     }
 
-    .panel-header h2 {
+    .panel-head h2 {
       margin: 0;
-      font-size: 1rem;
+      font-size: 0.92rem;
+      font-weight: 600;
     }
 
-    .panel-header span {
+    .panel-head span {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.74rem;
       color: var(--muted);
-      font-size: 0.84rem;
     }
 
-    .chat {
+    .toolbar {
       display: flex;
-      flex-direction: column;
-      min-height: 0;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      border: 1px solid var(--line);
+      background: rgba(8, 16, 36, 0.65);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .btn-sm:hover:not(:disabled) {
+      background: rgba(126, 160, 255, 0.14);
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .btn-sm:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-sm.primary {
+      background: linear-gradient(135deg, rgba(126, 160, 255, 0.95), rgba(70, 104, 232, 0.95));
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .btn-sm.danger {
+      border-color: rgba(255, 114, 114, 0.45);
+      color: #ffc9c9;
+      background: rgba(255, 114, 114, 0.12);
     }
 
     .chat-log {
       flex: 1;
+      min-height: 0;
       overflow: auto;
-      padding: 18px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      min-height: 0;
+      gap: 10px;
     }
 
     .message {
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 14px 16px;
-      background: rgba(15, 23, 42, 0.72);
+      max-width: 94%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--glass-strong);
+      font-size: 0.88rem;
+      line-height: 1.55;
     }
 
     .message.user {
       margin-left: auto;
-      max-width: 92%;
-      background: linear-gradient(180deg, rgba(124, 58, 237, 0.22), rgba(15, 23, 42, 0.9));
-      border-color: rgba(124, 58, 237, 0.3);
+      border-color: rgba(126, 160, 255, 0.35);
+      background: rgba(70, 104, 232, 0.22);
     }
 
     .message.agent {
       margin-right: auto;
-      max-width: 92%;
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.92));
     }
 
     .message.file-op {
       margin-right: auto;
       max-width: 100%;
-      padding: 10px 14px;
-      background: rgba(34, 197, 94, 0.08);
-      border-color: rgba(34, 197, 94, 0.28);
+      padding: 8px 11px;
+      border-color: rgba(79, 212, 181, 0.35);
+      background: rgba(79, 212, 181, 0.1);
     }
 
-    .message.file-op .message-meta {
-      color: #86efac;
-    }
+    .message.file-op .message-meta { color: #86efd4; }
 
     .message.file-op .message-body {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.86rem;
+      font-size: 0.8rem;
     }
 
     .message-meta {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-      font-size: 0.76rem;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-size: 0.68rem;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
     }
 
     .message-body {
       white-space: pre-wrap;
-      line-height: 1.65;
-      font-size: 0.95rem;
+      word-break: break-word;
     }
+
+    .chat-loader {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 14px 0;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .chat-loader.visible { display: inline-flex; }
+
+    .chat-loader .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(153, 181, 255, 0.25);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .composer {
-      border-top: 1px solid var(--border);
-      padding: 16px;
-      background: rgba(15, 23, 42, 0.88);
-    }
-
-    .field-row {
+      border-top: 1px solid var(--line);
+      padding: 12px 14px 14px;
+      background: rgba(8, 16, 36, 0.35);
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    textarea, input, select, button {
-      font: inherit;
-    }
-
-    textarea, input, select {
-      width: 100%;
-      color: var(--text);
-      background: rgba(8, 13, 25, 0.92);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    }
-
-    textarea:focus, input:focus, select:focus {
-      border-color: rgba(124, 58, 237, 0.5);
-      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+      gap: 8px;
+      align-items: end;
     }
 
     textarea {
-      min-height: 120px;
+      width: 100%;
+      min-height: 88px;
+      max-height: 160px;
       resize: vertical;
-      padding: 14px;
-      line-height: 1.6;
+      padding: 11px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      background: rgba(6, 12, 28, 0.88);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      outline: none;
     }
 
-    .side-stack {
-      display: grid;
-      grid-template-rows: auto minmax(0, 0.55fr) minmax(0, 1fr);
-      gap: 16px;
-      min-height: 0;
-      overflow: hidden;
-      height: 100%;
+    textarea:focus {
+      border-color: rgba(126, 160, 255, 0.55);
+      box-shadow: 0 0 0 3px rgba(126, 160, 255, 0.14);
     }
 
-    .controls {
-      padding: 16px 18px 18px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    button {
-      border: 0;
-      cursor: pointer;
-      color: white;
-      padding: 12px 16px;
-      border-radius: 14px;
-      font-weight: 600;
-      transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
-
-    .primary {
-      background: linear-gradient(135deg, #7c3aed, #5b21b6);
-      box-shadow: 0 16px 30px rgba(124, 58, 237, 0.25);
-    }
-
-    .secondary {
-      background: rgba(37, 99, 235, 0.9);
-    }
-
-    .stop {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
-      box-shadow: 0 16px 30px rgba(239, 68, 68, 0.2);
-    }
-
-    .ghost {
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid var(--border);
-    }
-
-    .danger {
-      background: rgba(220, 38, 38, 0.95);
-    }
-
-    .debug-strip {
-      border: 1px dashed rgba(124, 58, 237, 0.45);
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(124, 58, 237, 0.08);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.78rem;
-      line-height: 1.45;
-      white-space: pre-wrap;
-    }
-
-    .hint {
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.6;
-    }
-
-    .section-list {
+    .composer-actions {
       display: flex;
       flex-direction: column;
+      gap: 6px;
+    }
+
+    .files-column {
+      display: grid;
+      grid-template-rows: minmax(0, 0.42fr) minmax(0, 0.58fr);
+      gap: 14px;
       min-height: 0;
-      gap: 0;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 8px;
-      padding: 14px 16px 0;
-      flex-wrap: wrap;
-    }
-
-    .tab {
-      padding: 10px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.8);
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .tab.active {
-      color: white;
-      background: linear-gradient(135deg, rgba(124, 58, 237, 0.9), rgba(91, 33, 182, 0.9));
-      border-color: rgba(124, 58, 237, 0.35);
     }
 
     .file-list {
       list-style: none;
       margin: 0;
-      padding: 14px 16px 16px;
+      padding: 10px 12px 12px;
       overflow: auto;
       min-height: 0;
       display: grid;
-      gap: 10px;
+      gap: 7px;
     }
 
     .file-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 12px 14px;
-      background: rgba(8, 13, 25, 0.8);
-      border: 1px solid var(--border);
-      border-radius: 14px;
+      gap: 10px;
+      padding: 9px 11px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      background: rgba(8, 16, 36, 0.55);
       cursor: pointer;
+      transition: border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .file-item:hover {
+      border-color: var(--line-strong);
+      background: rgba(126, 160, 255, 0.1);
     }
 
     .file-item.active {
-      border-color: rgba(124, 58, 237, 0.45);
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.13);
+      border-color: rgba(126, 160, 255, 0.5);
+      background: rgba(126, 160, 255, 0.16);
     }
 
     .file-path {
-      font-size: 0.9rem;
+      font-size: 0.82rem;
       word-break: break-all;
     }
 
     .file-meta {
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       color: var(--muted);
       white-space: nowrap;
     }
 
-    .preview {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
     .preview-body {
-      padding: 16px;
-      overflow: auto;
+      flex: 1;
       min-height: 0;
+      overflow: auto;
+      padding: 10px 12px 12px;
     }
 
     pre {
       margin: 0;
-      padding: 16px;
-      border-radius: 16px;
-      background: var(--code);
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      color: #dbeafe;
-      overflow: auto;
-      line-height: 1.55;
-      font-size: 0.88rem;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      color: #dbe7ff;
+      font-size: 0.8rem;
+      line-height: 1.5;
       tab-size: 2;
       white-space: pre;
+      overflow: auto;
     }
 
     .empty-state {
       color: var(--muted);
-      border: 1px dashed rgba(148, 163, 184, 0.22);
-      background: rgba(8, 13, 25, 0.56);
-      border-radius: 16px;
-      padding: 22px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius-sm);
+      padding: 18px;
       text-align: center;
-      line-height: 1.7;
+      font-size: 0.84rem;
+      line-height: 1.55;
     }
 
-    .split-info {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .mini-card {
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(8, 13, 25, 0.72);
-    }
-
-    .mini-card .label {
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .mini-card .value {
-      font-size: 0.96rem;
-      font-weight: 600;
-      word-break: break-word;
-    }
-
-    @media (max-width: 1120px) {
-      .layout { grid-template-columns: 1fr; }
-      .side-stack { grid-template-rows: auto minmax(0, 0.45fr) minmax(0, 1fr); }
+    @media (max-width: 1024px) {
       html, body { overflow: auto; }
-      .app { height: auto; max-height: none; overflow: visible; }
-      .layout { height: auto; overflow: visible; }
+      .app { height: auto; min-height: 100vh; overflow: visible; }
+      .workspace {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow: visible;
+      }
+      .files-column {
+        grid-template-rows: auto minmax(280px, 1fr);
+      }
+      .panel { min-height: 360px; }
     }
 
-    @media (max-width: 700px) {
+    @media (max-width: 640px) {
       .app { padding: 12px; }
-      .topbar { padding: 16px; flex-direction: column; align-items: flex-start; }
-      .status-row { width: 100%; justify-content: flex-start; }
-      .field-row, .grid-2, .split-info { grid-template-columns: 1fr; }
-      .panel-header { flex-direction: column; align-items: flex-start; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+      .status-group { width: 100%; justify-content: flex-start; }
     }
   </style>
 </head>
 <body>
+  <div class="ambient" aria-hidden="true">
+    <div class="blob blob--a"></div>
+    <div class="blob blob--b"></div>
+  </div>
+
   <div class="app">
-    <header class="topbar">
+    <header class="topbar glass">
       <div class="brand">
-        <div class="brand-mark">AC</div>
+        <div class="brand-mark">AD</div>
         <div>
-          <h1>AI Coder Workspace</h1>
-          <p>Generate code, review files, and keep the whole project visible in one place.</p>
+          <h1 id="projectTitle">AI Developer Workspace</h1>
+          <p id="projectSubtitle">Code generation session</p>
         </div>
       </div>
-      <div class="status-row">
-        <div class="pill"><span id="connDot" class="dot"></span><span id="connText">Disconnected</span></div>
-        <div class="pill">Session: <strong id="sessionText">none</strong></div>
-        <div class="pill">Files: <strong id="fileCount">0</strong></div>
+      <div class="status-group">
+        <div class="status-pill">
+          <span id="connDot" class="dot"></span>
+          <span id="connText">Disconnected</span>
+        </div>
+        <div class="status-pill">Files <strong id="fileCount">0</strong></div>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="panel chat">
-        <div class="panel-header">
+    <main class="workspace">
+      <section class="panel glass chat-panel">
+        <div class="panel-head">
           <div>
             <h2>Agent Chat</h2>
-            <span>Use this panel to prompt the agent and receive generation updates.</span>
+            <span>Prompts and generation updates</span>
           </div>
-          <div class="btn-row">
-            <button class="ghost" id="connectBtn">Connect</button>
-            <button class="ghost" id="resetBtn">Reset Session</button>
-            <button class="danger" id="clearBtn">Clear Chat</button>
+          <div class="toolbar">
+            <button type="button" class="btn-sm" id="connectBtn" title="Connect WebSocket">Connect</button>
+            <button type="button" class="btn-sm" id="clearBtn" title="Clear chat">Clear</button>
+            <button type="button" class="btn-sm danger" id="stopBtn" disabled title="Stop generation">Stop</button>
           </div>
         </div>
 
         <div id="chatLog" class="chat-log"></div>
+        <div id="chatLoader" class="chat-loader" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Agent is generating…</span>
+        </div>
 
         <div class="composer">
-          <div class="field-row">
-            <textarea id="promptInput" placeholder="Describe the app you want the agent to generate..."></textarea>
-            <div style="display:grid; gap: 10px; align-content: start; min-width: 160px;">
-              <button class="primary" id="sendBtn">Send Prompt</button>
-              <button class="stop" id="stopBtn" disabled>Stop Generation</button>
-              <button class="secondary" id="demoBtn">Insert Demo Prompt</button>
-            </div>
+          <textarea id="promptInput" placeholder="Describe what to build or refine…"></textarea>
+          <div class="composer-actions">
+            <button type="button" class="btn-sm primary" id="sendBtn">Send</button>
           </div>
-
-          <div class="grid-2">
-            <div>
-              <input id="serverUrl" type="text" value="ws://localhost:8001/ws/chat" aria-label="WebSocket URL" />
-            </div>
-            <div>
-              <input id="sessionInput" type="text" placeholder="Optional session id" aria-label="Session ID" />
-            </div>
-          </div>
-          <p id="debugStrip" class="hint debug-strip">Debug: loading session bootstrap…</p>
-          <p class="hint">The server should send response messages over <strong>/ws/chat</strong>. This UI loads the development prompt from <strong>/api/session/{id}</strong> (not browser sessionStorage — different port).</p>
         </div>
       </section>
 
-      <section class="side-stack">
-        <section class="panel">
-          <div class="panel-header">
+      <div class="files-column">
+        <section class="panel glass files-panel">
+          <div class="panel-head">
             <div>
-              <h2>Workspace Controls</h2>
-              <span>Project generation settings and session metadata.</span>
+              <h2>Project Files</h2>
+              <span>Generated in this session</span>
             </div>
-          </div>
-          <div class="controls">
-            <div class="split-info">
-              <div class="mini-card">
-                <div class="label">Agent mode</div>
-                <div class="value">Code generation</div>
-              </div>
-              <div class="mini-card">
-                <div class="label">Transport</div>
-                <div class="value">WebSocket chat</div>
-              </div>
-              <div class="mini-card">
-                <div class="label">Display</div>
-                <div class="value">Chat + file tree</div>
-              </div>
-            </div>
-            <div class="hint">
-              This layout is meant for a code-generation workflow: the left side handles prompts and responses, while the right side can show the generated file structure and preview content.
-            </div>
-          </div>
-        </section>
-
-        <section class="panel section-list">
-          <div class="panel-header">
-            <div>
-              <h2>Generated Files</h2>
-              <span>Shows the latest file manifest returned by the agent.</span>
-            </div>
-            <div class="btn-row">
-              <button class="ghost" id="expandAllBtn">Refresh View</button>
-            </div>
-          </div>
-          <div class="tabs">
-            <button class="tab active" data-tab="files">Files</button>
-            <button class="tab" data-tab="preview">Preview</button>
-            <button class="tab" data-tab="raw">Raw Output</button>
+            <button type="button" class="btn-sm" id="refreshBtn" title="Refresh file list">Refresh</button>
           </div>
           <ul id="fileList" class="file-list"></ul>
         </section>
 
-        <section class="panel preview">
-          <div class="panel-header">
+        <section class="panel glass preview-panel">
+          <div class="panel-head">
             <div>
-              <h2>File Preview</h2>
-              <span id="previewLabel">Select a file to inspect its content.</span>
+              <h2>Preview</h2>
+              <span id="previewLabel">Select a file</span>
             </div>
-            <button class="ghost" id="copyBtn">Copy File</button>
+            <button type="button" class="btn-sm" id="copyBtn" title="Copy file contents">Copy</button>
           </div>
           <div class="preview-body">
             <pre id="previewBox">No file selected.</pre>
           </div>
         </section>
-      </section>
+      </div>
     </main>
   </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const projectId = urlParams.get('projectId') || '';
-    const launchConfig = {
+    const sessionFromUrl = urlParams.get('session') || '';
+
+    const CONFIG = {
+      wsUrl: urlParams.get('ws') || 'ws://localhost:8001/ws/chat',
+      sessionId: sessionFromUrl || `session-${Date.now()}`,
       autostart: urlParams.get('autostart') === '1',
-      prompt: '',
       projectName: urlParams.get('projectName') || '',
+      projectId,
+    };
+
+    const launchConfig = {
+      autostart: CONFIG.autostart,
+      prompt: '',
+      projectName: CONFIG.projectName,
       projectId,
       workingDirectory: '',
       pendingAutostart: false,
@@ -641,7 +601,7 @@
     };
 
     function apiBaseFromWs(wsUrl) {
-      const normalized = (wsUrl || 'ws://localhost:8001/ws/chat').replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+      const normalized = (wsUrl || CONFIG.wsUrl).replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
       try {
         const parsed = new URL(normalized);
         return `${parsed.protocol}//${parsed.host}`;
@@ -650,54 +610,50 @@
       }
     }
 
-    function setDebug(message) {
-      const strip = document.getElementById('debugStrip');
-      if (strip) strip.textContent = message;
+    function logDebug(message) {
       console.log('[agent-ui]', message);
     }
 
     async function loadSessionBootstrap() {
-      const session = urlParams.get('session') || state.sessionId;
-      const apiBase = apiBaseFromWs(els.serverUrl.value);
-      if (!session) {
+      const session = CONFIG.sessionId;
+      const apiBase = apiBaseFromWs(CONFIG.wsUrl);
+      if (!sessionFromUrl) {
         launchConfig.bootstrapStatus = 'no-session';
-        setDebug('Debug: no session id in URL — autostart disabled.');
+        logDebug('No session id in URL — autostart disabled.');
         return;
       }
       try {
         const response = await fetch(`${apiBase}/api/session/${encodeURIComponent(session)}`);
         if (!response.ok) {
           launchConfig.bootstrapStatus = 'miss';
-          setDebug(`Debug: bootstrap MISS for session=${session} (HTTP ${response.status}). Start Development must call POST /api/session/bootstrap first.`);
+          logDebug(`bootstrap MISS for ${session} (HTTP ${response.status})`);
           return;
         }
         const data = await response.json();
-        launchConfig.prompt = data.prompt || '';
-        launchConfig.workingDirectory = data.working_directory || '';
         launchConfig.bootstrapStatus = 'ok';
-        if (data.project_name && !launchConfig.projectName) {
+        launchConfig.prompt = data.prompt || '';
+        launchConfig.workingDirectory = data.working_directory || data.workingDirectory || '';
+        if (data.project_name) {
           launchConfig.projectName = data.project_name;
         }
         if (launchConfig.prompt) {
           els.promptInput.value = launchConfig.prompt;
         }
         launchConfig.pendingAutostart = launchConfig.autostart && Boolean(launchConfig.prompt);
-        setDebug(
-          `Debug: bootstrap OK | session=${session} | prompt_chars=${data.prompt_chars || launchConfig.prompt.length} | workdir=${launchConfig.workingDirectory || '(none)'} | autostart=${launchConfig.pendingAutostart}`
-        );
+        logDebug(`bootstrap OK | prompt_chars=${data.prompt_chars || launchConfig.prompt.length}`);
         if (launchConfig.workingDirectory) {
-          addMessage('agent', `Project folder: ${launchConfig.workingDirectory}`, 'system');
+          addMessage('agent', `Working in ${launchConfig.workingDirectory}`, 'system');
         }
       } catch (error) {
         launchConfig.bootstrapStatus = 'error';
-        setDebug(`Debug: bootstrap ERROR — ${error}. Is the agent server running on ${apiBase}?`);
+        logDebug(`bootstrap ERROR — ${error}`);
       }
     }
 
     const state = {
       socket: null,
       connected: false,
-      sessionId: urlParams.get('session') || localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
+      sessionId: CONFIG.sessionId,
       messages: [],
       files: [],
       selectedFileIndex: -1,
@@ -708,28 +664,22 @@
     const els = {
       connDot: document.getElementById('connDot'),
       connText: document.getElementById('connText'),
-      sessionText: document.getElementById('sessionText'),
       fileCount: document.getElementById('fileCount'),
       chatLog: document.getElementById('chatLog'),
+      chatLoader: document.getElementById('chatLoader'),
       promptInput: document.getElementById('promptInput'),
-      serverUrl: document.getElementById('serverUrl'),
-      sessionInput: document.getElementById('sessionInput'),
       connectBtn: document.getElementById('connectBtn'),
-      resetBtn: document.getElementById('resetBtn'),
       clearBtn: document.getElementById('clearBtn'),
       sendBtn: document.getElementById('sendBtn'),
       stopBtn: document.getElementById('stopBtn'),
-      demoBtn: document.getElementById('demoBtn'),
-      expandAllBtn: document.getElementById('expandAllBtn'),
+      refreshBtn: document.getElementById('refreshBtn'),
       fileList: document.getElementById('fileList'),
       previewBox: document.getElementById('previewBox'),
       previewLabel: document.getElementById('previewLabel'),
       copyBtn: document.getElementById('copyBtn'),
-      tabs: Array.from(document.querySelectorAll('.tab')),
-      debugStrip: document.getElementById('debugStrip'),
+      projectTitle: document.getElementById('projectTitle'),
+      projectSubtitle: document.getElementById('projectSubtitle'),
     };
-
-    const demoPrompt = `Generate a modern food delivery frontend with these requirements:\n- WebSocket-driven chat experience\n- Generated file tree visible in the UI\n- Route-safe React layout with Outlet\n- Real dummy data for every page\n- Separate components for chat, files, and preview\n- Keep the project production ready and easy to extend`;
 
     const FILE_WRITE_TOOLS = new Set([
       'create_file',
@@ -751,11 +701,10 @@
       return trimmed.length > 0 && trimmed.length < 1400;
     }
 
-    function saveSessionId(sessionId) {
+    function setSessionId(sessionId) {
+      if (!sessionId) return;
       state.sessionId = sessionId;
-      localStorage.setItem('aiCoderSessionId', sessionId);
-      els.sessionText.textContent = sessionId;
-      els.sessionInput.value = sessionId;
+      CONFIG.sessionId = sessionId;
     }
 
     function setConnection(connected, mode = 'neutral') {
@@ -768,6 +717,7 @@
 
     function setGenerating(isGenerating) {
       state.generating = isGenerating;
+      els.chatLoader.classList.toggle('visible', isGenerating);
       updateGenerationControls();
     }
 
@@ -797,8 +747,9 @@
     function renderMessages() {
       els.chatLog.innerHTML = state.messages.map((message) => {
         const roleLabel = message.role === 'user' ? 'You' : 'Agent';
+        const roleClass = message.meta === 'file-op' ? 'file-op' : message.role;
         return `
-          <article class="message ${message.role}">
+          <article class="message ${roleClass}">
             <div class="message-meta">
               <span>${roleLabel}</span>
               <span>${escapeHtml(message.meta || timeLabel())}</span>
@@ -813,14 +764,9 @@
     function renderFiles() {
       els.fileCount.textContent = String(state.files.length);
       if (!state.files.length) {
-        els.fileList.innerHTML = `
-          <li class="empty-state">
-            No files have been generated yet.<br />
-            When the agent returns a file manifest, this panel will show the project tree and the preview pane will open the selected file.
-          </li>
-        `;
+        els.fileList.innerHTML = '<li class="empty-state">No files generated yet.</li>';
         els.previewBox.textContent = 'No file selected.';
-        els.previewLabel.textContent = 'Select a file to inspect its content.';
+        els.previewLabel.textContent = 'Select a file';
         return;
       }
 
@@ -849,16 +795,11 @@
 
     function setRawOutput(output) {
       state.rawOutput = output;
-      if (document.querySelector('.tab.active')?.dataset.tab === 'raw') {
-        els.previewBox.textContent = output || 'No raw output available.';
-        els.previewLabel.textContent = 'Agent raw output';
-      }
     }
 
     function pushStructuredFiles(payload) {
       const incoming = Array.isArray(payload.files) ? payload.files : [];
       if (!incoming.length) return;
-      console.log('[agent-ui] pushStructuredFiles count=', incoming.length, payload);
       state.files = incoming.map((file) => ({
         path: file.path || file.name || 'untitled',
         name: file.name || file.path || 'untitled',
@@ -885,50 +826,36 @@
         state.files.push(normalized);
       }
       if (state.selectedFileIndex < 0) state.selectedFileIndex = 0;
-      console.log('[agent-ui] upsertGeneratedFile path=', path, 'total=', state.files.length);
       renderFiles();
     }
 
     function requestFileManifest() {
-      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        console.warn('[agent-ui] requestFileManifest skipped: socket not open');
-        return;
-      }
-      const payload = {
+      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+      state.socket.send(JSON.stringify({
         type: 'list_files',
         session_id: state.sessionId,
-      };
-      console.log('[agent-ui] -> list_files', payload);
-      state.socket.send(JSON.stringify(payload));
+      }));
     }
 
     function connect() {
-      const url = els.serverUrl.value.trim();
-      if (!url) return;
-
       if (state.socket) {
         try { state.socket.close(); } catch (_) {}
       }
 
-      const socket = new WebSocket(url);
+      const socket = new WebSocket(CONFIG.wsUrl);
       state.socket = socket;
       setConnection(false);
 
       socket.addEventListener('open', () => {
         setConnection(true);
-        console.log('[agent-ui] websocket open', url);
         const intro = launchConfig.projectName
-          ? `Connected for project: ${launchConfig.projectName}`
-          : 'Socket connected. Ready to receive prompts.';
+          ? `Connected — ${launchConfig.projectName}`
+          : 'Connected. Ready for prompts.';
         addMessage('agent', intro, 'system');
-        saveSessionId(state.sessionId);
         requestFileManifest();
         if (launchConfig.pendingAutostart && els.promptInput.value.trim()) {
           launchConfig.pendingAutostart = false;
-          setDebug(`Debug: autostart sending prompt (${els.promptInput.value.length} chars) to session ${els.sessionInput.value.trim() || state.sessionId}`);
           setTimeout(() => sendPrompt(), 400);
-        } else if (launchConfig.autostart) {
-          setDebug('Debug: autostart requested but prompt is empty — check Django bootstrap logs.');
         }
       });
 
@@ -936,15 +863,13 @@
         let payload = null;
         try {
           payload = JSON.parse(event.data);
-          console.log('[agent-ui] <- payload', payload);
         } catch (_) {
-          console.log('[agent-ui] <- raw', event.data);
           addMessage('agent', event.data, 'raw');
           return;
         }
 
         if (payload.session_id && payload.session_id !== state.sessionId) {
-          saveSessionId(payload.session_id);
+          setSessionId(payload.session_id);
         }
 
         if (payload.type === 'ack') {
@@ -954,7 +879,7 @@
         }
 
         if (payload.type === 'stopping') {
-          addMessage('agent', 'Stop requested. The agent will halt as soon as it reaches a safe checkpoint.', 'stop');
+          addMessage('agent', 'Stopping at next checkpoint…', 'stop');
           return;
         }
 
@@ -962,11 +887,11 @@
           const tool = payload.tool || '';
           const args = payload.args || {};
           if (tool === 'create_file' || tool === 'rewrite_file') {
-            addMessage('agent', `Creating file ${displayPath(args.file_path)}`, 'file-op');
+            addMessage('agent', `Creating ${displayPath(args.file_path)}`, 'file-op');
           } else if (tool === 'create_project_scaffold') {
-            addMessage('agent', `Creating directories for ${displayPath(args.project_name)}`, 'file-op');
+            addMessage('agent', `Scaffolding ${displayPath(args.project_name)}`, 'file-op');
           } else if (FILE_WRITE_TOOLS.has(tool) && args.file_path) {
-            addMessage('agent', `Creating file ${displayPath(args.file_path)}`, 'file-op');
+            addMessage('agent', `Creating ${displayPath(args.file_path)}`, 'file-op');
           }
           return;
         }
@@ -977,7 +902,6 @@
         }
 
         if (payload.type === 'tool_result' || payload.type === 'thinking' || payload.type === 'user_input') {
-          console.debug('[agent-ui] event', payload.type, payload.tool || '', payload.preview || '');
           return;
         }
 
@@ -987,7 +911,7 @@
             if (shouldShowAgentText(text)) {
               addMessage('agent', text, 'agent');
             } else if (text.trim()) {
-              addMessage('agent', 'Agent completed. See Generated Files and Raw Output.', 'system');
+              addMessage('agent', 'Run complete — see Project Files.', 'system');
             }
           }
           return;
@@ -999,7 +923,7 @@
           if (shouldShowAgentText(output)) {
             addMessage('agent', output, 'agent');
           } else if (output.trim()) {
-            addMessage('agent', 'Agent completed. See Generated Files and Raw Output.', 'system');
+            addMessage('agent', 'Run complete — see Project Files.', 'system');
           }
           const maybeJson = tryParseStructuredFiles(output);
           if (maybeJson) pushStructuredFiles(maybeJson);
@@ -1009,13 +933,13 @@
         }
 
         if (payload.type === 'generated_file') {
-          addMessage('agent', `Completed file ${displayPath(payload.path)}`, 'file-op');
+          addMessage('agent', `Completed ${displayPath(payload.path)}`, 'file-op');
           upsertGeneratedFile(payload);
           return;
         }
 
         if (payload.type === 'generated_file_error') {
-          addMessage('agent', `Failed file ${displayPath(payload.path)}: ${payload.error || 'error'}`, 'error');
+          addMessage('agent', `Failed ${displayPath(payload.path)}: ${payload.error || 'error'}`, 'error');
           return;
         }
 
@@ -1026,11 +950,7 @@
 
         if (payload.type === 'stopped' || payload.type === 'run_complete') {
           setGenerating(false);
-          if (payload.type === 'stopped') {
-            addMessage('agent', 'Generation stopped.', 'stop');
-          } else {
-            addMessage('agent', 'Agent run finished.', 'system');
-          }
+          addMessage('agent', payload.type === 'stopped' ? 'Generation stopped.' : 'Agent run finished.', 'system');
           return;
         }
 
@@ -1040,13 +960,14 @@
           state.messages = [];
           renderMessages();
           renderFiles();
-          addMessage('agent', 'Session reset complete.', 'system');
+          addMessage('agent', 'Session reset.', 'system');
           return;
         }
 
         if (payload.type === 'error') {
           setConnection(false, 'error');
-          addMessage('agent', payload.error || 'Unknown socket error.', 'error');
+          addMessage('agent', payload.error || 'Socket error.', 'error');
+          setGenerating(false);
           return;
         }
 
@@ -1057,21 +978,16 @@
 
         if (payload.files) {
           pushStructuredFiles(payload);
-          return;
         }
-
-        console.debug('[agent-ui] ignored event', payload.type || 'unknown', payload);
       });
 
       socket.addEventListener('close', () => {
         setConnection(false);
         setGenerating(false);
-        console.log('[agent-ui] websocket closed');
-        addMessage('agent', 'Socket closed.', 'system');
+        addMessage('agent', 'Disconnected.', 'system');
       });
 
       socket.addEventListener('error', () => {
-        console.error('[agent-ui] websocket error');
         setConnection(false, 'error');
         setGenerating(false);
       });
@@ -1080,7 +996,6 @@
     function tryParseStructuredFiles(text) {
       const trimmed = String(text || '').trim();
       if (!trimmed) return null;
-
       const fenced = trimmed.match(/```json\s*([\s\S]*?)```/i);
       const candidate = fenced ? fenced[1] : trimmed;
       try {
@@ -1101,18 +1016,14 @@
         return;
       }
 
-      const sessionId = els.sessionInput.value.trim() || state.sessionId;
-      saveSessionId(sessionId);
       addMessage('user', prompt, 'you');
       const workingDirectory = launchConfig.workingDirectory || null;
       state.socket.send(JSON.stringify({
         type: 'message',
         prompt,
-        session_id: sessionId,
+        session_id: state.sessionId,
         working_directory: workingDirectory || undefined,
       }));
-      console.log('[agent-ui] -> message', { prompt_chars: prompt.length, session_id: sessionId, working_directory: workingDirectory });
-      setDebug(`Debug: sent prompt (${prompt.length} chars) session=${sessionId}`);
       els.promptInput.value = '';
       setGenerating(true);
     }
@@ -1126,19 +1037,6 @@
         type: 'stop',
         session_id: state.sessionId,
       }));
-      console.log('[agent-ui] -> stop', { session_id: state.sessionId });
-    }
-
-    function resetSession() {
-      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        connect();
-        return;
-      }
-      state.socket.send(JSON.stringify({
-        type: 'reset',
-        session_id: state.sessionId,
-      }));
-      console.log('[agent-ui] -> reset', { session_id: state.sessionId });
     }
 
     function clearChat() {
@@ -1153,16 +1051,11 @@
     }
 
     els.connectBtn.addEventListener('click', connect);
-    els.resetBtn.addEventListener('click', resetSession);
     els.clearBtn.addEventListener('click', clearChat);
     els.sendBtn.addEventListener('click', sendPrompt);
     els.stopBtn.addEventListener('click', stopGeneration);
-    els.demoBtn.addEventListener('click', () => {
-      els.promptInput.value = demoPrompt;
-      els.promptInput.focus();
-    });
     els.copyBtn.addEventListener('click', copyCurrentFile);
-    els.expandAllBtn.addEventListener('click', () => {
+    els.refreshBtn.addEventListener('click', () => {
       renderFiles();
       requestFileManifest();
     });
@@ -1174,36 +1067,18 @@
       showSelectedFile();
     });
 
-    els.tabs.forEach((tab) => {
-      tab.addEventListener('click', () => {
-        els.tabs.forEach((button) => button.classList.remove('active'));
-        tab.classList.add('active');
-        const mode = tab.dataset.tab;
-        if (mode === 'raw') {
-          els.previewBox.textContent = state.rawOutput || 'No raw output available.';
-          els.previewLabel.textContent = 'Agent raw output';
-        } else if (mode === 'preview') {
-          showSelectedFile();
-        } else {
-          renderFiles();
-        }
-      });
-    });
-
     els.promptInput.addEventListener('keydown', (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
         sendPrompt();
       }
     });
 
-    if (urlParams.get('ws')) {
-      els.serverUrl.value = urlParams.get('ws');
-    }
     if (launchConfig.projectName) {
-      document.querySelector('.brand h1').textContent = `AI Coder — ${launchConfig.projectName}`;
+      els.projectTitle.textContent = launchConfig.projectName;
+      els.projectSubtitle.textContent = 'Agent workspace';
     }
 
-    saveSessionId(state.sessionId);
     renderMessages();
     renderFiles();
     setConnection(false);

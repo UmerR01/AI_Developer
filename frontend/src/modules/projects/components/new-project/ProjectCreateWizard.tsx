@@ -448,6 +448,7 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
 
         {step === 4 ? (
           <ProjectCreateStepFinalBrief
+            projectName={projectName}
             brief={finalBrief || description || "Your compiled project brief will appear here."}
             revisionCount={revisionCount}
             wordCount={reviewWordCount}

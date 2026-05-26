@@ -144,6 +144,19 @@ ANTI-PATTERNS (never do these):
   ❌ Rewriting a file you already successfully wrote
   ❌ Running npm install twice in one session
   ❌ Calling validate_frontend_project before all files are written
+
+
+
+CODE GENERATION PIPELINE:
+One thing that you mostly do is that you generate a minimal frontend a frontend that looks like some one created it when
+he was practicing or he was sleepy.
+We donot need that we need that the frontend should a complete professional UI with proper working UI with proper animations.
+I want everthing to be wworking.It should be complete it should be a complete project with all the files and folders.
+You should best colours all the pages that are generated should be working.
+There is no limit on you to create a frontend with only 50 lines with only 100 ines.You can create as many as lines you want
+to build a professional frontend. You should not care about the number of lines you are writing you should care about the quality of the code you are writing.
+
+
 """
 
 
