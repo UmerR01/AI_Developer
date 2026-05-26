@@ -1,6 +1,13 @@
+"use client";
+
+import { useState } from "react";
+
+import { downloadBriefDocx } from "../../utils/briefDocx";
+import { renderBriefMarkdown } from "../../utils/briefMarkdown";
+
 interface ProjectCreateStepFinalBriefProps {
-  brief: string;
-  revisionCount: number;
+  projectName: string;
+  brief: string;  revisionCount: number;
   wordCount: number;
   readTimeMinutes: number;
   historyLabels: string[];
@@ -16,6 +23,7 @@ interface ProjectCreateStepFinalBriefProps {
 }
 
 export function ProjectCreateStepFinalBrief({
+  projectName,
   brief,
   revisionCount,
   wordCount,
@@ -31,6 +39,24 @@ export function ProjectCreateStepFinalBrief({
   onBack,
   busy,
 }: ProjectCreateStepFinalBriefProps) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
+  const hasBrief = Boolean(brief.trim()) && !brief.includes("will appear here");
+
+  async function handleDownloadDocx() {
+    if (!hasBrief || downloading || busy) return;
+    setDownloadError("");
+    setDownloading(true);
+    try {
+      await downloadBriefDocx({ projectName, brief });
+    } catch {
+      setDownloadError("Could not create the Word document. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <div className="project-create-step">
       <header className="project-create-header project-create-header--split">
@@ -44,14 +70,29 @@ export function ProjectCreateStepFinalBrief({
         </div>
       </header>
 
-      <div className="project-create-brief-card">
-        <article dangerouslySetInnerHTML={{ __html: brief.replace(/\n/g, "<br />") }} />
+      <div className="project-create-brief-card project-create-brief-card--markdown">
+        <article
+          className="project-create-brief-doc"
+          dangerouslySetInnerHTML={{ __html: renderBriefMarkdown(brief) }}
+        />
       </div>
 
       <div className="project-create-brief-meta">
-        <span>{wordCount} words</span>
-        <span>{readTimeMinutes} min read</span>
+        <div className="project-create-brief-meta-stats">
+          <span>{wordCount} words</span>
+          <span>{readTimeMinutes} min read</span>
+        </div>
+        <button
+          type="button"
+          className="project-create-download-btn"
+          onClick={handleDownloadDocx}
+          disabled={busy || downloading || !hasBrief}
+          title="Download project brief as Word document"
+        >
+          {downloading ? "Preparing…" : "Download .docx"}
+        </button>
       </div>
+      {downloadError ? <p className="project-create-download-error">{downloadError}</p> : null}
 
       <div className="project-create-history-toggle">
         <button type="button" className="project-create-link-btn" onClick={onToggleFeedback} disabled={busy}>
@@ -74,7 +115,7 @@ export function ProjectCreateStepFinalBrief({
             Request Changes
           </button>
           <button type="button" className="project-create-primary-success-btn" onClick={onApprove} disabled={busy}>
-            ✓ Approve & Start Development
+            ✓ Approve & Create Project
           </button>
         </div>
       </footer>

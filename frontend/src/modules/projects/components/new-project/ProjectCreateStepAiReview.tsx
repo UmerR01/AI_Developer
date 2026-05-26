@@ -1,5 +1,6 @@
 interface ProjectCreateStepAiReviewProps {
   mode: "loading" | "session" | "ready";
+  reviewSourceLabel?: string | null;
   title: string;
   subtitle: string;
   statusMessage: string;
@@ -27,6 +28,7 @@ function BotIcon() {
 
 export function ProjectCreateStepAiReview({
   mode,
+  reviewSourceLabel,
   title,
   subtitle,
   statusMessage,
@@ -87,6 +89,7 @@ export function ProjectCreateStepAiReview({
         <div>
           <h3>{title}</h3>
           <p>{subtitle}</p>
+          {reviewSourceLabel ? <p className="project-create-review-source">{reviewSourceLabel}</p> : null}
         </div>
         {progressLabel ? <span className="project-create-progress-label">{progressLabel}</span> : null}
       </header>
@@ -119,7 +122,7 @@ export function ProjectCreateStepAiReview({
           ← Back
         </button>
         <button type="button" className="project-create-secondary-btn" onClick={onSubmitAnswer} disabled={busy || !currentAnswer.trim()}>
-          Submit Answer
+          {busy ? "Submitting…" : "Submit Answer"}
         </button>
       </footer>
     </div>

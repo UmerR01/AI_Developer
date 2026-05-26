@@ -1,106 +1,110 @@
 # AI-Developer
 
-AI-Developer is a modular SaaS workspace platform where teams collaborate with AI agents through a structured pipeline.
+AI-Developer is a modular SaaS workspace where teams create projects, refine requirements with AI, and run a coding agent that implements the approved brief.
 
-This repository is currently scaffolded to the first executable checkpoint: authentication login.
+## Current Scope
 
-## Current Phase Scope
-- Project scaffold is ready with modular backend and frontend folders.
-- PostgreSQL runs in Docker Compose (database only).
-- Django backend exposes GraphQL endpoint with login mutation.
-- Next.js frontend includes login screen and dashboard auth gate.
+- Django + Strawberry GraphQL backend with auth, projects, and support modules
+- Next.js frontend with login, dashboard, project creation wizard, and project workspace
+- `ai_module/` — Gemini/Vertex-powered brief review and autonomous coding agent (FastAPI + WebSocket UI)
 
 ## Tech Stack
-- Backend: Django + Strawberry GraphQL
-- Frontend: Next.js (App Router, TypeScript)
-- Database: PostgreSQL (Docker Compose)
-- Auth checkpoint: GraphQL login mutation returning access token
+
+| Layer | Stack |
+|-------|--------|
+| Backend | Django, Strawberry GraphQL, PostgreSQL |
+| Frontend | Next.js (App Router), TypeScript |
+| AI | Google Vertex AI (Gemini), LangChain, FastAPI agent server |
 
 ## Repository Structure
 
 ```text
 AI_Developer/
+  ai_module/                 # Coding agent + brief review + workspace UI
+    agent.py
+    agent_api_server.py
+    agent_frontend.html
+    brief_service.py
+    credentials/             # Place Joblynk service account JSON here (gitignored)
+    requirements-core.txt
   backend/
-    config/
-      settings.py
-      urls.py
-      schema.py
-    apps/
-      accounts/
-        mutations.py
-        queries.py
-        services.py
-        types.py
-        management/commands/bootstrap_auth_seed.py
-    manage.py
   frontend/
-    app/
-      login/page.tsx
-      dashboard/page.tsx
-    src/modules/auth/
-      api.ts
-      types.ts
-      components/LoginForm.tsx
-    package.json
   docker-compose.yml
-  requirements.txt
+  requirements.txt           # Backend + ai_module deps for root .venv
   .env.example
-  README.md
 ```
 
-## Development Standards
-- Keep modules separated by feature (`accounts`, `projects`, `team`, etc.).
-- Avoid large single-file views.
-- Split each feature into submodules as needed (types, queries, mutations, services, components).
-- Keep business logic in backend service files, not directly inside transport/controller code.
-
 ## Prerequisites
+
 - Python 3.12+
 - Node.js 20+
-- Docker Desktop (or Docker Engine + Compose)
+- Docker Desktop (PostgreSQL)
+- Google Cloud service account JSON for project `joblynk-489820` (Vertex AI enabled)
 
 ## 1) Environment Setup
-From repo root:
 
-1. Copy environment template.
-2. Start PostgreSQL container.
+From the repo root:
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up -d db
 ```
 
-Important:
-- Set a strong local `DJANGO_SECRET_KEY` in `.env` before sharing any environment snapshot.
+### Google credentials (Joblynk)
 
-## 2) Backend Setup (Django)
-From repo root:
+1. Place your service account JSON at:
+   `ai_module/credentials/google-service-account.json`
+   (You can copy the existing `joblynk-489820-*.json` file from `ai_module/` into that path.)
+2. Ensure `.env` contains:
+
+```env
+GOOGLE_APPLICATION_CREDENTIALS=ai_module/credentials/google-service-account.json
+GOOGLE_CLOUD_PROJECT=joblynk-489820
+```
+
+## 2) Python virtual environment (backend + AI module)
 
 ```powershell
-# Create venv if needed
 python -m venv .venv
-
-# Activate venv
 .\.venv\Scripts\Activate.ps1
-
-# Install backend dependencies
 pip install -r requirements.txt
+```
 
-# Run migrations
+This installs Django dependencies **and** `ai_module/requirements-core.txt` into the same root `.venv`.
+
+## 3) Backend (Django)
+
+```powershell
 .\.venv\Scripts\python.exe backend/manage.py migrate
-
-# Seed demo accounts, roles, and team
 .\.venv\Scripts\python.exe backend/manage.py bootstrap_auth_seed
-
-# Start backend server
 .\.venv\Scripts\python.exe backend/manage.py runserver 0.0.0.0:8011
 ```
 
-Backend URL:
-- http://localhost:8011/graphql/
+GraphQL: http://localhost:8011/graphql/
 
-## 3) Frontend Setup (Next.js)
-Open a new terminal and run:
+## 4) AI agent server
+
+In a **second terminal** (same venv):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+Set-Location ai_module
+..\.venv\Scripts\python.exe -m uvicorn agent_api_server:app --host 0.0.0.0 --port 8001 --reload
+```
+
+Or from repo root:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn agent_api_server:app --host 0.0.0.0 --port 8001 --app-dir ai_module --reload
+```
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:8001/workspace | Agent workspace UI (opens in a new tab during development) |
+| ws://localhost:8001/ws/chat | WebSocket for live agent events |
+| http://localhost:8001/health | Health check |
+
+## 5) Frontend (Next.js)
 
 ```powershell
 Set-Location frontend
@@ -109,74 +113,35 @@ npm install
 npm run dev
 ```
 
-Frontend URL:
-- http://localhost:3000/login
+App: http://localhost:3000/login
 
-## Login Checkpoint
-Seed credentials:
-- Ibrahim (Admin): username `ibrahim`, password `Ibrahim@123`
-- Ismail (Developer): username `ismail`, password `Ismail@123`
-- Zahid (QA): username `zahid`, password `Zahid@123`
-- Faizan (QA): username `faizan`, password `Faizan@123`
-- AI_dev (Support): username `ai_dev`, password `AI_dev@123`
+## Project creation & AI flow
 
-Team mapping:
-- Ibrahim team members: Ismail, Zahid, Faizan
+1. **Setup** — Project name + GitHub repository URL  
+2. **Description** — Write text or upload a `.txt`/`.md` document (parsed to plain text for the AI)  
+3. **AI review** — Gemini reviews the brief, asks the minimum clarifying questions (e.g. tech stack if missing), then produces a README-style final brief  
+4. **Final brief** — Approve and create the project (saved as **Draft**)  
+5. **Project page** — Click **Start Development** to open the agent workspace in a new tab and begin implementation from the approved brief  
 
-Quick subscriptions (mock):
-- Basic: 300 GB
-- Pro: 500 GB
-- Enterprise: 1 TB
+The agent only accepts **text** inputs; uploads are converted to text before review.
 
-Linked subscription:
-- Ibrahim account -> Pro
+## Login (seed)
 
-When login succeeds:
-- Frontend stores token in local storage.
-- User is redirected to `/dashboard`.
+| User | Username | Password |
+|------|----------|----------|
+| Ibrahim (Admin) | `ibrahim` | `Ibrahim@123` |
+| Ismail (Developer) | `ismail` | `Ismail@123` |
 
-Dashboard mock widgets currently include:
-- Pipeline status summary cards
-- My tasks list
-- Recent project activity list
-- Notifications preview list
-- Storage widget with current usage
-- Team member list with add icon
-- Storage access rows with project name, space taken, files total, member avatars, and share access action
+## Development standards
 
-## GraphQL Auth Contract
-Login mutation:
+- Keep feature logic in module services (`backend/apps/*/services.py`, `ai_module/*.py`)
+- Avoid monolithic view files; split UI steps into focused components
+- Never commit service account JSON files
 
-```graphql
-mutation Login($input: LoginInput!) {
-  login(input: $input) {
-    success
-    message
-    accessToken
-    user {
-      id
-      username
-      email
-    }
-  }
-}
-```
+## Troubleshooting
 
-Variables:
-
-```json
-{
-  "input": {
-    "username": "admin",
-    "password": "admin12345"
-  }
-}
-```
-
-## What Comes Next
-After login checkpoint, next build phases should add:
-1. Workspace and membership domain
-2. Projects unified workspace and pipeline states
-3. Comment review/push loop
-4. Team workspace and role-driven controls
-5. Support, notifications, and deployment mock
+| Issue | Fix |
+|-------|-----|
+| Brief review uses heuristic questions only | Check `GOOGLE_APPLICATION_CREDENTIALS` path and Vertex API access |
+| Agent workspace tab does not connect | Start the agent server on port 8001 |
+| `pip install` fails on ai deps | Use Python 3.12+ and install from repo root `requirements.txt` |

@@ -4,3 +4,7 @@ django-cors-headers>=4.4,<5.0
 psycopg[binary]>=3.2,<4.0
 PyJWT>=2.9,<3.0
 python-dotenv>=1.0,<2.0
+httpx>=0.28,<0.29
+
+# AI module (brief review + coding agent) — install into the same root venv
+-r ai_module/requirements-core.txt

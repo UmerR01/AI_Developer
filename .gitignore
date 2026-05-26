@@ -21,6 +21,11 @@ out/
 .env.*
 !.env.example
 
+# Google service account keys (never commit)
+ai_module/credentials/*.json
+!ai_module/credentials/.gitkeep
+ai_module/*.json
+
 # Logs
 *.log
 npm-debug.log*

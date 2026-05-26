@@ -89,7 +89,9 @@ def get_or_create_storage_for_user(user) -> Storage:
 
 
 def create_project_folder(storage: Storage, project_slug: str) -> str:
-    folder = Path(storage.folder_name) / project_slug
+    from django.conf import settings
+
+    folder = (Path(settings.ROOT_DIR) / storage.folder_name / project_slug).resolve()
     folder.mkdir(parents=True, exist_ok=True)
     return str(folder).replace("\\", "/")
 

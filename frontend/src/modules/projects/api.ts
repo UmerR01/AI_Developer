@@ -123,6 +123,8 @@ const REVIEW_PROJECT_BRIEF_MUTATION = `
       refinedBrief
       wordCount
       readTimeMinutes
+      reviewSource
+      documentCharsReceived
     }
   }
 `;
@@ -225,6 +227,7 @@ const START_AGENT_MUTATION = `
     startAgentRun(input: $input) {
       success
       message
+      agentWorkspaceUrl
       project {
         ${PROJECT_FIELDS}
       }
@@ -284,6 +287,7 @@ function toErrorResult(message: string): ProjectMutationResult {
     success: false,
     message,
     project: null,
+    agentWorkspaceUrl: null,
   };
 }
 
@@ -321,6 +325,8 @@ export async function reviewProjectBrief(input: ReviewProjectBriefInput): Promis
         refinedBrief: "",
         wordCount: 0,
         readTimeMinutes: 0,
+        reviewSource: "heuristic",
+        documentCharsReceived: 0,
       };
     }
 
@@ -333,6 +339,8 @@ export async function reviewProjectBrief(input: ReviewProjectBriefInput): Promis
       refinedBrief: "",
       wordCount: 0,
       readTimeMinutes: 0,
+      reviewSource: "heuristic",
+      documentCharsReceived: 0,
     };
   } catch (error) {
     return {
@@ -344,6 +352,8 @@ export async function reviewProjectBrief(input: ReviewProjectBriefInput): Promis
       refinedBrief: "",
       wordCount: 0,
       readTimeMinutes: 0,
+      reviewSource: "heuristic",
+      documentCharsReceived: 0,
     };
   }
 }
@@ -523,7 +533,16 @@ export async function startAgentRun(projectId: string): Promise<ProjectMutationR
       return toErrorResult(payload.errors[0].message);
     }
 
-    return payload.data?.startAgentRun ?? toErrorResult("Unexpected agent run response.");
+    const result = payload.data?.startAgentRun;
+    if (!result) {
+      return toErrorResult("Unexpected agent run response.");
+    }
+    return {
+      success: result.success,
+      message: result.message,
+      project: result.project,
+      agentWorkspaceUrl: result.agentWorkspaceUrl ?? null,
+    };
   } catch (error) {
     return toErrorResult(error instanceof Error ? error.message : "Start agent run request failed.");
   }
