@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -421,7 +422,7 @@ export function MemberWorkspaceShell() {
                   {filteredMembers.map((member) => (
                     <article key={member.id} className="member-card-v2" onClick={() => openProfile(member)}>
                       <div className="member-card-v2-left">
-                        <img src={member.avatarUrl} alt={member.displayName} className="member-card-v2-avatar" />
+                        <Image src={member.avatarUrl} alt={member.displayName} className="member-card-v2-avatar" width={52} height={52} />
                         <span className={`member-card-v2-dot ${getMemberStatus(member) === "active" ? "active" : "pending"}`} />
                       </div>
                       <div className="member-card-v2-body">
@@ -462,7 +463,7 @@ export function MemberWorkspaceShell() {
                   {filteredMembers.map((member) => (
                     <article key={member.id} className="member-list-row" onClick={() => openProfile(member)}>
                       <div className="member-list-main">
-                        <img src={member.avatarUrl} alt={member.displayName} className="member-list-avatar" />
+                        <Image src={member.avatarUrl} alt={member.displayName} className="member-list-avatar" width={42} height={42} />
                         <div className="member-list-name-group">
                           <strong>{member.displayName}</strong>
                           <span>{member.email}</span>
@@ -530,7 +531,7 @@ export function MemberWorkspaceShell() {
             </button>
 
             <div className="member-drawer-top">
-              <img src={selectedMember.avatarUrl} alt={selectedMember.displayName} className="member-drawer-avatar" />
+              <Image src={selectedMember.avatarUrl} alt={selectedMember.displayName} className="member-drawer-avatar" width={88} height={88} />
               <h3>{selectedMember.displayName}</h3>
               <span className={`member-role-chip role-${selectedMember.role}`}>{roleLabel(selectedMember.role)}</span>
               <p className="member-status-text">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 interface StorageWidgetProps {
   usedBytes: number;
@@ -21,7 +22,7 @@ export function StorageWidget({ usedBytes, totalBytes }: StorageWidgetProps) {
   return (
     <article className="dash-storage-card">
       <div className="dash-storage-icon-wrap">
-        <img src="/storage.png" alt="" className="dash-storage-img" draggable={false} />
+        <Image src="/storage.png" alt="" className="dash-storage-img" width={46} height={46} draggable={false} />
       </div>
 
       <div className="dash-storage-info">

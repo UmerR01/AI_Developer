@@ -634,6 +634,14 @@
     }
 
     .tree-row.dir { color: var(--muted); font-weight: 600; }
+    .tree-row .tree-caret {
+      width: 12px;
+      color: var(--muted);
+      display: inline-flex;
+      justify-content: center;
+    }
+    .tree-row .tree-caret.empty { color: transparent; }
+    .tree-node.collapsed > .tree-children { display: none; }
     .tree-children { margin-left: 14px; }
 
     .code-panel {
@@ -826,7 +834,6 @@
           <div class="tabs">
             <button class="tab active" data-tab="explorer">Explorer</button>
             <button class="tab" data-tab="app-preview">App Preview</button>
-            <button class="tab" data-tab="raw">Raw Output</button>
           </div>
           <div class="preview-body">
             <div id="panelExplorer" class="tab-panel active">
@@ -846,11 +853,6 @@
                   <button class="ghost" id="openPreviewTabBtn" type="button">Open in tab</button>
                 </div>
                 <iframe id="appPreviewFrame" class="app-preview-frame" title="App preview" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
-              </div>
-            </div>
-            <div id="panelRaw" class="tab-panel">
-              <div class="code-panel" style="flex:1;">
-                <pre id="rawPreview">No raw output yet.</pre>
               </div>
             </div>
           </div>
@@ -879,9 +881,9 @@
       messages: [],
       files: [],
       fileTree: [],
+      collapsedDirs: {},
       filesByPath: {},
       selectedPath: '',
-      rawOutput: '',
       generating: false,
       referenceUploads: [],
       projectStatus: 'idle',
@@ -906,7 +908,6 @@
       downloadBtn: document.getElementById('downloadBtn'),
       fileTree: document.getElementById('fileTree'),
       codePreview: document.getElementById('codePreview'),
-      rawPreview: document.getElementById('rawPreview'),
       previewLabel: document.getElementById('previewLabel'),
       previewStatusText: document.getElementById('previewStatusText'),
       appPreviewFrame: document.getElementById('appPreviewFrame'),
@@ -915,7 +916,6 @@
       tabs: Array.from(document.querySelectorAll('.tab')),
       panelExplorer: document.getElementById('panelExplorer'),
       panelAppPreview: document.getElementById('panelAppPreview'),
-      panelRaw: document.getElementById('panelRaw'),
       referenceImagesInput: document.getElementById('referenceImagesInput'),
       uploadList: document.getElementById('uploadList'),
     };
@@ -1053,14 +1053,17 @@
         const isDir = node.type === 'dir';
         const path = node.path || node.name;
         const active = state.selectedPath === path ? ' active' : '';
+        const hasChildren = isDir && Array.isArray(node.children) && node.children.length > 0;
+        const collapsed = isDir && state.collapsedDirs[path] !== false;
+        const caret = isDir ? (collapsed ? '>' : 'v') : '';
         const icon = isDir ? '📁' : '📄';
-        const children = isDir && node.children
+        const children = hasChildren
           ? `<div class="tree-children">${renderTreeNodes(node.children, depth + 1)}</div>`
           : '';
         return `
-          <div class="tree-node">
+          <div class="tree-node${collapsed ? ' collapsed' : ''}">
             <div class="tree-row${isDir ? ' dir' : ''}${active}" data-path="${escapeHtml(path)}" data-is-dir="${isDir}">
-              <span>${icon}</span><span>${escapeHtml(node.name)}</span>
+              <span class="tree-caret${hasChildren ? '' : ' empty'}">${caret}</span><span>${icon}</span><span>${escapeHtml(node.name)}</span>
             </div>
             ${children}
           </div>
@@ -1145,11 +1148,6 @@
 
       event.target.value = '';
       renderUploads();
-    }
-
-    function setRawOutput(output) {
-      state.rawOutput = output;
-      els.rawPreview.textContent = output || 'No raw output available.';
     }
 
     function pushStructuredFiles(payload) {
@@ -1253,7 +1251,6 @@
       els.tabs.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tabName));
       els.panelExplorer.classList.toggle('active', tabName === 'explorer');
       els.panelAppPreview.classList.toggle('active', tabName === 'app-preview');
-      els.panelRaw.classList.toggle('active', tabName === 'raw');
     }
 
     function connect() {
@@ -1550,7 +1547,14 @@
 
     els.fileTree.addEventListener('click', (event) => {
       const row = event.target.closest('.tree-row');
-      if (!row || row.dataset.isDir === 'true') return;
+      if (!row) return;
+      if (row.dataset.isDir === 'true') {
+        const path = row.dataset.path;
+        const isCollapsed = state.collapsedDirs[path] !== false;
+        state.collapsedDirs[path] = !isCollapsed;
+        renderFileTree();
+        return;
+      }
       showSelectedFile(row.dataset.path);
     });
 

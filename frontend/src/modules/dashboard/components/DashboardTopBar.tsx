@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Account, NotificationPreviewItem } from "../types";
@@ -79,7 +80,7 @@ export function DashboardTopBar({ activeAccount, title = "Dashboard", notificati
         </div>
 
         <div className="topbar-profile">
-          <img src={activeAccount.avatarUrl} alt={activeAccount.displayName} />
+          <Image src={activeAccount.avatarUrl} alt={activeAccount.displayName} width={42} height={42} />
           <div className="topbar-profile-info">
             <span className="topbar-profile-name">{activeAccount.displayName}</span>
             <span className="topbar-profile-role">{roleLabel}</span>

@@ -67,6 +67,16 @@ class ResetRequest(BaseModel):
     project_id: Optional[str] = None
 
 
+class SessionBootstrapRequest(BaseModel):
+    session_id: str
+    prompt: Optional[str] = None
+    development_prompt: Optional[str] = None
+    working_directory: Optional[str] = None
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    user_id: Optional[str] = None
+
+
 class SocketRequest(BaseModel):
     type: str = Field(default="message")
     prompt: Optional[str] = None
@@ -146,6 +156,7 @@ class SessionStore:
 
 
 session_store = SessionStore()
+bootstrapped_sessions: Dict[str, Dict[str, Any]] = {}
 
 
 def _save_reference_images(session_id: str, images: List[Dict[str, Any]]) -> List[Dict[str, str]]:
@@ -288,6 +299,44 @@ async def root() -> FileResponse:
 @app.get("/workspace")
 async def workspace_ui() -> FileResponse:
     return FileResponse(ROOT_DIR / "agent_frontend.html")
+
+
+@app.post("/api/session/bootstrap")
+async def bootstrap_session(request: SessionBootstrapRequest) -> Dict[str, Any]:
+    session_id = request.session_id.strip()
+    prompt = (request.prompt or request.development_prompt or "").strip()
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    project_id = request.project_id or session_id
+    user_id = request.user_id or "default"
+    session_store.bind_project(session_id, user_id, project_id)
+    bootstrapped_sessions[session_id] = {
+        "session_id": session_id,
+        "prompt": prompt,
+        "development_prompt": prompt,
+        "working_directory": request.working_directory or "",
+        "project_id": project_id,
+        "project_name": request.project_name or "",
+        "user_id": user_id,
+        "prompt_chars": len(prompt),
+        "timestamp": iso_now(),
+    }
+    return {
+        "success": True,
+        "session_id": session_id,
+        "prompt_chars": len(prompt),
+    }
+
+
+@app.get("/api/session/{session_id}")
+async def get_bootstrapped_session(session_id: str) -> Dict[str, Any]:
+    data = bootstrapped_sessions.get(session_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Session prompt not found")
+    return data
 
 
 @app.get("/api/projects/{user_id}/{project_id}/files/tree")

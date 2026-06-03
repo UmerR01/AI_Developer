@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from "react";
@@ -122,15 +123,6 @@ const TAB_LABELS: Record<ProjectTab, string> = {
   timeline: "Timeline",
   logs: "Logs",
 };
-
-const FREE_AGENT_TOKENS = 100;
-const TOKENS_PER_GENERATED_FILE = 40;
-
-const GENERATED_FILE_BLUEPRINTS = [
-  { name: "projects-plan.md", type: "md", size: 14 * 1024 },
-  { name: "project-shell.tsx", type: "tsx", size: 32 * 1024 },
-  { name: "agent-workflow-notes.md", type: "md", size: 9 * 1024 },
-] as const;
 
 const COLUMN_VISIBLE_DEFAULT: Record<TaskColumn, number> = {
   todo: 4,
@@ -381,12 +373,14 @@ function ProjectAvatarStack({ members, maxVisible = 4 }: { members: Account[]; m
   return (
     <div className="project-avatar-stack" aria-label="project members">
       {visibleMembers.map((member) => (
-        <img
+        <Image
           key={member.id}
           className="project-avatar-circle"
           src={member.avatarUrl}
           alt={member.displayName}
           title={`${member.displayName} (${memberRoleLabel(member.role)})`}
+          width={34}
+          height={34}
         />
       ))}
       {hiddenCount > 0 ? <span className="project-avatar-overflow">+{hiddenCount}</span> : null}
@@ -439,8 +433,8 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [developmentStartedByProject, setDevelopmentStartedByProject] = useState<Record<string, boolean>>({});
   const [developmentProgressByProject, setDevelopmentProgressByProject] = useState<Record<string, number>>({});
-  const [generatedFilesByProject, setGeneratedFilesByProject] = useState<Record<string, ProjectFileRow[]>>({});
-  const [generatedTasksByProject, setGeneratedTasksByProject] = useState<Record<string, ProjectTaskCard[]>>({});
+  const [generatedFilesByProject] = useState<Record<string, ProjectFileRow[]>>({});
+  const [generatedTasksByProject] = useState<Record<string, ProjectTaskCard[]>>({});
   const [agentUpgradeModalOpen, setAgentUpgradeModalOpen] = useState(false);
 
   const accountById = useMemo(() => {
@@ -732,14 +726,6 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
     }
 
     setErrorMessage(null);
-    const developmentPrompt = [
-      `Start development for the project "${selectedProject.name}".`,
-      "Use the approved README brief below as the single source of truth.",
-      "Create the initial scaffold and implement the first working version.",
-      "",
-      selectedProject.description,
-    ].join("\n");
-
     const result = await startAgentRun(selectedProject.id);
     if (!result.success) {
       setErrorMessage(result.message || "Unable to start AI development.");
@@ -1114,7 +1100,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   openProjectDetails(project);
                 }}
               >
-                <img src="/folder-icon.png" alt="" className="project-folder-icon" draggable={false} />
+                <Image src="/folder-icon.png" alt="" className="project-folder-icon" width={44} height={44} draggable={false} />
                 <span className="project-folder-name">{project.name}</span>
                 {project.isDeleted ? (
                   <button
@@ -1176,7 +1162,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           {/* ── Storage Card (like reference image) ── */}
           <article className="detail-storage-card">
             <div className="detail-storage-icon-wrap">
-              <img src="/storage.png" alt="" className="detail-storage-folder" draggable={false} />
+              <Image src="/storage.png" alt="" className="detail-storage-folder" width={54} height={54} draggable={false} />
             </div>
 
             {(() => {
@@ -1388,7 +1374,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   </div>
                   <span className="file-size">{formatBytes(fileRow.size)}</span>
                   <span className="file-uploader-row">
-                    <img src={selectedProject.ownerId ? accountById[selectedProject.ownerId]?.avatarUrl : ""} alt="" className="file-uploader-avatar" />
+                    <Image src={selectedProject.ownerId ? accountById[selectedProject.ownerId]?.avatarUrl || "/storage.png" : "/storage.png"} alt="" className="file-uploader-avatar" width={24} height={24} />
                     <span className="file-uploader">{fileRow.uploadedByName}</span>
                   </span>
                   <span className="file-date">{formatDateLabel(fileRow.uploadedAt)}</span>
@@ -1592,7 +1578,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   <div className="add-member-candidates">
                     {availableAdminMembers.slice(0, 6).map((member) => (
                       <button key={member.id} type="button" className="add-member-candidate" onClick={() => addMemberToTeam(member.id)}>
-                        <img src={member.avatarUrl} alt={member.displayName} />
+                        <Image src={member.avatarUrl} alt={member.displayName} width={30} height={30} />
                         <div>
                           <strong>{member.displayName}</strong>
                           <span>{member.email}</span>
@@ -1618,7 +1604,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                 {selectedMembers.map((member) => (
                   <li key={member.id}>
                     <div className="member-main">
-                      <img src={member.avatarUrl} alt={member.displayName} />
+                      <Image src={member.avatarUrl} alt={member.displayName} width={34} height={34} />
                       <div>
                         <strong>{member.displayName}</strong>
                         <div className="member-chips">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -640,7 +641,7 @@ export function TasksWorkspaceShell() {
                   return (
                     <li key={item.id}>
                       <div className="approval-main">
-                        <img src={qaMember.avatarUrl} alt={qaMember.displayName} />
+                        <Image src={qaMember.avatarUrl} alt={qaMember.displayName} width={38} height={38} />
                         <div>
                           <strong>
                             {qaMember.displayName} on {task.name}
@@ -803,7 +804,7 @@ export function TasksWorkspaceShell() {
                   >
                     <div className="comment-head">
                       <div className="comment-author">
-                        <img src={author.avatarUrl} alt={author.displayName} />
+                        <Image src={author.avatarUrl} alt={author.displayName} width={34} height={34} />
                         <strong>{author.displayName}</strong>
                         <span className="role-chip">{roleLabel(comment.role)}</span>
                         {comment.qaReview ? <span className="qa-review-tag">QA Review</span> : null}

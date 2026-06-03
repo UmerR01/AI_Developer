@@ -44,3 +44,7 @@ package-lock.json
 
 # txt files to ignore
 cred.txt
+
+
+#ai module
+ai_module/generated_projects
