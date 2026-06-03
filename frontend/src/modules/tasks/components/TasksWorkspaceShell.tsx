@@ -11,7 +11,6 @@ import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
 import "../../dashboard/dashboard.css";
 import "../tasks.css";
-import { AnimatedBackground } from "../../platform/components/AnimatedBackground";
 
 type TaskStatus = "todo" | "in_progress" | "in_review" | "done";
 type Priority = "high" | "medium" | "low";
@@ -905,7 +904,6 @@ export function TasksWorkspaceShell() {
   if (activeAccount.role === "support") {
     return (
       <main className="dashboard-shell">
-        <AnimatedBackground />
         <DashboardSidebar activeRole={activeAccount.role} />
         <section className="dashboard-main">
           <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Tasks" />
@@ -927,7 +925,6 @@ export function TasksWorkspaceShell() {
 
   return (
     <main className="dashboard-shell">
-      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
       <section className="dashboard-main">
         <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Tasks" />

@@ -1019,23 +1019,22 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           ))}
         </section>
 
-        <section className="projects-section-block">
-          <div className="projects-section-head">
+        <section className="recent-section">
+          <div className="recent-section-head">
             <h2>Recent Projects</h2>
-            <span>Most recently opened or updated workspaces</span>
+            <span>Pick up where you left off</span>
           </div>
 
-          <div className="projects-card-grid recent-grid">
-            {recentProjects.map((project) => {
+          <div className="recent-cards-row">
+            {recentProjects.map((project, index) => {
               const members = project.memberAccountIds.map((memberId) => accountById[memberId]).filter(Boolean);
-              const totalQuota = project.storage?.totalQuota ?? 1024 * 1024 * 1024;
-              const percent = usagePercent(project.usedStorage, totalQuota);
-              const tone = usageTone(percent);
+              const taskCount = project.tasks.length;
+              const fileCount = project.files.length || project.artifacts.length;
 
               return (
                 <article
                   key={project.id}
-                  className={`project-card ${project.isDeleted ? "archived" : ""}`}
+                  className={`recent-card ${index === 0 ? "recent-card--featured" : ""} ${project.isDeleted ? "archived" : ""}`}
                   onClick={() => {
                     if (project.isDeleted) {
                       return;
@@ -1043,27 +1042,34 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                     openProjectDetails(project);
                   }}
                 >
-                  <div className="project-card-top">
-                    <span className="project-logo">{project.logoText}</span>
-                    <div>
-                      <h3>{project.name}</h3>
-                      <span className={`project-status-chip ${stateChipClassName(project.normalizedState)}`}>{project.normalizedState}</span>
-                      {project.isDeleted ? <span className="project-archived-chip">Archived</span> : null}
-                    </div>
+                  <div className="recent-card-header">
+                    <span className="recent-card-logo">{project.logoText}</span>
+                    <span className={`recent-card-status ${stateChipClassName(project.normalizedState)}`}>{project.normalizedState}</span>
                   </div>
 
-                  <ProjectAvatarStack members={members} maxVisible={4} />
-
-                  <div className="project-card-meta">
-                    <span>Created {formatDateLabel(project.createdAt)}</span>
-                    <span>Modified {formatDateLabel(project.updatedAt)}</span>
+                  <div className="recent-card-body">
+                    <h3>{project.name}</h3>
+                    <p className="recent-card-desc">{project.description.length > 80 ? project.description.slice(0, 80) + "..." : project.description}</p>
                   </div>
 
-                  <div className="project-storage-row">
-                    <span>{`Storage: ${formatBytes(project.usedStorage)} / ${formatBytes(totalQuota)}`}</span>
-                    <div className={`project-storage-bar ${tone}`}>
-                      <span style={{ width: `${percent}%` }} />
-                    </div>
+                  <div className="recent-card-stats">
+                    <span className="recent-card-stat">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      {members.length}
+                    </span>
+                    <span className="recent-card-stat">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                      {taskCount} tasks
+                    </span>
+                    <span className="recent-card-stat">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      {fileCount} files
+                    </span>
+                  </div>
+
+                  <div className="recent-card-footer">
+                    <ProjectAvatarStack members={members} maxVisible={3} />
+                    <span className="recent-card-time">{formatDateLabel(project.updatedAt)}</span>
                   </div>
                 </article>
               );
@@ -1097,62 +1103,34 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           </div>
 
           <div className="projects-card-grid all-grid">
-            {visibleProjects.map((project) => {
-              const members = project.memberAccountIds.map((memberId) => accountById[memberId]).filter(Boolean);
-              const totalQuota = project.storage?.totalQuota ?? 1024 * 1024 * 1024;
-              const percent = usagePercent(project.usedStorage, totalQuota);
-              const tone = usageTone(percent);
-
-              return (
-                <article
-                  key={project.id}
-                  className={`project-card ${project.isDeleted ? "archived" : ""}`}
-                  onClick={() => {
-                    if (project.isDeleted) {
-                      return;
-                    }
-                    openProjectDetails(project);
-                  }}
-                >
-                  <div className="project-card-top">
-                    <span className="project-logo">{project.logoText}</span>
-                    <div>
-                      <h3>{project.name}</h3>
-                      <span className={`project-status-chip ${stateChipClassName(project.normalizedState)}`}>{project.normalizedState}</span>
-                      {project.isDeleted ? <span className="project-archived-chip">Archived</span> : null}
-                    </div>
-                  </div>
-
-                  <ProjectAvatarStack members={members} maxVisible={4} />
-
-                  <div className="project-card-meta">
-                    <span>Created {formatDateLabel(project.createdAt)}</span>
-                    <span>Modified {formatDateLabel(project.updatedAt)}</span>
-                  </div>
-
-                  <div className="project-storage-row">
-                    <span>{`Storage: ${formatBytes(project.usedStorage)} / ${formatBytes(totalQuota)}`}</span>
-                    <div className={`project-storage-bar ${tone}`}>
-                      <span style={{ width: `${percent}%` }} />
-                    </div>
-                  </div>
-
-                  {project.isDeleted ? (
-                    <button
-                      type="button"
-                      className="project-restore-btn"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void handleRestoreProject(project.id);
-                      }}
-                      disabled={busyAction === `restore-${project.id}`}
-                    >
-                      Restore
-                    </button>
-                  ) : null}
-                </article>
-              );
-            })}
+            {visibleProjects.map((project) => (
+              <article
+                key={project.id}
+                className={`project-folder-card ${project.isDeleted ? "archived" : ""}`}
+                onClick={() => {
+                  if (project.isDeleted) {
+                    return;
+                  }
+                  openProjectDetails(project);
+                }}
+              >
+                <img src="/folder-icon.png" alt="" className="project-folder-icon" draggable={false} />
+                <span className="project-folder-name">{project.name}</span>
+                {project.isDeleted ? (
+                  <button
+                    type="button"
+                    className="project-restore-btn"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleRestoreProject(project.id);
+                    }}
+                    disabled={busyAction === `restore-${project.id}`}
+                  >
+                    Restore
+                  </button>
+                ) : null}
+              </article>
+            ))}
 
             {remainingProjectCount > 0 ? (
               <button type="button" className="project-load-more-card" onClick={() => setVisibleAllCount((current) => current + 5)}>
@@ -1194,94 +1172,121 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           <strong>{selectedProject.name}</strong>
         </nav>
 
-        <header className="project-details-header">
-          <div className="project-title-row">
-            <span className="project-avatar-large">{selectedProject.logoText}</span>
-            <div>
-              <h1>{selectedProject.name}</h1>
-              <button type="button" className="project-edit-btn" aria-label="Edit project" onClick={openEditModal}>
-                Edit Project
-              </button>
+        <div className="detail-top-grid">
+          {/* ── Storage Card (like reference image) ── */}
+          <article className="detail-storage-card">
+            <div className="detail-storage-icon-wrap">
+              <img src="/storage.png" alt="" className="detail-storage-folder" draggable={false} />
             </div>
-          </div>
 
-          <div className="project-header-actions">
-            <button type="button" className="project-team-row" onClick={() => setTeamPopupOpen(true)}>
-              <ProjectAvatarStack members={selectedMembers} maxVisible={5} />
-              <span>{selectedMembers.length} team members</span>
-            </button>
-
-            <div className="project-header-menu-wrap">
-              <button type="button" className="project-menu-trigger" onClick={() => setHeaderMenuOpen((current) => !current)}>
-                •••
-              </button>
-              {headerMenuOpen ? (
-                <div className="project-header-menu">
-                  <button type="button" onClick={openEditModal}>
-                    Edit Project
-                  </button>
-                  <button type="button" className="danger" onClick={() => setShowArchiveConfirm(true)}>
-                    Archive Project
-                  </button>
-                  <button type="button" className="danger" onClick={() => setShowDeleteConfirm(true)}>
-                    Delete Project
-                  </button>
+            {(() => {
+              const totalQuota = selectedProject.storage?.totalQuota ?? 1024 * 1024 * 1024;
+              const percent = usagePercent(selectedProject.usedStorage, totalQuota);
+              const tone = usageTone(percent);
+              return (
+                <div className="detail-storage-info">
+                  <div className="detail-storage-head">
+                    <strong>Storage</strong>
+                    <span>{fileRows.length} Files</span>
+                    <span className="detail-storage-size">{formatBytes(totalQuota)}</span>
+                  </div>
+                  <div className={`detail-storage-bar ${tone}`}>
+                    <span style={{ width: `${Math.max(percent, 4)}%` }} />
+                  </div>
+                  {percent > 70 ? (
+                    <span className="detail-storage-warn">{formatBytes(totalQuota - selectedProject.usedStorage)} remaining</span>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          </div>
-        </header>
+              );
+            })()}
 
-        {(() => {
-          const totalQuota = selectedProject.storage?.totalQuota ?? 1024 * 1024 * 1024;
-          const percent = usagePercent(selectedProject.usedStorage, totalQuota);
-          const tone = usageTone(percent);
-          return (
-            <section className="project-storage-detail-row">
+            <div className="detail-access-section">
+              <strong>Who has access</strong>
+              <div className="detail-access-row">
+                <ProjectAvatarStack members={selectedMembers} maxVisible={5} />
+                <button type="button" className="detail-access-btn" onClick={() => setTeamPopupOpen(true)}>
+                  Edit Access
+                </button>
+              </div>
+            </div>
+          </article>
+
+          {/* ── Info Panel ── */}
+          <div className="detail-info-panel">
+            <div className="detail-info-header">
               <div>
-                <strong>Project Storage</strong>
-                <p>{`${formatBytes(selectedProject.usedStorage)} used of ${formatBytes(totalQuota)}`}</p>
+                <h1 className="detail-project-title">{selectedProject.name}</h1>
+                <span className={`detail-status-chip ${stateChipClassName(selectedProject.normalizedState)}`}>{selectedProject.normalizedState}</span>
               </div>
-              <div className={`project-storage-bar ${tone}`}>
-                <span style={{ width: `${percent}%` }} />
+              <div className="detail-header-actions">
+                <button type="button" className="detail-edit-btn" onClick={openEditModal}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  Edit
+                </button>
+                <div className="project-header-menu-wrap">
+                  <button type="button" className="project-menu-trigger" onClick={() => setHeaderMenuOpen((current) => !current)}>
+                    •••
+                  </button>
+                  {headerMenuOpen ? (
+                    <div className="project-header-menu">
+                      <button type="button" onClick={openEditModal}>Edit Project</button>
+                      <button type="button" className="danger" onClick={() => setShowArchiveConfirm(true)}>Archive Project</button>
+                      <button type="button" className="danger" onClick={() => setShowDeleteConfirm(true)}>Delete Project</button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-              {percent > 90 ? (
-                <span className="project-storage-warning" title="Storage almost full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 6, verticalAlign: "-3px"}}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                  Storage almost full
-                </span>
-              ) : null}
-            </section>
-          );
-        })()}
+            </div>
 
-        <section className="project-dev-trigger-row">
-          <div>
-            <strong>Project Development</strong>
-            <p>Trigger AI agents to generate initial implementation files and tasks.</p>
+            <p className="detail-description">{selectedProject.description}</p>
+
+            <div className="detail-meta-grid">
+              <div className="detail-meta-item">
+                <span className="detail-meta-label">Start Date</span>
+                <span className="detail-meta-value">{formatDateLabel(selectedProject.startDate)}</span>
+              </div>
+              <div className="detail-meta-item">
+                <span className="detail-meta-label">Created</span>
+                <span className="detail-meta-value">{formatDateLabel(selectedProject.createdAt)}</span>
+              </div>
+              <div className="detail-meta-item">
+                <span className="detail-meta-label">Last Modified</span>
+                <span className="detail-meta-value">{formatDateLabel(selectedProject.updatedAt)}</span>
+              </div>
+              <div className="detail-meta-item">
+                <span className="detail-meta-label">Team</span>
+                <span className="detail-meta-value">{selectedMembers.length} members</span>
+              </div>
+            </div>
+
+            <div className="detail-dev-row">
+              <div>
+                <strong>AI Development</strong>
+                <p>Trigger agents to scaffold files and tasks.</p>
+              </div>
+              <button
+                type="button"
+                className="action-btn-primary"
+                onClick={startProjectDevelopment}
+                disabled={developmentStarted}
+              >
+                {developmentStarted ? "Started" : "Start Development"}
+              </button>
+            </div>
+
+            {developmentStarted ? (
+              <div className="detail-dev-progress">
+                <div className="detail-dev-progress-top">
+                  <span>Development Progress</span>
+                  <span>{developmentProgress}%</span>
+                </div>
+                <div className="project-dev-progress-bar">
+                  <span style={{ width: `${developmentProgress}%` }} />
+                </div>
+              </div>
+            ) : null}
           </div>
-          <button
-            type="button"
-            className="action-btn-primary"
-            onClick={startProjectDevelopment}
-            disabled={developmentStarted}
-          >
-            {developmentStarted ? "Development Started" : "Start Development"}
-          </button>
-        </section>
-
-        {developmentStarted ? (
-          <section className="project-dev-progress-row" aria-label="Project development progress">
-            <div className="project-dev-progress-head">
-              <strong>Project Development</strong>
-              <span>{developmentProgress}% complete</span>
-            </div>
-            <div className="project-dev-progress-bar">
-              <span style={{ width: `${developmentProgress}%` }} />
-            </div>
-            <p>Agents are preparing foundational files and task scaffolding for your team.</p>
-          </section>
-        ) : null}
+        </div>
 
         <div className="project-tabs-row" role="tablist" aria-label="Project tabs">
           {PROJECT_TABS.map((tab) => (

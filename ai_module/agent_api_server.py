@@ -18,8 +18,18 @@ from fastapi.responses import FileResponse, RedirectResponse, Response, Streamin
 from pydantic import BaseModel, Field
 
 ROOT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = ROOT_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+
+from dotenv import load_dotenv
+
+load_dotenv(REPO_ROOT / ".env")
+_creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+if _creds_path and not os.path.isabs(_creds_path):
+    _resolved = (REPO_ROOT / _creds_path).resolve()
+    if _resolved.is_file():
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(_resolved)
 
 os.chdir(ROOT_DIR)
 

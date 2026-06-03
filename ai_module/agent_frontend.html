@@ -4,24 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Coder Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #070b14;
-      --bg-soft: rgba(13, 19, 31, 0.82);
-      --panel: rgba(17, 24, 39, 0.9);
-      --panel-strong: #0f172a;
-      --border: rgba(148, 163, 184, 0.18);
-      --text: #e5eefc;
-      --muted: #93a4bf;
-      --accent: #7c3aed;
-      --accent-2: #22c55e;
-      --danger: #ef4444;
-      --warn: #f59e0b;
-      --code: #0b1020;
-      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-      --radius: 20px;
-      --radius-sm: 14px;
-      --radius-xs: 10px;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-hover: #1a1a1a;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-hover: rgba(255, 255, 255, 0.12);
+      --text: #f5f5f5;
+      --muted: #666666;
+      --text-secondary: #a0a0a0;
+      --primary: #1a3560;
+      --primary-hover: #1e4070;
+      --accent: #5a8abf;
+      --accent-2: #6aaa82;
+      --danger: #e87070;
+      --warn: #c49a5a;
+      --code: #0a0a0a;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-xs: 8px;
       font-synthesis: none;
       text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
@@ -29,23 +34,26 @@
     }
 
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
     body {
       margin: 0;
       color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(124, 58, 237, 0.18), transparent 28%),
-        radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 26%),
-        linear-gradient(180deg, #060912 0%, #0a1020 55%, #060912 100%);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      font-family: Montserrat, Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
     }
 
     .app {
-      min-height: 100vh;
+      height: 100vh;
+      max-height: 100vh;
+      overflow: hidden;
       display: grid;
       grid-template-rows: auto 1fr;
       gap: 16px;
       padding: 20px;
+      box-sizing: border-box;
     }
 
     .topbar {
@@ -53,12 +61,10 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 18px 22px;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.7));
+      padding: 16px 20px;
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
     }
 
     .brand {
@@ -69,14 +75,15 @@
     }
 
     .brand-mark {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(145deg, #7c3aed, #0ea5e9);
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--primary);
       display: grid;
       place-items: center;
       font-weight: 800;
-      box-shadow: 0 10px 30px rgba(124, 58, 237, 0.32);
+      font-size: 0.85rem;
+      color: #fff;
       flex: 0 0 auto;
     }
 
@@ -106,9 +113,9 @@
       gap: 8px;
       padding: 10px 14px;
       border-radius: 999px;
-      background: rgba(15, 23, 42, 0.85);
+      background: var(--surface-hover);
       border: 1px solid var(--border);
-      color: var(--text);
+      color: var(--text-secondary);
       font-size: 0.85rem;
       white-space: nowrap;
     }
@@ -118,26 +125,26 @@
       height: 10px;
       border-radius: 50%;
       background: var(--warn);
-      box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.12);
+      box-shadow: 0 0 0 4px rgba(196, 154, 90, 0.12);
     }
 
-    .dot.connected { background: var(--accent-2); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.14); }
-    .dot.error { background: var(--danger); box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.12); }
+    .dot.connected { background: var(--accent-2); box-shadow: 0 0 0 4px rgba(106, 170, 130, 0.14); }
+    .dot.error { background: var(--danger); box-shadow: 0 0 0 4px rgba(232, 112, 112, 0.12); }
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(320px, 1.15fr) minmax(340px, 0.95fr);
+      grid-template-columns: minmax(340px, 1fr) minmax(380px, 1.1fr);
       gap: 16px;
-      min-height: calc(100vh - 120px);
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
     .panel {
-      background: var(--panel);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      box-shadow: var(--shadow);
       overflow: hidden;
-      backdrop-filter: blur(18px);
       display: flex;
       flex-direction: column;
       min-height: 0;
@@ -150,7 +157,7 @@
       gap: 12px;
       padding: 16px 18px;
       border-bottom: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.72);
+      background: var(--surface);
     }
 
     .panel-header h2 {
@@ -167,36 +174,97 @@
       display: flex;
       flex-direction: column;
       min-height: 0;
+      height: 100%;
+    }
+
+    .chat-header {
+      padding: 14px 18px;
+    }
+
+    .chat-header h2 {
+      margin: 0;
+      font-size: 1rem;
     }
 
     .chat-log {
       flex: 1;
-      overflow: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
       padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 14px;
       min-height: 0;
+      color-scheme: dark;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1a1a transparent;
+    }
+
+    .chat-log::-webkit-scrollbar {
+      width: 4px;
+      height: 0;
+    }
+
+    .chat-log::-webkit-scrollbar:horizontal {
+      display: none;
+      height: 0;
+    }
+
+    .chat-log::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-log::-webkit-scrollbar-thumb {
+      background: #1a1a1a;
+      border-radius: 999px;
+    }
+
+    .chat-log::-webkit-scrollbar-thumb:hover {
+      background: #2a2a2a;
+    }
+
+    .chat-log::-webkit-scrollbar-corner {
+      background: transparent;
+      display: none;
     }
 
     .message {
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: var(--radius-sm);
       padding: 14px 16px;
-      background: rgba(15, 23, 42, 0.72);
+      background: var(--surface-hover);
+      max-width: 100%;
+      min-width: 0;
     }
 
     .message.user {
       margin-left: auto;
-      max-width: 92%;
-      background: linear-gradient(180deg, rgba(124, 58, 237, 0.22), rgba(15, 23, 42, 0.9));
-      border-color: rgba(124, 58, 237, 0.3);
+      max-width: 88%;
+      background: rgba(26, 53, 96, 0.35);
+      border-color: rgba(90, 138, 191, 0.35);
     }
 
     .message.agent {
       margin-right: auto;
-      max-width: 92%;
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.92));
+      max-width: 100%;
+      background: var(--surface-hover);
+    }
+
+    .message.file-op {
+      margin-right: auto;
+      max-width: 100%;
+      padding: 10px 14px;
+      background: rgba(106, 170, 130, 0.08);
+      border-color: rgba(106, 170, 130, 0.28);
+    }
+
+    .message.file-op .message-meta {
+      color: #8ec4a8;
+    }
+
+    .message.file-op .message-body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
     }
 
     .message-meta {
@@ -213,21 +281,175 @@
 
     .message-body {
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
       line-height: 1.65;
       font-size: 0.95rem;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     .composer {
       border-top: 1px solid var(--border);
-      padding: 16px;
-      background: rgba(15, 23, 42, 0.88);
+      padding: 14px 16px 16px;
+      background: var(--surface);
+      flex-shrink: 0;
     }
 
-    .field-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
-      margin-bottom: 12px;
+    .chat-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      padding: 12px;
+      color-scheme: dark;
+    }
+
+    .chat-input-wrap textarea {
+      min-height: 72px;
+      max-height: 160px;
+      resize: none;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      box-shadow: none;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1a1a transparent;
+    }
+
+    .chat-input-wrap textarea::-webkit-scrollbar {
+      width: 4px;
+      height: 0;
+    }
+
+    .chat-input-wrap textarea::-webkit-scrollbar:horizontal {
+      display: none;
+      height: 0;
+    }
+
+    .chat-input-wrap textarea::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-input-wrap textarea::-webkit-scrollbar-thumb {
+      background: #1a1a1a;
+      border-radius: 999px;
+    }
+
+    .chat-input-wrap textarea::-webkit-scrollbar-thumb:hover {
+      background: #2a2a2a;
+    }
+
+    .chat-input-wrap textarea::-webkit-scrollbar-corner {
+      background: transparent;
+      display: none;
+    }
+
+    .chat-input-wrap textarea:focus {
+      box-shadow: none;
+      border-color: transparent;
+    }
+
+    .chat-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .chat-actions-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
+      background: var(--surface-hover);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .send-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: var(--radius-xs);
+      background: var(--primary);
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .stop-btn {
+      padding: 8px 12px;
+      border-radius: var(--radius-xs);
+      background: rgba(180, 60, 60, 0.9);
+      font-size: 0.8rem;
+    }
+
+    .ref-preview-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .ref-preview-row:empty {
+      display: none;
+      margin-bottom: 0;
+    }
+
+    .ref-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px 6px 6px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
+      background: var(--surface-hover);
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    .ref-chip img {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .ref-chip button {
+      padding: 4px 8px;
+      font-size: 0.72rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .ref-chip button:hover {
+      color: var(--text);
     }
 
     textarea, input, select, button {
@@ -237,16 +459,16 @@
     textarea, input, select {
       width: 100%;
       color: var(--text);
-      background: rgba(8, 13, 25, 0.92);
+      background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: var(--radius-sm);
       outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     textarea:focus, input:focus, select:focus {
-      border-color: rgba(124, 58, 237, 0.5);
-      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+      border-color: rgba(90, 138, 191, 0.5);
+      box-shadow: 0 0 0 3px rgba(26, 53, 96, 0.25);
     }
 
     textarea {
@@ -258,21 +480,19 @@
 
     .side-stack {
       display: grid;
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: minmax(0, 1fr);
       gap: 16px;
       min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
-    .controls {
-      padding: 16px 18px 18px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+    .section-list {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      gap: 0;
     }
 
     .btn-row {
@@ -286,35 +506,55 @@
       cursor: pointer;
       color: white;
       padding: 12px 16px;
-      border-radius: 14px;
+      border-radius: var(--radius-sm);
       font-weight: 600;
-      transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+      transition: background 0.15s ease, opacity 0.15s ease;
     }
 
-    button:hover { transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    button:hover { opacity: 0.92; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .primary {
-      background: linear-gradient(135deg, #7c3aed, #5b21b6);
-      box-shadow: 0 16px 30px rgba(124, 58, 237, 0.25);
+      background: var(--primary);
+    }
+
+    .primary:hover:not(:disabled) {
+      background: var(--primary-hover);
     }
 
     .secondary {
-      background: rgba(37, 99, 235, 0.9);
+      background: var(--accent);
     }
 
     .stop {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
-      box-shadow: 0 16px 30px rgba(239, 68, 68, 0.2);
+      background: rgba(180, 60, 60, 0.95);
     }
 
     .ghost {
-      background: rgba(15, 23, 42, 0.95);
+      background: var(--surface-hover);
       border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .ghost:hover:not(:disabled) {
+      border-color: var(--border-hover);
+      color: var(--text);
     }
 
     .danger {
-      background: rgba(220, 38, 38, 0.95);
+      background: rgba(180, 50, 50, 0.9);
+    }
+
+    .debug-strip {
+      border: 1px dashed rgba(90, 138, 191, 0.35);
+      padding: 10px 12px;
+      border-radius: var(--radius-xs);
+      background: rgba(26, 53, 96, 0.12);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      color: var(--text-secondary);
     }
 
     .hint {
@@ -323,59 +563,17 @@
       line-height: 1.6;
     }
 
-    .upload-panel {
-      margin-top: 10px;
-      border: 1px dashed rgba(148, 163, 184, 0.35);
-      border-radius: 14px;
-      background: rgba(8, 13, 25, 0.55);
-      padding: 12px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .upload-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .upload-list {
-      display: grid;
-      gap: 8px;
-      max-height: 160px;
-      overflow: auto;
-    }
-
-    .upload-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.7);
-      font-size: 0.84rem;
-    }
-
-    .upload-item-name {
-      color: var(--text);
-      word-break: break-all;
-    }
-
+    .upload-panel,
+    .upload-header,
+    .upload-list,
+    .upload-item,
+    .upload-item-name,
     .upload-item-meta {
-      color: var(--muted);
-      font-size: 0.76rem;
-      white-space: nowrap;
+      display: none;
     }
 
-    .section-list {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      gap: 0;
+    #referenceImagesInput {
+      display: none;
     }
 
     .tabs {
@@ -389,15 +587,15 @@
       padding: 10px 14px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.8);
+      background: var(--surface-hover);
       color: var(--muted);
       cursor: pointer;
     }
 
     .tab.active {
       color: white;
-      background: linear-gradient(135deg, rgba(124, 58, 237, 0.9), rgba(91, 33, 182, 0.9));
-      border-color: rgba(124, 58, 237, 0.35);
+      background: var(--primary);
+      border-color: rgba(90, 138, 191, 0.35);
     }
 
     .workspace-grid {
@@ -429,10 +627,10 @@
       color: var(--text);
     }
 
-    .tree-row:hover { background: rgba(124, 58, 237, 0.12); }
+    .tree-row:hover { background: rgba(26, 53, 96, 0.2); }
     .tree-row.active {
-      background: rgba(124, 58, 237, 0.22);
-      border: 1px solid rgba(124, 58, 237, 0.35);
+      background: rgba(26, 53, 96, 0.35);
+      border: 1px solid rgba(90, 138, 191, 0.35);
     }
 
     .tree-row.dir { color: var(--muted); font-weight: 600; }
@@ -468,7 +666,7 @@
       width: 100%;
       min-height: 360px;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: var(--radius-sm);
       background: #fff;
     }
 
@@ -524,10 +722,10 @@
     pre {
       margin: 0;
       padding: 16px;
-      border-radius: 16px;
+      border-radius: var(--radius-sm);
       background: var(--code);
-      border: 1px solid rgba(148, 163, 184, 0.16);
-      color: #dbeafe;
+      border: 1px solid var(--border);
+      color: #c8d4e0;
       overflow: auto;
       line-height: 1.55;
       font-size: 0.88rem;
@@ -537,51 +735,32 @@
 
     .empty-state {
       color: var(--muted);
-      border: 1px dashed rgba(148, 163, 184, 0.22);
-      background: rgba(8, 13, 25, 0.56);
-      border-radius: 16px;
+      border: 1px dashed var(--border);
+      background: var(--bg);
+      border-radius: var(--radius-sm);
       padding: 22px;
       text-align: center;
       line-height: 1.7;
     }
 
-    .split-info {
+    .grid-2 {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .mini-card {
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(8, 13, 25, 0.72);
-    }
-
-    .mini-card .label {
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .mini-card .value {
-      font-size: 0.96rem;
-      font-weight: 600;
-      word-break: break-word;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
     @media (max-width: 1120px) {
-      .layout { grid-template-columns: 1fr; }
-      .side-stack { grid-template-rows: auto auto auto; }
+      .layout { grid-template-columns: 1fr; height: auto; overflow: visible; }
+      html, body { overflow: auto; height: auto; }
+      .app { height: auto; max-height: none; overflow: visible; }
+      .chat { height: min(70vh, 640px); }
     }
 
     @media (max-width: 700px) {
       .app { padding: 12px; }
       .topbar { padding: 16px; flex-direction: column; align-items: flex-start; }
       .status-row { width: 100%; justify-content: flex-start; }
-      .field-row, .grid-2, .split-info { grid-template-columns: 1fr; }
+      .field-row, .grid-2 { grid-template-columns: 1fr; }
       .panel-header { flex-direction: column; align-items: flex-start; }
     }
   </style>
@@ -598,7 +777,6 @@
       </div>
       <div class="status-row">
         <div class="pill"><span id="connDot" class="dot"></span><span id="connText">Disconnected</span></div>
-        <div class="pill">Session: <strong id="sessionText">none</strong></div>
         <div class="pill">Project: <strong id="projectText">—</strong></div>
         <div class="pill">Status: <strong id="projectStatus">idle</strong></div>
         <div class="pill">Files: <strong id="fileCount">0</strong></div>
@@ -608,91 +786,31 @@
 
     <main class="layout">
       <section class="panel chat">
-        <div class="panel-header">
-          <div>
-            <h2>Agent Chat</h2>
-            <span>Use this panel to prompt the agent and receive generation updates.</span>
-          </div>
-          <div class="btn-row">
-            <button class="ghost" id="connectBtn">Connect</button>
-            <button class="ghost" id="resetBtn">Reset Session</button>
-            <button class="danger" id="clearBtn">Clear Chat</button>
-          </div>
+        <div class="panel-header chat-header">
+          <h2>Agent Chat</h2>
         </div>
 
         <div id="chatLog" class="chat-log"></div>
 
         <div class="composer">
-          <div class="field-row">
-            <textarea id="promptInput" placeholder="Describe the app you want the agent to generate..."></textarea>
-            <div style="display:grid; gap: 10px; align-content: start; min-width: 160px;">
-              <button class="primary" id="sendBtn">Send Prompt</button>
-              <button class="stop" id="stopBtn" disabled>Stop Generation</button>
-              <button class="secondary" id="demoBtn">Insert Demo Prompt</button>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div>
-              <input id="serverUrl" type="text" value="ws://localhost:8001/ws/chat" aria-label="WebSocket URL" />
-            </div>
-            <div>
-              <input id="sessionInput" type="text" placeholder="Session id" aria-label="Session ID" />
-            </div>
-          </div>
-          <div class="grid-2" style="margin-top:10px;">
-            <div>
-              <input id="userIdInput" type="text" placeholder="User id (e.g. alice)" aria-label="User ID" value="default" />
-            </div>
-            <div>
-              <input id="projectIdInput" type="text" placeholder="Project id (one app per project)" aria-label="Project ID" />
-            </div>
-          </div>
-          <div class="upload-panel">
-            <div class="upload-header">
-              <strong>Reference Images</strong>
-              <div class="btn-row">
-                <button class="ghost" id="clearUploadsBtn" type="button">Clear Uploads</button>
+          <div id="uploadList" class="ref-preview-row"></div>
+          <div class="chat-input-wrap">
+            <textarea id="promptInput" placeholder="Describe what you want to build or change…" rows="3"></textarea>
+            <div class="chat-actions">
+              <div class="chat-actions-left">
+                <label class="icon-btn" for="referenceImagesInput" title="Attach reference images">📎</label>
+                <input id="referenceImagesInput" type="file" accept="image/*" multiple aria-label="Upload reference images" />
+              </div>
+              <div class="chat-actions-left">
+                <button class="stop-btn" id="stopBtn" type="button" disabled style="display:none;">Stop</button>
+                <button class="send-btn" id="sendBtn" type="button" title="Send">↑</button>
               </div>
             </div>
-            <input id="referenceImagesInput" type="file" accept="image/*" multiple aria-label="Upload reference images" />
-            <div id="uploadList" class="upload-list">
-              <div class="hint">Upload one or more design references. They are sent with your prompt so the agent can generate UI from them.</div>
-            </div>
           </div>
-          <p class="hint">The server should send response messages over <strong>/ws/chat</strong>. This UI is ready to show chat output, file manifests, and future structured generation events.</p>
         </div>
       </section>
 
       <section class="side-stack">
-        <section class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Workspace Controls</h2>
-              <span>Project generation settings and session metadata.</span>
-            </div>
-          </div>
-          <div class="controls">
-            <div class="split-info">
-              <div class="mini-card">
-                <div class="label">Agent mode</div>
-                <div class="value">Code generation</div>
-              </div>
-              <div class="mini-card">
-                <div class="label">Transport</div>
-                <div class="value">WebSocket chat</div>
-              </div>
-              <div class="mini-card">
-                <div class="label">Preview</div>
-                <div class="value" id="previewTypeLabel">—</div>
-              </div>
-            </div>
-            <div class="hint">
-              One project per <strong>project id</strong>. Vite/React apps preview from <code>dist/</code> after build — not the dev <code>index.html</code> in the explorer. Use <strong>App Preview</strong> tab.
-            </div>
-          </div>
-        </section>
-
         <section class="panel section-list" style="flex:1;min-height:0;">
           <div class="panel-header">
             <div>
@@ -742,12 +860,22 @@
   </div>
 
   <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const launchProjectId = urlParams.get('projectId') || '';
+    const launchSession = urlParams.get('session') || '';
+    const launchProjectName = urlParams.get('projectName') || '';
+    const launchAutostart = urlParams.get('autostart') === '1';
+    const launchUserId = urlParams.get('userId') || localStorage.getItem('aiCoderUserId') || 'default';
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const defaultWsUrl = `${wsProtocol}//${window.location.host}/ws/chat`;
+
     const state = {
       socket: null,
       connected: false,
-      sessionId: localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
-      userId: localStorage.getItem('aiCoderUserId') || 'default',
-      projectId: localStorage.getItem('aiCoderProjectId') || '',
+      sessionId: launchSession || localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
+      userId: launchUserId,
+      projectId: launchSession || (launchProjectId ? `project-${launchProjectId}` : '') || localStorage.getItem('aiCoderProjectId') || '',
       messages: [],
       files: [],
       fileTree: [],
@@ -760,28 +888,19 @@
       previewUrl: '',
       projectType: '',
       activeTab: 'explorer',
+      pendingPrompt: '',
     };
 
     const els = {
       connDot: document.getElementById('connDot'),
       connText: document.getElementById('connText'),
-      sessionText: document.getElementById('sessionText'),
       projectText: document.getElementById('projectText'),
       projectStatus: document.getElementById('projectStatus'),
-      previewTypeLabel: document.getElementById('previewTypeLabel'),
       fileCount: document.getElementById('fileCount'),
       chatLog: document.getElementById('chatLog'),
       promptInput: document.getElementById('promptInput'),
-      serverUrl: document.getElementById('serverUrl'),
-      sessionInput: document.getElementById('sessionInput'),
-      userIdInput: document.getElementById('userIdInput'),
-      projectIdInput: document.getElementById('projectIdInput'),
-      connectBtn: document.getElementById('connectBtn'),
-      resetBtn: document.getElementById('resetBtn'),
-      clearBtn: document.getElementById('clearBtn'),
       sendBtn: document.getElementById('sendBtn'),
       stopBtn: document.getElementById('stopBtn'),
-      demoBtn: document.getElementById('demoBtn'),
       expandAllBtn: document.getElementById('expandAllBtn'),
       rebuildPreviewBtn: document.getElementById('rebuildPreviewBtn'),
       downloadBtn: document.getElementById('downloadBtn'),
@@ -799,24 +918,18 @@
       panelRaw: document.getElementById('panelRaw'),
       referenceImagesInput: document.getElementById('referenceImagesInput'),
       uploadList: document.getElementById('uploadList'),
-      clearUploadsBtn: document.getElementById('clearUploadsBtn'),
     };
 
-    const demoPrompt = `Generate a modern food delivery frontend with these requirements:\n- WebSocket-driven chat experience\n- Generated file tree visible in the UI\n- Route-safe React layout with Outlet\n- Real dummy data for every page\n- Separate components for chat, files, and preview\n- Keep the project production ready and easy to extend`;
-
     function resolveApiBaseUrl() {
-      const ws = els.serverUrl.value.trim();
-      if (ws.startsWith('ws://')) return ws.replace(/^ws:\/\//, 'http://');
-      if (ws.startsWith('wss://')) return ws.replace(/^wss:\/\//, 'https://');
       return window.location.origin;
     }
 
     function getProjectId() {
-      return (els.projectIdInput.value.trim() || state.projectId || state.sessionId);
+      return state.projectId || state.sessionId;
     }
 
     function getUserId() {
-      return (els.userIdInput.value.trim() || state.userId || 'default');
+      return state.userId || 'default';
     }
 
     function saveWorkspaceIds(sessionId, userId, projectId) {
@@ -826,18 +939,14 @@
       localStorage.setItem('aiCoderSessionId', state.sessionId);
       localStorage.setItem('aiCoderUserId', state.userId);
       localStorage.setItem('aiCoderProjectId', state.projectId);
-      els.sessionText.textContent = state.sessionId;
-      els.sessionInput.value = state.sessionId;
-      els.userIdInput.value = state.userId;
-      els.projectIdInput.value = state.projectId;
-      els.projectText.textContent = `${state.userId} / ${state.projectId}`;
+      const label = launchProjectName || state.projectId;
+      els.projectText.textContent = label;
     }
 
     function setProjectStatus(status, projectType) {
       state.projectStatus = status || state.projectStatus;
       if (projectType) state.projectType = projectType;
       els.projectStatus.textContent = state.projectStatus;
-      els.previewTypeLabel.textContent = state.projectType || '—';
     }
 
     function setPreviewUrl(url) {
@@ -855,7 +964,6 @@
       state.connected = connected;
       els.connDot.className = 'dot' + (connected ? ' connected' : mode === 'error' ? ' error' : '');
       els.connText.textContent = connected ? 'Connected' : (mode === 'error' ? 'Error' : 'Disconnected');
-      els.connectBtn.textContent = connected ? 'Reconnect' : 'Connect';
       updateGenerationControls();
     }
 
@@ -865,7 +973,9 @@
     }
 
     function updateGenerationControls() {
-      els.sendBtn.disabled = !state.connected || state.generating;
+      els.sendBtn.disabled = state.generating;
+      const showStop = state.generating;
+      els.stopBtn.style.display = showStop ? 'inline-block' : 'none';
       els.stopBtn.disabled = !state.connected || !state.generating;
     }
 
@@ -905,6 +1015,12 @@
       treeRefreshTimer = setTimeout(() => requestFileManifest(), 600);
     }
 
+    function scrollChatToBottom() {
+      requestAnimationFrame(() => {
+        els.chatLog.scrollTop = els.chatLog.scrollHeight;
+      });
+    }
+
     function renderMessages() {
       els.chatLog.innerHTML = state.messages.map((message) => {
         const roleLabel = message.role === 'user' ? 'You' : 'Agent';
@@ -918,7 +1034,7 @@
           </article>
         `;
       }).join('');
-      els.chatLog.scrollTop = els.chatLog.scrollHeight;
+      scrollChatToBottom();
     }
 
     function indexFiles(files) {
@@ -990,17 +1106,15 @@
 
     function renderUploads() {
       if (!state.referenceUploads.length) {
-        els.uploadList.innerHTML = `<div class="hint">Upload one or more design references. They are sent with your prompt so the agent can generate UI from them.</div>`;
+        els.uploadList.innerHTML = '';
         return;
       }
 
       els.uploadList.innerHTML = state.referenceUploads.map((item, index) => `
-        <div class="upload-item">
-          <div>
-            <div class="upload-item-name">${escapeHtml(item.name)}</div>
-            <div class="upload-item-meta">${escapeHtml(item.media_type || 'image/png')} · ${escapeHtml(String(item.size_kb || 0))} KB</div>
-          </div>
-          <button class="ghost" data-remove-upload="${index}" type="button">Remove</button>
+        <div class="ref-chip">
+          <img src="${escapeHtml(item.data_uri)}" alt="" />
+          <span>${escapeHtml(item.name)}</span>
+          <button type="button" data-remove-upload="${index}">×</button>
         </div>
       `).join('');
     }
@@ -1143,26 +1257,31 @@
     }
 
     function connect() {
-      const url = els.serverUrl.value.trim();
-      if (!url) return;
-
       if (state.socket) {
         try { state.socket.close(); } catch (_) {}
       }
 
-      const socket = new WebSocket(url);
+      const socket = new WebSocket(defaultWsUrl);
       state.socket = socket;
       setConnection(false);
 
       socket.addEventListener('open', () => {
         setConnection(true);
-        addMessage('agent', 'Socket connected. Ready to receive prompts.', 'system');
-        if (!els.projectIdInput.value.trim()) {
-          els.projectIdInput.value = state.sessionId;
+        if (!state.messages.length) {
+          addMessage('agent', 'Connected. Describe what you want to build.', 'system');
+        }
+        if (!state.projectId) {
+          state.projectId = state.sessionId;
         }
         saveWorkspaceIds(state.sessionId, getUserId(), getProjectId());
         requestFileManifest();
         refreshPreviewStatus();
+        if (state.pendingPrompt) {
+          const pending = state.pendingPrompt;
+          state.pendingPrompt = '';
+          els.promptInput.value = pending;
+          sendPrompt();
+        }
       });
 
       socket.addEventListener('message', (event) => {
@@ -1363,12 +1482,12 @@
       const prompt = els.promptInput.value.trim();
       if (!prompt) return;
       if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
+        state.pendingPrompt = prompt;
         connect();
-        setTimeout(() => sendPrompt(), 250);
         return;
       }
 
-      const sessionId = els.sessionInput.value.trim() || state.sessionId;
+      const sessionId = state.sessionId;
       const userId = getUserId();
       const projectId = getProjectId();
       saveWorkspaceIds(sessionId, userId, projectId);
@@ -1381,8 +1500,9 @@
         project_id: projectId,
         reference_images: state.referenceUploads,
       }));
-      console.log('[agent-ui] -> message', { prompt, session_id: sessionId, reference_images: state.referenceUploads.length });
       els.promptInput.value = '';
+      state.referenceUploads = [];
+      renderUploads();
       setGenerating(true);
     }
 
@@ -1395,24 +1515,6 @@
         type: 'stop',
         session_id: state.sessionId,
       }));
-      console.log('[agent-ui] -> stop', { session_id: state.sessionId });
-    }
-
-    function resetSession() {
-      if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        connect();
-        return;
-      }
-      state.socket.send(JSON.stringify({
-        type: 'reset',
-        session_id: state.sessionId,
-      }));
-      console.log('[agent-ui] -> reset', { session_id: state.sessionId });
-    }
-
-    function clearChat() {
-      state.messages = [];
-      renderMessages();
     }
 
     function copyCurrentFile() {
@@ -1421,15 +1523,8 @@
       navigator.clipboard.writeText(file.content || file.path || '').catch(() => {});
     }
 
-    els.connectBtn.addEventListener('click', connect);
-    els.resetBtn.addEventListener('click', resetSession);
-    els.clearBtn.addEventListener('click', clearChat);
     els.sendBtn.addEventListener('click', sendPrompt);
     els.stopBtn.addEventListener('click', stopGeneration);
-    els.demoBtn.addEventListener('click', () => {
-      els.promptInput.value = demoPrompt;
-      els.promptInput.focus();
-    });
     els.copyBtn.addEventListener('click', copyCurrentFile);
     els.expandAllBtn.addEventListener('click', requestFileManifest);
     els.rebuildPreviewBtn.addEventListener('click', () => requestPreviewBuild(true));
@@ -1442,11 +1537,6 @@
       onReferenceImagesSelected(event).catch((err) => {
         addMessage('agent', `Failed to process uploaded image: ${String(err)}`, 'error');
       });
-    });
-
-    els.clearUploadsBtn.addEventListener('click', () => {
-      state.referenceUploads = [];
-      renderUploads();
     });
 
     els.uploadList.addEventListener('click', (event) => {
@@ -1469,21 +1559,35 @@
     });
 
     els.promptInput.addEventListener('keydown', (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
         sendPrompt();
       }
     });
 
+    async function loadAutostartPrompt() {
+      if (!launchAutostart) return;
+      const sessionId = state.sessionId;
+      try {
+        const base = resolveApiBaseUrl();
+        const resp = await fetch(`${base}/api/session/${encodeURIComponent(sessionId)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const prompt = (data.prompt || data.development_prompt || '').trim();
+        if (prompt) {
+          state.pendingPrompt = prompt;
+        }
+      } catch (_) {}
+    }
+
     if (!state.projectId) state.projectId = state.sessionId;
-    els.projectIdInput.value = state.projectId;
-    els.userIdInput.value = state.userId;
     saveWorkspaceIds(state.sessionId, state.userId, state.projectId);
     renderMessages();
     renderFileTree();
     renderUploads();
     setConnection(false);
     updateGenerationControls();
-    connect();
+    loadAutostartPrompt().finally(() => connect());
   </script>
 </body>
 </html>
