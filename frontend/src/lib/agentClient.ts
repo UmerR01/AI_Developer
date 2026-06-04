@@ -35,6 +35,30 @@ export function agentProjectKey(projectId: string): string {
   return raw.startsWith("project-") ? raw : `project-${raw}`;
 }
 
+/** In-app Next.js route (preferred over legacy FastAPI HTML workspace). */
+export function buildInAppAgentWorkspacePath(input: {
+  projectId: string;
+  projectName: string;
+  sessionId?: string;
+  userId?: string;
+  autostart?: boolean;
+}): string {
+  const session = input.sessionId ?? agentProjectKey(input.projectId);
+  const params = new URLSearchParams({
+    projectId: input.projectId,
+    projectName: input.projectName,
+    session,
+  });
+  if (input.autostart) {
+    params.set("autostart", "1");
+  }
+  if (input.userId) {
+    params.set("userId", input.userId);
+  }
+  return `/agent?${params.toString()}`;
+}
+
+/** Legacy FastAPI-hosted HTML workspace (fallback). */
 export function buildAgentWorkspaceUrl(input: {
   projectId: string;
   projectName: string;
@@ -56,6 +80,13 @@ export function buildAgentWorkspaceUrl(input: {
     params.set("userId", input.userId);
   }
   return `${agentBaseUrl()}/workspace?${params.toString()}`;
+}
+
+export function openAgentWorkspaceUrl(input: Parameters<typeof buildInAppAgentWorkspacePath>[0]): string {
+  if (typeof window !== "undefined") {
+    return buildInAppAgentWorkspacePath(input);
+  }
+  return buildAgentWorkspaceUrl(input);
 }
 
 export function buildAgentPreviewUrl(userId: string, projectId: string): string {
@@ -138,12 +169,47 @@ export function resolveAgentWorkspaceUrl(
     autostart?: boolean;
   },
 ): string {
-  const built = buildAgentWorkspaceUrl(input);
+  const built = buildInAppAgentWorkspacePath(input);
   const raw = (backendUrl || "").trim();
-  if (!raw || raw.includes("localhost") || raw.includes("127.0.0.1")) {
+  if (!raw || raw.includes("localhost") || raw.includes("127.0.0.1") || raw.includes("/workspace")) {
+    return built;
+  }
+  if (raw.startsWith("/")) {
+    return raw;
+  }
+  try {
+    const u = new URL(raw);
+    if (u.pathname.includes("/workspace")) {
+      return built;
+    }
+  } catch {
     return built;
   }
   return raw;
+}
+
+export async function fetchBootstrapSession(
+  sessionId: string,
+): Promise<{ prompt?: string; development_prompt?: string } | null> {
+  const response = await fetch(`${agentBaseUrl()}/api/session/${encodeURIComponent(sessionId)}`);
+  if (!response.ok) {
+    return null;
+  }
+  return (await response.json()) as { prompt?: string; development_prompt?: string };
+}
+
+export function buildAgentWebSocketUrl(input: {
+  sessionId: string;
+  userId: string;
+  projectId: string;
+}): string {
+  const base = agentWebSocketUrl().split("?")[0];
+  const qs = new URLSearchParams({
+    session: input.sessionId,
+    userId: input.userId,
+    projectId: agentProjectKey(input.projectId),
+  });
+  return `${base}?${qs.toString()}`;
 }
 
 export function resolvePreviewOpenUrl(meta: AgentPreviewMeta | null, userId: string, projectId: string): string {
@@ -152,4 +218,19 @@ export function resolvePreviewOpenUrl(meta: AgentPreviewMeta | null, userId: str
     return url;
   }
   return buildAgentPreviewUrl(userId, projectId);
+}
+
+/** Rewrite stale localhost preview URLs from agent meta/events. */
+export function normalizePreviewUrl(
+  url: string | undefined,
+  userId: string,
+  projectId: string,
+): string {
+  if (!url?.trim()) {
+    return "";
+  }
+  if (url.includes("localhost") || url.includes("127.0.0.1")) {
+    return resolvePreviewOpenUrl({ preview_url: url, status: "ready" }, userId, projectId);
+  }
+  return url;
 }

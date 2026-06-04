@@ -8,7 +8,7 @@ import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from "react";
 import {
   agentProjectKey,
   bootstrapAgentSession,
-  buildAgentWorkspaceUrl,
+  buildInAppAgentWorkspacePath,
   fetchProjectPreview,
   inferAgentUserId,
   rebuildProjectPreview,
@@ -737,7 +737,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const openAgentWorkspace = (project: ProjectRecord, autostart: boolean) => {
     const userId = agentUserIdFor(project);
     const sessionId = agentProjectKey(project.id);
-    const url = buildAgentWorkspaceUrl({
+    const url = buildInAppAgentWorkspacePath({
       projectId: project.id,
       projectName: project.name,
       sessionId,
