@@ -26,7 +26,7 @@ services:
     container_name: playwright-mcp-agent
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3019:3019"
     environment:
       - DISPLAY=:99
       - PLAYWRIGHT_HEADLESS=true
@@ -37,9 +37,9 @@ services:
       - agent-network
     command: >
       sh -c "apt-get update && apt-get install -y curl && 
-             python3 -m http.server 3000 --directory /app"
+             python3 -m http.server 3019 --directory /app"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/", "||", "exit", "1"]
+      test: ["CMD", "curl", "-f", "http://localhost:3019/", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
       retries: 3
