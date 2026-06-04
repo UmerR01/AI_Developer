@@ -951,8 +951,23 @@
       els.projectStatus.textContent = state.projectStatus;
     }
 
+    function normalizePreviewUrl(url) {
+      if (!url) return '';
+      const lower = url.toLowerCase();
+      if (lower.includes('localhost') || lower.includes('127.0.0.1')) {
+        try {
+          const parsed = new URL(url);
+          return `${resolveApiBaseUrl()}${parsed.pathname}${parsed.search}`;
+        } catch (_) {
+          const match = url.match(/\/preview\/[^?]+/);
+          if (match) return `${resolveApiBaseUrl()}${match[0]}`;
+        }
+      }
+      return url;
+    }
+
     function setPreviewUrl(url) {
-      state.previewUrl = url || '';
+      state.previewUrl = normalizePreviewUrl(url || '');
       if (state.previewUrl) {
         els.appPreviewFrame.src = state.previewUrl;
         els.previewStatusText.textContent = `Live preview: ${state.previewUrl}`;
@@ -1229,11 +1244,45 @@
         setProjectStatus(data.status || 'idle', data.project_type);
         if (data.status === 'ready' && data.preview_url) {
           setPreviewUrl(data.preview_url);
+          activateTab('app-preview');
+        } else if (data.can_preview && data.preview_url) {
+          setPreviewUrl(data.preview_url);
+          activateTab('app-preview');
         } else if (data.status === 'failed') {
           els.previewStatusText.textContent = data.preview_error || 'Preview failed. Click Rebuild Preview.';
+        } else if (data.can_preview) {
+          els.previewStatusText.textContent = 'Project has files. Click Rebuild Preview to show the app.';
         }
       } catch (e) {
         console.warn('[agent-ui] preview status', e);
+      }
+    }
+
+    async function rebuildPreviewHttp(force = true) {
+      const base = resolveApiBaseUrl();
+      const userId = encodeURIComponent(getUserId());
+      const projectId = encodeURIComponent(getProjectId());
+      setProjectStatus('building');
+      els.previewStatusText.textContent = 'Building preview…';
+      try {
+        const resp = await fetch(
+          `${base}/api/projects/${userId}/${projectId}/preview/rebuild?force=${force ? 'true' : 'false'}`,
+          { method: 'POST' },
+        );
+        if (!resp.ok) {
+          els.previewStatusText.textContent = 'Preview rebuild failed.';
+          return;
+        }
+        const data = await resp.json();
+        setProjectStatus(data.status || 'idle', data.project_type);
+        if (data.status === 'ready' && data.preview_url) {
+          setPreviewUrl(data.preview_url);
+          activateTab('app-preview');
+        } else if (data.preview_error) {
+          els.previewStatusText.textContent = data.preview_error;
+        }
+      } catch (e) {
+        console.warn('[agent-ui] rebuild preview', e);
       }
     }
 
@@ -1255,12 +1304,22 @@
       els.panelAppPreview.classList.toggle('active', tabName === 'app-preview');
     }
 
+    function buildWebSocketUrl() {
+      const base = defaultWsUrl.split('?')[0];
+      const qs = new URLSearchParams({
+        session: state.sessionId,
+        userId: getUserId(),
+        projectId: getProjectId(),
+      });
+      return `${base}?${qs.toString()}`;
+    }
+
     function connect() {
       if (state.socket) {
         try { state.socket.close(); } catch (_) {}
       }
 
-      const socket = new WebSocket(defaultWsUrl);
+      const socket = new WebSocket(buildWebSocketUrl());
       state.socket = socket;
       setConnection(false);
 
@@ -1300,6 +1359,18 @@
             payload.user_id || getUserId(),
             payload.project_id || getProjectId(),
           );
+        }
+
+        if (payload.type === 'workspace_ready') {
+          if (payload.user_id || payload.project_id) {
+            saveWorkspaceIds(payload.session_id, payload.user_id, payload.project_id);
+          }
+          setProjectStatus(payload.status || 'idle', payload.project_type);
+          if (payload.preview_url) {
+            setPreviewUrl(payload.preview_url);
+            if (payload.status === 'ready') activateTab('app-preview');
+          }
+          return;
         }
 
         if (payload.type === 'ack') {
@@ -1526,7 +1597,13 @@
     els.stopBtn.addEventListener('click', stopGeneration);
     els.copyBtn.addEventListener('click', copyCurrentFile);
     els.expandAllBtn.addEventListener('click', requestFileManifest);
-    els.rebuildPreviewBtn.addEventListener('click', () => requestPreviewBuild(true));
+    els.rebuildPreviewBtn.addEventListener('click', () => {
+      if (state.connected && state.socket.readyState === WebSocket.OPEN) {
+        requestPreviewBuild(true);
+      } else {
+        rebuildPreviewHttp(true);
+      }
+    });
     els.downloadBtn.addEventListener('click', downloadProjectZip);
     els.openPreviewTabBtn.addEventListener('click', () => {
       if (state.previewUrl) window.open(state.previewUrl, '_blank');

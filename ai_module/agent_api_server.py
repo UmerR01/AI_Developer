@@ -43,12 +43,46 @@ from project_workspace import (  # noqa: E402
     ROOT_DIR as WORKSPACE_ROOT,
     adopt_stray_repo_root_files,
     create_project_zip,
-    get_project_dir,
+    infer_user_id_from_workdir,
     iso_now,
+    resolve_project_dir,
     resolve_project_path,
     sanitize_id,
     workspace,
 )
+
+BOOTSTRAP_CACHE_FILE = ROOT_DIR / ".bootstrap_sessions.json"
+
+
+def _load_bootstrap_cache() -> Dict[str, Dict[str, Any]]:
+    if not BOOTSTRAP_CACHE_FILE.is_file():
+        return {}
+    try:
+        data = json.loads(BOOTSTRAP_CACHE_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_bootstrap_cache() -> None:
+    try:
+        BOOTSTRAP_CACHE_FILE.write_text(
+            json.dumps(bootstrapped_sessions, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
+def _apply_bootstrap_to_workspace(data: Dict[str, Any]) -> None:
+    user_id = sanitize_id(str(data.get("user_id") or "default"), "default")
+    project_id = sanitize_id(
+        str(data.get("project_id") or data.get("session_id") or "default"),
+        "default",
+    )
+    workdir = (data.get("working_directory") or "").strip() or None
+    if workdir:
+        workspace.register_project_dir(user_id, project_id, workdir)
 
 app = FastAPI(title="ai-coder HTTP server", version="2.0.0")
 
@@ -156,7 +190,7 @@ class SessionStore:
 
 
 session_store = SessionStore()
-bootstrapped_sessions: Dict[str, Dict[str, Any]] = {}
+bootstrapped_sessions: Dict[str, Dict[str, Any]] = _load_bootstrap_cache()
 
 
 def _save_reference_images(session_id: str, images: List[Dict[str, Any]]) -> List[Dict[str, str]]:
@@ -214,7 +248,7 @@ def _save_reference_images(session_id: str, images: List[Dict[str, Any]]) -> Lis
 
 
 def _project_context_prompt(user_id: str, project_id: str) -> str:
-    project_dir = get_project_dir(user_id, project_id)
+    project_dir = workspace.project_dir_for(user_id, project_id)
     return (
         f"PROJECT WORKSPACE (mandatory — read before any write tool):\n"
         f"- user_id: {user_id}\n"
@@ -310,20 +344,28 @@ async def bootstrap_session(request: SessionBootstrapRequest) -> Dict[str, Any]:
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt is required")
 
-    project_id = request.project_id or session_id
-    user_id = request.user_id or "default"
+    workdir = (request.working_directory or "").strip() or None
+    project_id = sanitize_id(request.project_id or session_id, session_id)
+    user_id = sanitize_id(
+        request.user_id or (infer_user_id_from_workdir(workdir) if workdir else "default"),
+        "default",
+    )
     session_store.bind_project(session_id, user_id, project_id)
+    if workdir:
+        workspace.register_project_dir(user_id, project_id, workdir)
+
     bootstrapped_sessions[session_id] = {
         "session_id": session_id,
         "prompt": prompt,
         "development_prompt": prompt,
-        "working_directory": request.working_directory or "",
+        "working_directory": workdir or "",
         "project_id": project_id,
         "project_name": request.project_name or "",
         "user_id": user_id,
         "prompt_chars": len(prompt),
         "timestamp": iso_now(),
     }
+    _save_bootstrap_cache()
     return {
         "success": True,
         "session_id": session_id,
@@ -337,6 +379,11 @@ async def get_bootstrapped_session(session_id: str) -> Dict[str, Any]:
     if data is None:
         raise HTTPException(status_code=404, detail="Session prompt not found")
     return data
+
+
+@app.get("/api/session/{session_id}/bootstrap")
+async def get_bootstrapped_session_alias(session_id: str) -> Dict[str, Any]:
+    return await get_bootstrapped_session(session_id)
 
 
 @app.get("/api/projects/{user_id}/{project_id}/files/tree")
@@ -357,12 +404,32 @@ async def api_get_file(user_id: str, project_id: str, path: str) -> Dict[str, An
 @app.get("/api/projects/{user_id}/{project_id}/preview")
 async def api_preview_status(user_id: str, project_id: str) -> Dict[str, Any]:
     meta = workspace.load_meta(user_id, project_id)
-    return meta.to_dict()
+    payload = meta.to_dict()
+    payload["preview_url"] = workspace.rewrite_preview_url(
+        payload.get("preview_url", ""), user_id, project_id
+    )
+    if workspace.get_preview_serve_dir(user_id, project_id) and meta.status != ProjectStatus.READY:
+        payload["can_preview"] = True
+    elif meta.status == ProjectStatus.READY:
+        payload["can_preview"] = True
+    else:
+        payload["can_preview"] = bool(workspace.get_preview_serve_dir(user_id, project_id))
+    return payload
+
+
+@app.post("/api/projects/{user_id}/{project_id}/preview/rebuild")
+async def api_rebuild_preview(user_id: str, project_id: str, force: bool = True) -> Dict[str, Any]:
+    meta = await workspace.run_preview_build(user_id, project_id, force=force)
+    payload = meta.to_dict()
+    payload["preview_url"] = workspace.rewrite_preview_url(
+        payload.get("preview_url", ""), user_id, project_id
+    )
+    return payload
 
 
 @app.get("/api/projects/{user_id}/{project_id}/download")
 async def api_download_project(user_id: str, project_id: str) -> Response:
-    project_dir = get_project_dir(user_id, project_id)
+    project_dir = workspace.project_dir_for(user_id, project_id)
     if not any(project_dir.rglob("*")):
         raise HTTPException(status_code=404, detail="Project is empty")
     payload = create_project_zip(project_dir)
@@ -418,9 +485,26 @@ async def serve_preview_file(user_id: str, project_id: str, file_path: str = "")
 @app.websocket("/ws/chat")
 async def chat_socket(websocket: WebSocket) -> None:
     await websocket.accept()
-    session_id = str(uuid.uuid4())
-    sm = session_store.bind_project(session_id, "default", session_id)
-    print(f"[ws] connected session={session_id} project={sm.user_id}/{sm.project_id}")
+    qp = websocket.query_params
+    session_id = qp.get("session") or str(uuid.uuid4())
+    user_id = qp.get("userId") or qp.get("user_id") or "default"
+    project_id = qp.get("projectId") or qp.get("project_id") or session_id
+
+    boot = bootstrapped_sessions.get(session_id)
+    if boot:
+        user_id = boot.get("user_id") or user_id
+        project_id = boot.get("project_id") or project_id
+        _apply_bootstrap_to_workspace(boot)
+
+    sm = session_store.bind_project(session_id, user_id, project_id)
+    workdir = (boot or {}).get("working_directory") if boot else None
+    if workdir:
+        workspace.register_project_dir(sm.user_id, sm.project_id, workdir)
+
+    print(
+        f"[ws] connected session={session_id} project={sm.user_id}/{sm.project_id} "
+        f"workdir={workdir or 'generated'}"
+    )
     loop = asyncio.get_running_loop()
     event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
     stop_event = threading.Event()
@@ -453,11 +537,28 @@ async def chat_socket(websocket: WebSocket) -> None:
                         else:
                             event["in_project"] = False
                 print(f"[ws] -> session={session_id} event={event.get('type')}")
-                await websocket.send_text(json.dumps(event))
+                try:
+                    await websocket.send_text(json.dumps(event))
+                except Exception as send_exc:
+                    print(f"[ws] send failed session={session_id}: {send_exc}")
+                    return
         except WebSocketDisconnect:
             return
 
     sender_task = asyncio.create_task(sender_loop())
+
+    meta = workspace.load_meta(sm.user_id, sm.project_id)
+    emit_ready = {
+        "type": "workspace_ready",
+        "session_id": session_id,
+        "user_id": sm.user_id,
+        "project_id": sm.project_id,
+        "preview_url": workspace.rewrite_preview_url(meta.preview_url, sm.user_id, sm.project_id),
+        "status": meta.status.value,
+        "project_type": meta.project_type,
+        "timestamp": iso_now(),
+    }
+    loop.call_soon_threadsafe(event_queue.put_nowait, emit_ready)
 
     def emit(event: Dict[str, Any]) -> None:
         event.setdefault("user_id", sm.user_id)
@@ -467,14 +568,12 @@ async def chat_socket(websocket: WebSocket) -> None:
     def start_run(prompt: str, run_session_id: str, user_id: str, project_id: str) -> None:
         nonlocal current_run_task, preview_task
         stop_event.clear()
-        project_dir = str(get_project_dir(user_id, project_id))
+        project_dir = str(resolve_project_dir(user_id, project_id))
+        workspace.register_project_dir(user_id, project_id, project_dir)
         full_prompt = _project_context_prompt(user_id, project_id) + prompt
         history = session_store.get_history(run_session_id)
 
         def worker() -> None:
-            original_cwd = os.getcwd()
-            os.chdir(project_dir)
-            os.environ["CODER_BUDDY_PROJECT_ROOT"] = project_dir
             try:
                 output = run_agent(
                     full_prompt,
@@ -527,9 +626,6 @@ async def chat_socket(websocket: WebSocket) -> None:
                     }
                 )
             finally:
-                with suppress(Exception):
-                    os.chdir(original_cwd)
-                os.environ.pop("CODER_BUDDY_PROJECT_ROOT", None)
                 workspace.end_generation(user_id, project_id)
                 emit(
                     {
@@ -612,7 +708,9 @@ async def chat_socket(websocket: WebSocket) -> None:
                 continue
 
             if payload.type == "list_files":
-                tree = workspace.get_file_tree(sm.user_id, sm.project_id)
+                tree = await asyncio.to_thread(
+                    workspace.get_file_tree, sm.user_id, sm.project_id
+                )
                 await websocket.send_text(
                     json.dumps(
                         {
