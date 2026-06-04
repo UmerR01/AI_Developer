@@ -784,7 +784,7 @@
         </div>
       </div>
       <div class="status-row">
-        <div class="pill" id="connPill" role="button" tabindex="0" title="Click to reconnect" style="cursor:pointer;"><span id="connDot" class="dot"></span><span id="connText">Disconnected</span></div>
+        <div class="pill"><span id="connDot" class="dot"></span><span id="connText">Disconnected</span></div>
         <div class="pill">Project: <strong id="projectText">—</strong></div>
         <div class="pill">Status: <strong id="projectStatus">idle</strong></div>
         <div class="pill">Files: <strong id="fileCount">0</strong></div>
@@ -893,10 +893,6 @@
       projectType: '',
       activeTab: 'explorer',
       pendingPrompt: '',
-      reconnectTimer: null,
-      reconnectAttempts: 0,
-      maxReconnectAttempts: 12,
-      userClosedPage: false,
     };
 
     const els = {
@@ -983,44 +979,10 @@
 
     function setConnection(connected, mode = 'neutral') {
       state.connected = connected;
-      els.connDot.className = 'dot' + (
-        connected ? ' connected' : mode === 'reconnecting' ? '' : mode === 'error' ? ' error' : ''
-      );
-      els.connText.textContent = connected
-        ? 'Connected'
-        : (mode === 'reconnecting' ? 'Reconnecting…' : mode === 'error' ? 'Error' : 'Disconnected');
+      els.connDot.className = 'dot' + (connected ? ' connected' : mode === 'error' ? ' error' : '');
+      els.connText.textContent = connected ? 'Connected' : (mode === 'error' ? 'Error' : 'Disconnected');
       updateGenerationControls();
     }
-
-    function clearReconnectTimer() {
-      if (state.reconnectTimer) {
-        clearTimeout(state.reconnectTimer);
-        state.reconnectTimer = null;
-      }
-    }
-
-    function scheduleReconnect(reason) {
-      if (state.userClosedPage) return;
-      if (state.reconnectAttempts >= state.maxReconnectAttempts) {
-        addMessage('agent', 'Could not reconnect. Refresh the page or click Connect.', 'system');
-        return;
-      }
-      if (state.reconnectTimer) return;
-      const delay = Math.min(30000, 1000 * Math.pow(2, state.reconnectAttempts));
-      state.reconnectAttempts += 1;
-      setConnection(false, 'reconnecting');
-      const note = reason ? ` (${reason})` : '';
-      addMessage('agent', `Reconnecting in ${Math.round(delay / 1000)}s…${note}`, 'system');
-      state.reconnectTimer = setTimeout(() => {
-        state.reconnectTimer = null;
-        connect(true);
-      }, delay);
-    }
-
-    window.addEventListener('beforeunload', () => {
-      state.userClosedPage = true;
-      clearReconnectTimer();
-    });
 
     function setGenerating(isGenerating) {
       state.generating = isGenerating;
@@ -1352,26 +1314,17 @@
       return `${base}?${qs.toString()}`;
     }
 
-    function connect(isAutoReconnect = false) {
-      clearReconnectTimer();
+    function connect() {
       if (state.socket) {
         try { state.socket.close(); } catch (_) {}
       }
 
       const socket = new WebSocket(buildWebSocketUrl());
       state.socket = socket;
-      if (!isAutoReconnect) {
-        setConnection(false);
-      } else {
-        setConnection(false, 'reconnecting');
-      }
+      setConnection(false);
 
       socket.addEventListener('open', () => {
-        state.reconnectAttempts = 0;
         setConnection(true);
-        if (isAutoReconnect) {
-          addMessage('agent', 'Reconnected. You can send another prompt.', 'system');
-        }
         if (!state.messages.length) {
           addMessage('agent', 'Connected. Describe what you want to build.', 'system');
         }
@@ -1429,12 +1382,6 @@
 
         if (payload.type === 'thinking' && payload.content) {
           addActivity(`Thinking: ${String(payload.content).slice(0, 280)}`, 'thinking');
-          return;
-        }
-
-        if (payload.type === 'llm_retry') {
-          const msg = payload.message || `API busy — retry ${payload.attempt || '?'}/${payload.retries_allowed || 3}…`;
-          addActivity(msg, 'retry');
           return;
         }
 
@@ -1558,16 +1505,9 @@
           return;
         }
 
-        if (payload.type === 'error' || payload.type === 'run_error') {
-          setGenerating(false);
-          addMessage('agent', payload.error || 'Unknown error.', 'error');
-          if (/429|RESOURCE_EXHAUSTED|rate limit|quota|exhausted/i.test(String(payload.error || ''))) {
-            addMessage(
-              'agent',
-              'Gemini quota/rate limit (retries already attempted). Wait a minute and send again — no refresh needed.',
-              'system',
-            );
-          }
+        if (payload.type === 'error') {
+          setConnection(false, 'error');
+          addMessage('agent', payload.error || 'Unknown socket error.', 'error');
           return;
         }
 
@@ -1580,22 +1520,16 @@
       });
 
       socket.addEventListener('close', () => {
+        setConnection(false);
         setGenerating(false);
         console.log('[agent-ui] websocket closed');
-        if (!state.userClosedPage) {
-          addMessage('agent', 'Connection lost — reconnecting automatically…', 'system');
-          scheduleReconnect('socket closed');
-        } else {
-          setConnection(false);
-        }
+        addMessage('agent', 'Socket closed.', 'system');
       });
 
       socket.addEventListener('error', () => {
         console.error('[agent-ui] websocket error');
+        setConnection(false, 'error');
         setGenerating(false);
-        if (!state.userClosedPage && state.socket?.readyState !== WebSocket.OPEN) {
-          scheduleReconnect('socket error');
-        }
       });
     }
 
@@ -1727,22 +1661,6 @@
           state.pendingPrompt = prompt;
         }
       } catch (_) {}
-    }
-
-    const connPill = document.getElementById('connPill');
-    if (connPill) {
-      const manualReconnect = () => {
-        state.reconnectAttempts = 0;
-        clearReconnectTimer();
-        connect();
-      };
-      connPill.addEventListener('click', manualReconnect);
-      connPill.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          manualReconnect();
-        }
-      });
     }
 
     if (!state.projectId) state.projectId = state.sessionId;
