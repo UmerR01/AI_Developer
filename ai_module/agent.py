@@ -11,11 +11,6 @@ from typing import List, Dict, Any, Callable, Optional
 import json
 from skills import read_frontend_skill
 
-try:
-    from .llm_retry import invoke_with_retry, retry_settings
-except ImportError:
-    from llm_retry import invoke_with_retry, retry_settings
-
 from tools import (
     web_search,
     fetch_url,
@@ -783,25 +778,7 @@ def _run_agent_loop(
             _emit_event(event_sink, "stopped", reason="stop_requested_during_loop", iteration=iteration + 1)
             return "⏹ Generation stopped by user."
 
-        def _on_llm_retry(attempt: int, max_attempts: int, wait: float, exc: BaseException) -> None:
-            retries_allowed = max(1, max_attempts - 1)
-            _emit_event(
-                event_sink,
-                "llm_retry",
-                iteration=iteration + 1,
-                attempt=attempt,
-                max_attempts=max_attempts,
-                retries_allowed=retries_allowed,
-                wait_seconds=round(wait, 1),
-                error=str(exc)[:240],
-                message=f"API busy — retry {attempt}/{retries_allowed} in {wait:.0f}s…",
-            )
-
-        response = invoke_with_retry(
-            lambda: llm_with_tools.invoke(message_history),
-            label="agent",
-            on_retry=_on_llm_retry,
-        )
+        response = llm_with_tools.invoke(message_history)
 
         # ── Show Gemini thinking ───────────────────────────────────────────
         thinking = _extract_thinking(response)

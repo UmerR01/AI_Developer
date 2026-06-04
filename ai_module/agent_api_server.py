@@ -541,7 +541,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                     await websocket.send_text(json.dumps(event))
                 except Exception as send_exc:
                     print(f"[ws] send failed session={session_id}: {send_exc}")
-                    continue
+                    return
         except WebSocketDisconnect:
             return
 
@@ -615,19 +615,13 @@ async def chat_socket(websocket: WebSocket) -> None:
                     }
                 )
             except Exception as exc:  # pragma: no cover
-                err_text = str(exc)
-                if "resource exhausted" in err_text.lower() or "429" in err_text:
-                    err_text = (
-                        f"{err_text}\n\n(Gemini quota/rate limit — automatic retries were already attempted. "
-                        "You can send another prompt when ready; the connection stays open.)"
-                    )
                 emit(
                     {
-                        "type": "run_error",
+                        "type": "error",
                         "session_id": run_session_id,
                         "user_id": user_id,
                         "project_id": project_id,
-                        "error": err_text,
+                        "error": str(exc),
                         "timestamp": iso_now(),
                     }
                 )
@@ -843,17 +837,17 @@ async def chat_socket(websocket: WebSocket) -> None:
     except Exception as exc:
         stop_event.set()
         print(f"[ws] error session={session_id}: {exc}")
-        with suppress(Exception):
-            await websocket.send_text(
-                SocketResponse(
-                    type="run_error",
-                    session_id=session_id,
-                    error=str(exc),
-                    timestamp=iso_now(),
-                ).model_dump_json()
-            )
+        await websocket.send_text(
+            SocketResponse(
+                type="error",
+                session_id=session_id,
+                error=str(exc),
+                timestamp=iso_now(),
+            ).model_dump_json()
+        )
     finally:
         stop_event.set()
+        emit({"type": "__close__"})
         sender_task.cancel()
         with suppress(asyncio.CancelledError):
             await sender_task
