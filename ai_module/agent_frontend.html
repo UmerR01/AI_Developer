@@ -868,9 +868,11 @@
     const launchProjectName = urlParams.get('projectName') || '';
     const launchAutostart = urlParams.get('autostart') === '1';
     const launchUserId = urlParams.get('userId') || localStorage.getItem('aiCoderUserId') || 'default';
+    const launchWsUrl = urlParams.get('ws') || '';
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const defaultWsUrl = `${wsProtocol}//${window.location.host}/ws/chat`;
+    const agentBasePath = window.location.pathname.split('/').filter(Boolean)[0] === 'agent' ? '/agent' : '';
+    const defaultWsUrl = launchWsUrl || `${wsProtocol}//${window.location.host}${agentBasePath}/ws/chat`;
 
     const state = {
       socket: null,
@@ -921,7 +923,7 @@
     };
 
     function resolveApiBaseUrl() {
-      return window.location.origin;
+      return `${window.location.origin}${agentBasePath}`;
     }
 
     function getProjectId() {
