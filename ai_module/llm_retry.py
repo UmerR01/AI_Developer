@@ -57,6 +57,7 @@ def is_retryable_error(exc: BaseException) -> bool:
 
 
 def retry_settings() -> tuple[int, float, float]:
+    # 1 initial call + 3 retries on quota / rate-limit / transient errors
     attempts = max(1, int(os.getenv("AI_LLM_RETRY_ATTEMPTS", "4")))
     base_delay = max(0.5, float(os.getenv("AI_LLM_RETRY_BASE_SECONDS", "2")))
     max_delay = max(base_delay, float(os.getenv("AI_LLM_RETRY_MAX_SECONDS", "30")))

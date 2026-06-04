@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   agentProjectKey,
   bootstrapAgentSession,
-  buildAgentWorkspaceUrl,
+  buildInAppAgentWorkspacePath,
   inferAgentUserId,
 } from "../../../../lib/agentClient";
 import { createProject, reviewProjectBrief } from "../../api";
@@ -338,7 +338,7 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
 
       onClose();
       window.open(
-        buildAgentWorkspaceUrl({
+        buildInAppAgentWorkspacePath({
           projectId: created.project.id,
           projectName: created.project.name,
           sessionId,
