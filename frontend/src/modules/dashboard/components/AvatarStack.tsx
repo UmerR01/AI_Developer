@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import type { Account } from "../types";
 
 interface AvatarStackProps {
@@ -17,12 +19,14 @@ export function AvatarStack({ members, maxVisible = 3 }: AvatarStackProps) {
   return (
     <div className="avatar-stack" aria-label="project members">
       {visibleMembers.map((member) => (
-        <img
+        <Image
           key={member.id}
           className="avatar-circle"
           src={member.avatarUrl}
           alt={member.displayName}
           title={member.displayName}
+          width={32}
+          height={32}
         />
       ))}
       {showCountBubble ? <span className="avatar-count">+{hiddenCount}</span> : null}

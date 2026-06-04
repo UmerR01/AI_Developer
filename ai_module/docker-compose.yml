@@ -1,0 +1,67 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml
+      - searxng-data:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_INSTANCE_NAME=AgentSearch
+      - SEARXNG_SECRET_KEY=change-me-in-production-$(date +%s)
+    networks:
+      - agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.40.0-jammy
+    container_name: playwright-mcp-agent
+    restart: unless-stopped
+    ports:
+      - "3019:3019"
+    environment:
+      - DISPLAY=:99
+      - PLAYWRIGHT_HEADLESS=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    volumes:
+      - playwright-cache:/ms-playwright
+    networks:
+      - agent-network
+    command: >
+      sh -c "apt-get update && apt-get install -y curl && 
+             python3 -m http.server 3019 --directory /app"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3019/", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-agent
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - agent-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+volumes:
+  searxng-data:
+  playwright-cache:
+  redis-data:
+
+networks:
+  agent-network:
+    driver: bridge

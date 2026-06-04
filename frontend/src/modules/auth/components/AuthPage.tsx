@@ -16,30 +16,19 @@ export function AuthPage({ initialMode = "login" }: AuthPageProps) {
 
   return (
     <div className="auth-root">
-
-      {/* ── Animated background blobs ───────────────────────── */}
-      <div className="auth-bg" aria-hidden="true">
-        <span className="auth-blob auth-blob--a" />
-        <span className="auth-blob auth-blob--b" />
-        <span className="auth-blob auth-blob--c" />
-        <span className="auth-blob auth-blob--d" />
-        {/* Subtle grid / noise overlay */}
-        <span className="auth-grid-overlay" />
-      </div>
-
-      {/* ── Main split card ─────────────────────────────────── */}
       <div className={`auth-card${isLogin ? "" : " auth-card--signup"}`}>
 
-        {/* ════ LEFT PANEL ════════════════════════════════════ */}
-        <div className={`auth-panel auth-panel--left${isLogin ? " auth-panel--glass" : " auth-panel--solid"}`}>
+        {/* ═══ LEFT PANEL ═══ */}
+        <div className={`auth-panel auth-panel--left${isLogin ? " auth-panel--cta" : " auth-panel--form"}`}>
           <div className="auth-panel-grid">
 
-            {/* Form layer — signup (shown when signup active) */}
+            {/* Signup form (visible when signup active) */}
             <div className={`auth-layer auth-layer--form${!isLogin ? " auth-layer--visible" : ""}`}>
               <AuthBrand />
               <div className="auth-form-head">
-                <p className="auth-kicker">SIGNUP</p>
-                <h2 className="auth-form-title">Create Account</h2>
+                <p className="auth-kicker">Create Account</p>
+                <h2 className="auth-form-title">Get started</h2>
+                <p className="auth-form-subtitle">Set up your admin workspace in seconds.</p>
               </div>
               <SignupForm />
               <p className="auth-switch-note">
@@ -50,23 +39,16 @@ export function AuthPage({ initialMode = "login" }: AuthPageProps) {
               </p>
             </div>
 
-            {/* Glass layer — CTA (shown when login active) */}
-            <div className={`auth-layer auth-layer--glass${isLogin ? " auth-layer--visible" : ""}`}>
-              <div className="auth-glass-inner auth-glass-inner--compact">
-                <span className="auth-eyebrow">NEW USER?</span>
-                <h3 className="auth-glass-title auth-glass-title--sm">
-                  Ready to<br />Join?
-                </h3>
-                <p className="auth-glass-body">
+            {/* CTA panel (visible when login active) */}
+            <div className={`auth-layer auth-layer--cta${isLogin ? " auth-layer--visible" : ""}`}>
+              <div className="auth-cta-inner">
+                <h3 className="auth-cta-title">Ready to<br />Join?</h3>
+                <p className="auth-cta-body">
                   Signup now and start using your workspace.
                 </p>
-                <button
-                  type="button"
-                  className="auth-glass-cta"
-                  onClick={() => setMode("signup")}
-                >
-                  <span>Go to signup page</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <button type="button" className="auth-cta-btn" onClick={() => setMode("signup")}>
+                  Go to signup page
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -76,49 +58,40 @@ export function AuthPage({ initialMode = "login" }: AuthPageProps) {
           </div>
         </div>
 
-        {/* ════ DIVIDER ════════════════════════════════════════ */}
+        {/* ═══ DIVIDER ═══ */}
         <div className="auth-divider" aria-hidden="true" />
 
-        {/* ════ RIGHT PANEL ═══════════════════════════════════ */}
-        <div className={`auth-panel auth-panel--right${isLogin ? " auth-panel--solid" : " auth-panel--glass"}`}>
+        {/* ═══ RIGHT PANEL ═══ */}
+        <div className={`auth-panel auth-panel--right${isLogin ? " auth-panel--form" : " auth-panel--cta"}`}>
           <div className="auth-panel-grid">
 
-            {/* Form layer — login (shown when login active) */}
+            {/* Login form (visible when login active) */}
             <div className={`auth-layer auth-layer--form${isLogin ? " auth-layer--visible" : ""}`}>
               <AuthBrand />
               <div className="auth-form-head">
-                <p className="auth-kicker">LOGIN</p>
-                <h2 className="auth-form-title">Welcome back</h2>
-                <p className="auth-form-subtitle">
-                  Sign in to access your workspace demo.
-                </p>
+                <p className="auth-kicker">Welcome back</p>
+                <h2 className="auth-form-title">Sign in</h2>
+                <p className="auth-form-subtitle">Access your workspace and continue building.</p>
               </div>
               <LoginForm />
               <p className="auth-switch-note">
-                Need a new admin account?{" "}
+                Don&apos;t have an account?{" "}
                 <button type="button" className="auth-switch-link" onClick={() => setMode("signup")}>
-                  Open the signup page.
+                  Create one
                 </button>
               </p>
             </div>
 
-            {/* Glass layer — CTA (shown when signup active) */}
-            <div className={`auth-layer auth-layer--glass${!isLogin ? " auth-layer--visible" : ""}`}>
-              <div className="auth-glass-inner auth-glass-inner--compact">
-                <span className="auth-eyebrow">EXISTING USER?</span>
-                <h3 className="auth-glass-title auth-glass-title--sm">
-                  Already a<br />member?
-                </h3>
-                <p className="auth-glass-body">
-                  Return to an existing workspace session and sign in with your credentials.
+            {/* CTA panel (visible when signup active) */}
+            <div className={`auth-layer auth-layer--cta${!isLogin ? " auth-layer--visible" : ""}`}>
+              <div className="auth-cta-inner">
+                <h3 className="auth-cta-title">Already a<br />Member?</h3>
+                <p className="auth-cta-body">
+                  Sign in to your workspace and pick up where you left off.
                 </p>
-                <button
-                  type="button"
-                  className="auth-glass-cta"
-                  onClick={() => setMode("login")}
-                >
-                  <span>Go to login page</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <button type="button" className="auth-cta-btn" onClick={() => setMode("login")}>
+                  Go to sign in
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -136,14 +109,8 @@ export function AuthPage({ initialMode = "login" }: AuthPageProps) {
 function AuthBrand() {
   return (
     <div className="auth-brand">
-      {/* 2×2 grid logo mark */}
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-        <rect x="0"  y="0"  width="9" height="9" rx="2.5" fill="currentColor" opacity="1" />
-        <rect x="13" y="0"  width="9" height="9" rx="2.5" fill="currentColor" opacity="0.55" />
-        <rect x="0"  y="13" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.55" />
-        <rect x="13" y="13" width="9" height="9" rx="2.5" fill="currentColor" opacity="1" />
-      </svg>
-      <span>AI Developer</span>
+      <span className="auth-brand-mark">A</span>
+      <span className="auth-brand-text">AI Developer</span>
     </div>
   );
 }

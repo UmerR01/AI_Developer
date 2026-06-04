@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { clearStoredSession } from "../../auth/session";
 import type { Role } from "../types";
@@ -15,103 +15,108 @@ interface SidebarItem {
   roles: Role[];
 }
 
-function DashboardIcon() {
+function IconDashboard() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="4" width="7" height="7" rx="1.4" fill="currentColor" opacity="0.95" />
-      <rect x="13" y="4" width="7" height="10" rx="1.4" fill="currentColor" opacity="0.65" />
-      <rect x="4" y="13" width="7" height="7" rx="1.4" fill="currentColor" opacity="0.65" />
-      <rect x="13" y="16" width="7" height="4" rx="1.4" fill="currentColor" opacity="0.95" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="5" rx="1.5" />
+      <rect x="14" y="12" width="7" height="9" rx="1.5" />
+      <rect x="3" y="16" width="7" height="5" rx="1.5" />
     </svg>
   );
 }
 
-function FolderIcon() {
+function IconProjects() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M3.5 7.8c0-1.1.9-2 2-2h4l1.6 1.7h7.4c1.1 0 2 .9 2 2v6.8c0 1.1-.9 2-2 2H5.5c-1.1 0-2-.9-2-2V7.8Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.7"
-      />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
-function MembersIcon() {
+function IconMembers() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="9" cy="9" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M4.5 18a4.5 4.5 0 0 1 9 0" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <circle cx="17.2" cy="9.4" r="2.2" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.9" />
-      <path d="M14.7 18a3.3 3.3 0 0 1 5.8-2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="7" r="4" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <circle cx="17" cy="7" r="3" strokeDasharray="1 2.5" />
+      <path d="M21 21v-2a3 3 0 0 0-2-2.83" opacity="0.5" />
     </svg>
   );
 }
 
-function TasksIcon() {
+function IconTasks() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m4 7 2.2 2.3L9.5 6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M11 7h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="m4 13 2.2 2.3 3.3-3.3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M11 13h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="m4 19 2.2 2.3 3.3-3.3" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M11 19h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M8 12l2.5 2.5L16 9" />
     </svg>
   );
 }
 
-function SupportIcon() {
+function IconSupport() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M6 18c1.4-2.5 3.2-3.7 6-3.7s4.6 1.2 6 3.7" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
-function PlugIcon() {
+function IconBot() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 5v4M16 5v4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M7 9h10v2.2a5 5 0 0 1-10 0V9Z" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 16v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="8" width="18" height="12" rx="2.5" />
+      <path d="M12 2v6" />
+      <circle cx="8.5" cy="14.5" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="14.5" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-function BotIcon() {
+function IconIntegrations() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="5" y="8" width="14" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 4v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <circle cx="10" cy="13" r="1" fill="currentColor" />
-      <circle cx="14" cy="13" r="1" fill="currentColor" />
-      <path d="M9.2 16h5.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v3" />
+      <path d="M12 18v3" />
+      <path d="M3 12h3" />
+      <path d="M18 12h3" />
+      <path d="M5.6 5.6l2.15 2.15" />
+      <path d="M16.25 16.25l2.15 2.15" />
+      <path d="M5.6 18.4l2.15-2.15" />
+      <path d="M16.25 7.75l2.15-2.15" />
     </svg>
   );
 }
 
-function ProfileIcon() {
+function IconSettings() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 5.2v2.1M12 16.7v2.1M5.2 12h2.1M16.7 12h2.1M7.3 7.3l1.5 1.5M15.2 15.2l1.5 1.5M16.7 7.3l-1.5 1.5M8.8 15.2l-1.5 1.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+    </svg>
+  );
+}
+
+function IconLogout() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }
 
 const NAV_ITEMS: SidebarItem[] = [
-  { key: "dashboard", label: "Dashboard", icon: <DashboardIcon />, path: "/dashboard", roles: ["admin", "developer", "qa", "support"] },
-  { key: "projects", label: "Projects", icon: <FolderIcon />, path: "/projects", roles: ["admin", "developer", "qa"] },
-  { key: "member", label: "Member", icon: <MembersIcon />, path: "/member", roles: ["admin", "developer", "qa"] },
-  { key: "tasks", label: "Tasks", icon: <TasksIcon />, path: "/tasks", roles: ["admin", "developer", "qa"] },
-  { key: "support", label: "Support", icon: <SupportIcon />, path: "/support", roles: ["admin", "developer", "qa", "support"] },
-  { key: "agents", label: "AI Agent", icon: <BotIcon />, path: "/agents", roles: ["admin", "developer", "qa"] },
-  { key: "integrations", label: "Integrations", icon: <PlugIcon />, path: "/settings/integrations", roles: ["admin", "developer"] },
-  { key: "settings", label: "Settings", icon: <ProfileIcon />, path: "/settings", roles: ["admin", "developer", "qa", "support"] },
+  { key: "dashboard", label: "Dashboard", icon: <IconDashboard />, path: "/dashboard", roles: ["admin", "developer", "qa", "support"] },
+  { key: "projects", label: "Projects", icon: <IconProjects />, path: "/projects", roles: ["admin", "developer", "qa"] },
+  { key: "member", label: "Members", icon: <IconMembers />, path: "/member", roles: ["admin", "developer", "qa"] },
+  { key: "tasks", label: "Tasks", icon: <IconTasks />, path: "/tasks", roles: ["admin", "developer", "qa"] },
+  { key: "support", label: "Support", icon: <IconSupport />, path: "/support", roles: ["admin", "developer", "qa", "support"] },
+  { key: "agents", label: "AI Agents", icon: <IconBot />, path: "/agents", roles: ["admin", "developer", "qa"] },
+  { key: "integrations", label: "Integrations", icon: <IconIntegrations />, path: "/settings/integrations", roles: ["admin", "developer"] },
+  { key: "settings", label: "Settings", icon: <IconSettings />, path: "/settings", roles: ["admin", "developer", "qa", "support"] },
 ];
 
 interface DashboardSidebarProps {
@@ -119,18 +124,15 @@ interface DashboardSidebarProps {
 }
 
 function isPathActive(pathname: string, itemPath: string): boolean {
-  if (pathname === itemPath) {
-    return true;
-  }
-  if (itemPath === "/settings") {
-    return false;
-  }
+  if (pathname === itemPath) return true;
+  if (itemPath === "/settings") return false;
   return itemPath !== "/" && pathname.startsWith(`${itemPath}/`);
 }
 
 export function DashboardSidebar({ activeRole }: DashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [expanded, setExpanded] = useState(true);
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(activeRole));
 
@@ -140,35 +142,45 @@ export function DashboardSidebar({ activeRole }: DashboardSidebarProps) {
   };
 
   return (
-    <aside className="dashboard-sidebar">
-      <div className="sidebar-logo" title="AI-Developer">
-        AI
+    <aside className={`dashboard-sidebar ${expanded ? "sidebar--expanded" : "sidebar--collapsed"}`}>
+      <div className="sidebar-header">
+        <button
+          type="button"
+          className="sidebar-logo"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          <span className="sidebar-logo-mark">A</span>
+          {expanded && <span className="sidebar-logo-text">AI-Dev</span>}
+        </button>
       </div>
 
       <nav className="sidebar-nav" aria-label="Primary navigation">
-        {visibleItems.map((item) => (
-          <Link
-            key={item.key}
-            href={item.path}
-            className={`sidebar-item ${isPathActive(pathname, item.path) ? "active" : ""}`}
-            title={item.label}
-          >
-            <span className="sidebar-icon" aria-hidden="true">
-              {item.icon}
-            </span>
-          </Link>
-        ))}
+        {visibleItems.map((item) => {
+          const active = isPathActive(pathname, item.path);
+          return (
+            <Link
+              key={item.key}
+              href={item.path}
+              className={`sidebar-link ${active ? "sidebar-link--active" : ""}`}
+              title={expanded ? undefined : item.label}
+            >
+              <span className="sidebar-link-icon">{item.icon}</span>
+              {expanded && <span className="sidebar-link-label">{item.label}</span>}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="sidebar-future">
-        <button type="button" className="sidebar-item future" title="Logout" onClick={handleLogout}>
-          <span className="sidebar-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M10 4H6.8A1.8 1.8 0 0 0 5 5.8v12.4A1.8 1.8 0 0 0 6.8 20H10" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-              <path d="M14 8l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M8 12h10" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-            </svg>
-          </span>
+      <div className="sidebar-footer">
+        <button
+          type="button"
+          className="sidebar-link sidebar-link--muted"
+          title="Logout"
+          onClick={handleLogout}
+        >
+          <span className="sidebar-link-icon"><IconLogout /></span>
+          {expanded && <span className="sidebar-link-label">Logout</span>}
         </button>
       </div>
     </aside>

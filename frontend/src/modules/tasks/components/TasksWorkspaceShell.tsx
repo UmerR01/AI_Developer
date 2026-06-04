@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
 import "../../dashboard/dashboard.css";
 import "../tasks.css";
-import { AnimatedBackground } from "../../platform/components/AnimatedBackground";
 
 type TaskStatus = "todo" | "in_progress" | "in_review" | "done";
 type Priority = "high" | "medium" | "low";
@@ -641,7 +641,7 @@ export function TasksWorkspaceShell() {
                   return (
                     <li key={item.id}>
                       <div className="approval-main">
-                        <img src={qaMember.avatarUrl} alt={qaMember.displayName} />
+                        <Image src={qaMember.avatarUrl} alt={qaMember.displayName} width={38} height={38} />
                         <div>
                           <strong>
                             {qaMember.displayName} on {task.name}
@@ -804,7 +804,7 @@ export function TasksWorkspaceShell() {
                   >
                     <div className="comment-head">
                       <div className="comment-author">
-                        <img src={author.avatarUrl} alt={author.displayName} />
+                        <Image src={author.avatarUrl} alt={author.displayName} width={34} height={34} />
                         <strong>{author.displayName}</strong>
                         <span className="role-chip">{roleLabel(comment.role)}</span>
                         {comment.qaReview ? <span className="qa-review-tag">QA Review</span> : null}
@@ -905,7 +905,6 @@ export function TasksWorkspaceShell() {
   if (activeAccount.role === "support") {
     return (
       <main className="dashboard-shell">
-        <AnimatedBackground />
         <DashboardSidebar activeRole={activeAccount.role} />
         <section className="dashboard-main">
           <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Tasks" />
@@ -927,7 +926,6 @@ export function TasksWorkspaceShell() {
 
   return (
     <main className="dashboard-shell">
-      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
       <section className="dashboard-main">
         <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Tasks" />

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
 import "../../dashboard/dashboard.css";
 import "../member.css";
-import { AnimatedBackground } from "../../platform/components/AnimatedBackground";
 
 type MemberRoleFilter = "all" | "admin" | "developer" | "qa" | "pending";
 type MemberStatusFilter = "all" | "active" | "pending";
@@ -169,7 +169,7 @@ export function MemberWorkspaceShell() {
   const [searchText, setSearchText] = useState("");
   const [roleFilter, setRoleFilter] = useState<MemberRoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<MemberStatusFilter>("all");
-  const [viewMode, setViewMode] = useState<MemberView>("grid");
+  const [viewMode, setViewMode] = useState<MemberView>("list");
 
   const [selectedMember, setSelectedMember] = useState<MemberRecord | null>(null);
   const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
@@ -298,7 +298,6 @@ export function MemberWorkspaceShell() {
   if (activeAccount.role === "support") {
     return (
       <main className="dashboard-shell">
-        <AnimatedBackground />
         <DashboardSidebar activeRole={activeAccount.role} />
         <section className="dashboard-main">
           <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Member" />
@@ -320,185 +319,207 @@ export function MemberWorkspaceShell() {
 
   return (
     <main className="dashboard-shell">
-      <AnimatedBackground />
       <DashboardSidebar activeRole={activeAccount.role} />
 
       <section className="dashboard-main">
         <DashboardTopBar activeAccount={activeAccount} notifications={roleNotifications} title="Member" />
 
         <div className="dashboard-scroll-area">
-          <section className="member-page-head">
-            <div className="member-title-group">
-            </div>
-
-            <button type="button" className="member-invite-btn" onClick={() => setInviteModalOpen(true)}>
-              <PlusUserIcon />
-              Invite Member
-            </button>
-          </section>
-
-          <section className="member-filters-wrap">
-            <label className="member-search-input" aria-label="Search members">
-              <SearchIcon />
-              <input
-                type="text"
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-                placeholder="Search members..."
-              />
-            </label>
-
-            <div className="member-filter-controls">
-              <div className="member-filter-select-wrap">
-                <select
-                  className="member-filter-select"
-                  value={roleFilter === "pending" ? "all" : roleFilter}
-                  onChange={(event) => setRoleFilter(event.target.value as MemberRoleFilter)}
-                  aria-label="Filter by role"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admin</option>
-                  <option value="developer">Developer</option>
-                  <option value="qa">QA</option>
-                </select>
+          <div className="member-layout">
+            {/* ══════ LEFT PANEL ══════ */}
+            <aside className="member-panel-left">
+              <div className="member-panel-head">
+                <h3 className="member-panel-title">Team</h3>
+                <span className="member-panel-count">{members.length}</span>
               </div>
 
-              <div className="member-filter-select-wrap">
-                <select
-                  className="member-filter-select"
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as MemberStatusFilter)}
-                  aria-label="Filter by status"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                </select>
+              <div className="member-panel-stats">
+                <div className="member-mini-stat">
+                  <span className="mini-dot mini-dot--green" />
+                  <span className="mini-label">Active</span>
+                  <strong>{members.filter(m => (memberStatuses[m.id] ?? m.status) === "active").length}</strong>
+                </div>
+                <div className="member-mini-stat">
+                  <span className="mini-dot mini-dot--amber" />
+                  <span className="mini-label">Pending</span>
+                  <strong>{members.filter(m => (memberStatuses[m.id] ?? m.status) === "pending").length}</strong>
+                </div>
+                <div className="member-mini-stat">
+                  <span className="mini-dot mini-dot--blue" />
+                  <span className="mini-label">Tasks</span>
+                  <strong>{members.reduce((sum, m) => sum + m.tasksAssigned, 0)}</strong>
+                </div>
               </div>
 
-              <div className="member-view-toggle" aria-label="View mode">
-                <button type="button" className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")}>
-                  <GridIcon />
-                </button>
-                <button type="button" className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}>
-                  <ListIcon />
-                </button>
+              <div className="member-panel-divider" />
+
+              <p className="member-panel-section-label">Roles</p>
+              <div className="member-role-filters">
+                {(["all", "admin", "developer", "qa"] as const).map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    className={`member-role-filter-btn ${roleFilter === role ? "active" : ""}`}
+                    onClick={() => setRoleFilter(role as MemberRoleFilter)}
+                  >
+                    {role === "all" ? "All" : roleLabel(role)}
+                    <span className="member-role-filter-count">
+                      {role === "all" ? members.length : members.filter(m => m.role === role).length}
+                    </span>
+                  </button>
+                ))}
               </div>
 
-            </div>
-          </section>
+              <div className="member-panel-divider" />
 
-          {viewMode === "grid" ? (
-            <section className="member-grid" aria-label="Members grid view">
-              {filteredMembers.map((member) => (
-                <article key={member.id} className="member-card" onClick={() => openProfile(member)}>
-                  <img src={member.avatarUrl} alt={member.displayName} className="member-card-avatar" />
-                  <strong>{member.displayName}</strong>
-                  <span className={`member-role-chip role-${member.role}`}>{roleLabel(member.role)}</span>
-                  <p className="member-status-text">
-                    <span className={`status-dot ${member.status === "active" ? "active" : "pending"}`} />
-                    {member.status === "active" ? "Active" : (
-                      <>Pending <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginLeft: 4, verticalAlign: "-2px"}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></>
-                    )}
-                  </p>
-                  <p className="member-task-caption">{member.tasksAssigned} tasks assigned</p>
+              <p className="member-panel-section-label">Status</p>
+              <div className="member-role-filters">
+                {(["all", "active", "pending"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`member-role-filter-btn ${statusFilter === s ? "active" : ""}`}
+                    onClick={() => setStatusFilter(s as MemberStatusFilter)}
+                  >
+                    {s === "all" ? "All" : s === "active" ? "Active" : "Pending"}
+                  </button>
+                ))}
+              </div>
 
-                  <div className="member-card-actions">
-                    <button type="button" className="member-view-profile-btn" onClick={() => openProfile(member)}>
-                      View Profile
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </section>
-          ) : (
-            <section className="member-list-wrap" aria-label="Members list view">
-              {filteredMembers.map((member) => (
-                <article key={member.id} className="member-list-row" onClick={() => openProfile(member)}>
-                  <div className="member-list-main">
-                    <img src={member.avatarUrl} alt={member.displayName} className="member-list-avatar" />
-                    <strong>{member.displayName}</strong>
-                  </div>
+              <div className="member-panel-spacer" />
 
-                  <div className="member-role-dropdown-wrap" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className={`member-role-chip role-${getMemberRole(member)} member-dropdown-btn`}
-                      onClick={() => setRoleDropdownOpen(roleDropdownOpen === member.id ? null : member.id)}
-                    >
-                      {roleLabel(getMemberRole(member))}
-                    </button>
-                    {roleDropdownOpen === member.id ? (
-                      <div className="member-dropdown-menu role-menu">
-                        {(["admin", "developer", "qa", "support"] as const).map((role) => (
-                          <button
-                            key={role}
-                            type="button"
-                            className={`member-dropdown-item ${getMemberRole(member) === role ? "active" : ""}`}
-                            onClick={() => handleRoleChange(member.id, role)}
-                          >
-                            {roleLabel(role)}
-                          </button>
-                        ))}
+              <button type="button" className="member-invite-btn" onClick={() => setInviteModalOpen(true)}>
+                <PlusUserIcon />
+                Invite Member
+              </button>
+            </aside>
+
+            {/* ══════ RIGHT CONTENT ══════ */}
+            <div className="member-panel-right">
+              <div className="member-directory-bar">
+                <label className="member-search-input" aria-label="Search members">
+                  <SearchIcon />
+                  <input
+                    type="text"
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                    placeholder="Search by name, email..."
+                  />
+                </label>
+                <span className="member-result-count">{filteredMembers.length} member{filteredMembers.length !== 1 ? "s" : ""}</span>
+                <div className="member-view-toggle" aria-label="View mode">
+                  <button type="button" className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")}>
+                    <GridIcon />
+                  </button>
+                  <button type="button" className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}>
+                    <ListIcon />
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === "grid" ? (
+                <section className="member-grid" aria-label="Members grid view">
+                  {filteredMembers.map((member) => (
+                    <article key={member.id} className="member-card-v2" onClick={() => openProfile(member)}>
+                      <div className="member-card-v2-left">
+                        <Image src={member.avatarUrl} alt={member.displayName} className="member-card-v2-avatar" width={52} height={52} />
+                        <span className={`member-card-v2-dot ${getMemberStatus(member) === "active" ? "active" : "pending"}`} />
                       </div>
-                    ) : null}
+                      <div className="member-card-v2-body">
+                        <div className="member-card-v2-row-top">
+                          <strong>{member.displayName}</strong>
+                          <div className="member-menu-wrap" onClick={(e) => e.stopPropagation()}>
+                            <button type="button" className="member-menu-btn" aria-label="Open member actions" onClick={() => setMenuOpenForId((c) => (c === member.id ? null : member.id))}>
+                              <DotsIcon />
+                            </button>
+                            {menuOpenForId === member.id ? (
+                              <div className="member-menu-dropdown">
+                                <button type="button" onClick={() => openProfile(member)}>View Profile</button>
+                                <button type="button">Remove</button>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                        <span className="member-card-v2-email">{member.email}</span>
+                        <div className="member-card-v2-meta">
+                          <span className={`member-role-chip role-${getMemberRole(member)}`}>{roleLabel(getMemberRole(member))}</span>
+                          <span className="member-card-v2-tasks">{member.tasksAssigned} tasks</span>
+                          <span className="member-card-v2-date">{member.joinedDate}</span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              ) : (
+                <section className="member-list-wrap" aria-label="Members list view">
+                  <div className="member-list-header">
+                    <span>Member</span>
+                    <span>Role</span>
+                    <span>Status</span>
+                    <span>Tasks</span>
+                    <span>Joined</span>
+                    <span></span>
                   </div>
+                  {filteredMembers.map((member) => (
+                    <article key={member.id} className="member-list-row" onClick={() => openProfile(member)}>
+                      <div className="member-list-main">
+                        <Image src={member.avatarUrl} alt={member.displayName} className="member-list-avatar" width={42} height={42} />
+                        <div className="member-list-name-group">
+                          <strong>{member.displayName}</strong>
+                          <span>{member.email}</span>
+                        </div>
+                      </div>
 
-                  <div className="member-status-dropdown-wrap" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="member-status-dropdown-btn"
-                      onClick={() => setStatusDropdownOpen(statusDropdownOpen === member.id ? null : member.id)}
-                    >
-                      <span className={`status-dot ${getMemberStatus(member) === "active" ? "active" : "pending"}`} />
-                      {getMemberStatus(member) === "active" ? "Active" : "Pending"}
-                    </button>
-                    {statusDropdownOpen === member.id ? (
-                      <div className="member-dropdown-menu status-menu">
-                        <button
-                          type="button"
-                          className={`member-dropdown-item ${getMemberStatus(member) === "active" ? "active" : ""}`}
-                          onClick={() => handleStatusChange(member.id, "active")}
-                        >
-                          <span className="status-dot active" />
-                          Active
+                      <div className="member-role-dropdown-wrap" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" className={`member-role-chip role-${getMemberRole(member)} member-dropdown-btn`} onClick={() => setRoleDropdownOpen(roleDropdownOpen === member.id ? null : member.id)}>
+                          {roleLabel(getMemberRole(member))}
                         </button>
-                        <button
-                          type="button"
-                          className={`member-dropdown-item ${getMemberStatus(member) === "pending" ? "active" : ""}`}
-                          onClick={() => handleStatusChange(member.id, "pending")}
-                        >
-                          <span className="status-dot pending" />
-                          Pending
-                        </button>
+                        {roleDropdownOpen === member.id ? (
+                          <div className="member-dropdown-menu role-menu">
+                            {(["admin", "developer", "qa", "support"] as const).map((role) => (
+                              <button key={role} type="button" className={`member-dropdown-item ${getMemberRole(member) === role ? "active" : ""}`} onClick={() => handleRoleChange(member.id, role)}>
+                                {roleLabel(role)}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
 
-                  <span className="member-list-tasks">{member.tasksAssigned} tasks</span>
-                  <span className="member-list-joined">Joined {member.joinedDate}</span>
-                  <div className="member-menu-wrap">
-                    <button
-                      type="button"
-                      className="member-menu-btn"
-                      aria-label="Open member actions"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setMenuOpenForId((current) => (current === member.id ? null : member.id));
-                      }}
-                    >
-                      <DotsIcon />
-                    </button>
-                    {menuOpenForId === member.id ? (
-                      <div className="member-menu-dropdown">
-                        <button type="button">Remove from Team</button>
+                      <div className="member-status-dropdown-wrap" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" className="member-status-dropdown-btn" onClick={() => setStatusDropdownOpen(statusDropdownOpen === member.id ? null : member.id)}>
+                          <span className={`status-dot ${getMemberStatus(member) === "active" ? "active" : "pending"}`} />
+                          {getMemberStatus(member) === "active" ? "Active" : "Pending"}
+                        </button>
+                        {statusDropdownOpen === member.id ? (
+                          <div className="member-dropdown-menu status-menu">
+                            <button type="button" className={`member-dropdown-item ${getMemberStatus(member) === "active" ? "active" : ""}`} onClick={() => handleStatusChange(member.id, "active")}>
+                              <span className="status-dot active" /> Active
+                            </button>
+                            <button type="button" className={`member-dropdown-item ${getMemberStatus(member) === "pending" ? "active" : ""}`} onClick={() => handleStatusChange(member.id, "pending")}>
+                              <span className="status-dot pending" /> Pending
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </section>
-          )}
+
+                      <span className="member-list-tasks">{member.tasksAssigned} tasks</span>
+                      <span className="member-list-joined">{member.joinedDate}</span>
+                      <div className="member-menu-wrap" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" className="member-menu-btn" aria-label="Open member actions" onClick={() => setMenuOpenForId((c) => (c === member.id ? null : member.id))}>
+                          <DotsIcon />
+                        </button>
+                        {menuOpenForId === member.id ? (
+                          <div className="member-menu-dropdown">
+                            <button type="button">Remove from Team</button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -510,7 +531,7 @@ export function MemberWorkspaceShell() {
             </button>
 
             <div className="member-drawer-top">
-              <img src={selectedMember.avatarUrl} alt={selectedMember.displayName} className="member-drawer-avatar" />
+              <Image src={selectedMember.avatarUrl} alt={selectedMember.displayName} className="member-drawer-avatar" width={88} height={88} />
               <h3>{selectedMember.displayName}</h3>
               <span className={`member-role-chip role-${selectedMember.role}`}>{roleLabel(selectedMember.role)}</span>
               <p className="member-status-text">

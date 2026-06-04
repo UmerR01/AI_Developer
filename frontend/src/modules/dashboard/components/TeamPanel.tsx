@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import type { Account, Team } from "../types";
 
@@ -24,7 +25,7 @@ export function TeamPanel({ team, owner, members }: TeamPanelProps) {
       <ul className="member-list">
         {members.map((member) => (
           <li key={member.id}>
-            <img src={member.avatarUrl} alt={member.displayName} className="member-avatar" />
+            <Image src={member.avatarUrl} alt={member.displayName} className="member-avatar" width={36} height={36} />
             <div>
               <strong>{member.displayName}</strong>
               <span>{member.role.toUpperCase()}</span>

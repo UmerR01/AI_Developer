@@ -476,7 +476,6 @@ function FeaturedCard({
   onView: () => void;
   onBuy: () => void;
 }) {
-  const meta = CATEGORY_META[agent.category];
   return (
     <article className="am-featured-card" onClick={onView} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onView()}>
       <span className="am-featured-badge">Featured</span>

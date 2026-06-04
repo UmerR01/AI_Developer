@@ -43,6 +43,93 @@ function makeAvatar(name: string): string {
   return `${first}${second}`.toUpperCase();
 }
 
+function agentBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_AI_AGENT_URL ?? "http://localhost:8001").replace(/\/+$/, "");
+}
+
+function agentWebSocketUrl(baseUrl: string): string {
+  return baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/ws/chat";
+}
+
+function buildAgentWorkspaceUrl(projectId: string, projectName: string, sessionId: string): string {
+  const baseUrl = agentBaseUrl();
+  const params = new URLSearchParams({
+    autostart: "1",
+    projectId,
+    projectName,
+    session: sessionId,
+    ws: agentWebSocketUrl(baseUrl),
+  });
+  return `${baseUrl}/workspace?${params.toString()}`;
+}
+
+function buildProjectAnalysisPrompt(input: {
+  projectName: string;
+  repositoryUrl: string;
+  accessToken: string;
+  sourceMode: GitHubAuthMode;
+  description: string;
+  documentName: string;
+  documentText: string;
+  additionalContext: string;
+}): string {
+  const sections = [
+    `Analyze this new project and start the AI engineering workspace for "${input.projectName.trim()}".`,
+    "Use the information below as the initial project prompt. Ask focused follow-up questions if anything important is missing before generating code.",
+  ];
+
+  const repoValue = input.sourceMode === "repo_url" ? input.repositoryUrl.trim() : input.accessToken.trim();
+  if (repoValue) {
+    sections.push(`GitHub source (${input.sourceMode === "repo_url" ? "repository URL" : "personal access token"}):\n${repoValue}`);
+  }
+
+  if (input.description.trim()) {
+    sections.push(`Project description:\n${input.description.trim()}`);
+  }
+
+  if (input.documentText.trim()) {
+    const documentLabel = input.documentName.trim() || "Uploaded document";
+    sections.push(`${documentLabel} text:\n${input.documentText.trim()}`);
+  }
+
+  if (input.additionalContext.trim()) {
+    sections.push(`Additional context:\n${input.additionalContext.trim()}`);
+  }
+
+  return sections.join("\n\n");
+}
+
+async function bootstrapAgentSession(input: {
+  sessionId: string;
+  prompt: string;
+  projectId: string;
+  projectName: string;
+  workingDirectory?: string;
+}): Promise<{ success: boolean; message?: string }> {
+  const response = await fetch(`${agentBaseUrl()}/api/session/bootstrap`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: input.sessionId,
+      prompt: input.prompt,
+      working_directory: input.workingDirectory || undefined,
+      project_id: input.projectId,
+      project_name: input.projectName,
+    }),
+  });
+
+  if (!response.ok) {
+    return { success: false, message: `Agent bootstrap failed with HTTP ${response.status}.` };
+  }
+
+  const payload = await response.json().catch(() => null) as { success?: boolean; message?: string } | null;
+  if (payload && payload.success === false) {
+    return { success: false, message: payload.message || "Agent server could not store the prompt." };
+  }
+
+  return { success: true };
+}
+
 export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState<ProjectCreateStep>(1);
@@ -235,12 +322,72 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
 
     setStep(3);
     setReviewState("loading");
-    setReviewTitle("AI Agent Review");
-    setReviewSubtitle("The AI Agent is analyzing your project description.");
+    setReviewTitle("Saving project");
+    setReviewSubtitle("Your project is being saved before the AI workspace opens.");
     setSessionProgressLabel("");
     setBusy(true);
-    await submitReview(sourceDescription);
-    setBusy(false);
+
+    try {
+      const prompt = buildProjectAnalysisPrompt({
+        projectName,
+        repositoryUrl,
+        accessToken,
+        sourceMode,
+        description,
+        documentName,
+        documentText,
+        additionalContext,
+      });
+
+      const created = await createProject({
+        name: projectName.trim(),
+        description: sourceDescription,
+        sourceType: "github",
+        sourceMode,
+        repositoryUrl: repositoryUrl.trim() || undefined,
+        accessToken: accessToken.trim() || undefined,
+        documentText: documentText || undefined,
+        brief: sourceDescription,
+        startDevelopment: false,
+      });
+
+      if (!created.success || !created.project) {
+        setErrorMessage(created.message || "Unable to create project.");
+        setStep(2);
+        return;
+      }
+
+      onCreated?.(created.project);
+
+      const sessionId = `project-${created.project.id}`;
+      setReviewTitle("Opening AI workspace");
+      setReviewSubtitle("The project is saved. Sending your prompt to the AI-module workspace.");
+
+      const bootstrap = await bootstrapAgentSession({
+        sessionId,
+        prompt,
+        projectId: created.project.id,
+        projectName: created.project.name,
+        workingDirectory: created.project.folderPath,
+      });
+
+      if (!bootstrap.success) {
+        setErrorMessage(
+          `${bootstrap.message || "Unable to send the prompt to the AI workspace."} Project "${created.project.name}" was saved.`,
+        );
+        setStep(2);
+        return;
+      }
+
+      onClose();
+      window.open(buildAgentWorkspaceUrl(created.project.id, created.project.name, sessionId), "_blank", "noopener,noreferrer");
+      router.push(`/projects/${created.project.id}?tab=overview`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to open the AI workspace.");
+      setStep(2);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSubmitAnswer = async () => {
@@ -335,6 +482,9 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
   return (
     <div className="projects-modal-backdrop project-create-backdrop" role="dialog" aria-modal="true" aria-label="Create project wizard">
       <section className="project-create-modal">
+        <button type="button" className="project-create-close-btn" aria-label="Close" onClick={handleRequestCancel}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
         <div className="project-create-stepper" aria-hidden="true">
           {([1, 2, 3, 4] as ProjectCreateStep[]).map((value, index) => (
             <div key={value} className="project-create-stepper-node-wrap">

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
-import logging
 import os
 import sys
 import threading
@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -22,27 +22,35 @@ REPO_ROOT = ROOT_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from dotenv import load_dotenv
+
+load_dotenv(REPO_ROOT / ".env")
+_creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+if _creds_path and not os.path.isabs(_creds_path):
+    _resolved = (REPO_ROOT / _creds_path).resolve()
+    if _resolved.is_file():
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(_resolved)
+
 os.chdir(ROOT_DIR)
 
-
-def resolve_working_directory(path: Optional[str]) -> Optional[str]:
-    if not path or not str(path).strip():
-        return None
-    resolved = Path(str(path).strip())
-    if not resolved.is_absolute():
-        resolved = (REPO_ROOT / resolved).resolve()
-    resolved.mkdir(parents=True, exist_ok=True)
-    return str(resolved).replace("\\", "/")
+# Playwright and npm preview builds spawn subprocesses; Proactor loop is required on Windows.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from agent import SYSTEM_PROMPT, run_agent  # noqa: E402
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+from project_workspace import (  # noqa: E402
+    ProjectStatus,
+    ROOT_DIR as WORKSPACE_ROOT,
+    adopt_stray_repo_root_files,
+    create_project_zip,
+    get_project_dir,
+    iso_now,
+    resolve_project_path,
+    sanitize_id,
+    workspace,
 )
-logger = logging.getLogger("ai_module.agent_api")
 
-app = FastAPI(title="ai-coder HTTP server", version="1.0.0")
+app = FastAPI(title="ai-coder HTTP server", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,35 +61,20 @@ app.add_middleware(
 )
 
 
-class RunRequest(BaseModel):
-    prompt: str = Field(..., min_length=1)
+class ResetRequest(BaseModel):
     session_id: Optional[str] = None
-    working_directory: Optional[str] = None
-
-
-class BackgroundRunRequest(BaseModel):
-    prompt: str = Field(..., min_length=1)
-    session_id: Optional[str] = None
-    working_directory: Optional[str] = None
+    user_id: Optional[str] = None
+    project_id: Optional[str] = None
 
 
 class SessionBootstrapRequest(BaseModel):
-    session_id: str = Field(..., min_length=1)
-    prompt: str = Field(..., min_length=1)
+    session_id: str
+    prompt: Optional[str] = None
+    development_prompt: Optional[str] = None
     working_directory: Optional[str] = None
     project_id: Optional[str] = None
     project_name: Optional[str] = None
-
-
-class ResetRequest(BaseModel):
-    session_id: Optional[str] = None
-
-
-class RunResponse(BaseModel):
-    session_id: str
-    prompt: str
-    output: str
-    timestamp: str
+    user_id: Optional[str] = None
 
 
 class SocketRequest(BaseModel):
@@ -89,7 +82,10 @@ class SocketRequest(BaseModel):
     prompt: Optional[str] = None
     content: Optional[str] = None
     session_id: Optional[str] = None
-    working_directory: Optional[str] = None
+    user_id: Optional[str] = None
+    project_id: Optional[str] = None
+    reference_images: Optional[List[Dict[str, Any]]] = None
+    force: bool = False
 
 
 class SocketResponse(BaseModel):
@@ -99,13 +95,33 @@ class SocketResponse(BaseModel):
     output: Optional[str] = None
     error: Optional[str] = None
     timestamp: str
+    user_id: Optional[str] = None
+    project_id: Optional[str] = None
+
+
+class SessionMeta:
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+        self.user_id = "default"
+        self.project_id = session_id
 
 
 class SessionStore:
     def __init__(self) -> None:
         self._histories: Dict[str, List[Any]] = {}
         self._generated_files: Dict[str, Dict[str, Dict[str, str]]] = {}
-        self._bootstrap: Dict[str, Dict[str, Any]] = {}
+        self._session_meta: Dict[str, SessionMeta] = {}
+
+    def get_meta(self, session_id: str) -> SessionMeta:
+        if session_id not in self._session_meta:
+            self._session_meta[session_id] = SessionMeta(session_id)
+        return self._session_meta[session_id]
+
+    def bind_project(self, session_id: str, user_id: str, project_id: str) -> SessionMeta:
+        meta = self.get_meta(session_id)
+        meta.user_id = sanitize_id(user_id, "default")
+        meta.project_id = sanitize_id(project_id, session_id)
+        return meta
 
     def get_history(self, session_id: str) -> List[Any]:
         if session_id not in self._histories:
@@ -117,33 +133,14 @@ class SessionStore:
     def reset(self, session_id: str) -> None:
         self._histories.pop(session_id, None)
         self._generated_files.pop(session_id, None)
-        self._bootstrap.pop(session_id, None)
 
-    def set_bootstrap(
+    def upsert_generated_file(
         self,
         session_id: str,
-        *,
-        prompt: str,
-        working_directory: Optional[str] = None,
-        project_id: Optional[str] = None,
-        project_name: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        record = {
-            "session_id": session_id,
-            "prompt": prompt,
-            "prompt_chars": len(prompt),
-            "working_directory": working_directory or "",
-            "project_id": project_id or "",
-            "project_name": project_name or "",
-            "stored_at": iso_now(),
-        }
-        self._bootstrap[session_id] = record
-        return record
-
-    def get_bootstrap(self, session_id: str) -> Optional[Dict[str, Any]]:
-        return self._bootstrap.get(session_id)
-
-    def upsert_generated_file(self, session_id: str, path: str, content: str, source_tool: str = "") -> None:
+        path: str,
+        content: str,
+        source_tool: str = "",
+    ) -> None:
         if session_id not in self._generated_files:
             self._generated_files[session_id] = {}
         self._generated_files[session_id][path] = {
@@ -159,10 +156,127 @@ class SessionStore:
 
 
 session_store = SessionStore()
+bootstrapped_sessions: Dict[str, Dict[str, Any]] = {}
 
 
-def iso_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _save_reference_images(session_id: str, images: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    saved: List[Dict[str, str]] = []
+    if not images:
+        return saved
+
+    upload_root = ROOT_DIR / "reference_uploads" / session_id
+    upload_root.mkdir(parents=True, exist_ok=True)
+
+    for idx, item in enumerate(images, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        name = str(item.get("name") or f"reference_{idx}.png")
+        media_type = str(item.get("media_type") or "image/png")
+        data_uri = item.get("data_uri")
+        b64 = item.get("base64")
+
+        if isinstance(data_uri, str) and data_uri.startswith("data:image") and "," in data_uri:
+            b64 = data_uri.split(",", 1)[1]
+
+        if not isinstance(b64, str) or not b64.strip():
+            continue
+
+        ext = {
+            "image/png": ".png",
+            "image/jpeg": ".jpg",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+        }.get(media_type, ".png")
+
+        safe_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in name).strip("._")
+        if not safe_name:
+            safe_name = f"reference_{idx}{ext}"
+        if "." not in safe_name:
+            safe_name = f"{safe_name}{ext}"
+
+        target = upload_root / safe_name
+        if target.exists():
+            target = upload_root / f"{target.stem}_{idx}{target.suffix}"
+
+        try:
+            target.write_bytes(base64.b64decode(b64))
+        except Exception:
+            continue
+
+        saved.append({
+            "name": safe_name,
+            "path": str(target),
+            "media_type": media_type,
+        })
+
+    return saved
+
+
+def _project_context_prompt(user_id: str, project_id: str) -> str:
+    project_dir = get_project_dir(user_id, project_id)
+    return (
+        f"PROJECT WORKSPACE (mandatory — read before any write tool):\n"
+        f"- user_id: {user_id}\n"
+        f"- project_id: {project_id}\n"
+        f"- Project directory (your cwd for this run): {project_dir}\n"
+        f"- The process chdir's into this folder. Write paths RELATIVE to it only.\n"
+        f"- CORRECT: src/App.jsx, package.json, index.html, public/favicon.ico\n"
+        f"- WRONG: ../src/App.jsx or files under the parent ai-coder repo outside this folder\n"
+        f"- For a new Vite/React app create package.json and src/ HERE (not elsewhere).\n"
+        f"- validate_frontend_project(project_directory=\".\") when package.json is in cwd.\n"
+        f"- For Vite/React set base: './' in vite.config.js so preview assets load correctly.\n\n"
+    )
+
+
+async def _schedule_preview_build(
+    emit,
+    user_id: str,
+    project_id: str,
+    session_id: str,
+    force: bool = False,
+) -> None:
+    emit({
+        "type": "preview_building",
+        "session_id": session_id,
+        "user_id": user_id,
+        "project_id": project_id,
+        "timestamp": iso_now(),
+    })
+    try:
+        meta = await workspace.run_preview_build(user_id, project_id, force=force)
+        emit({
+            "type": "preview_ready" if meta.status == ProjectStatus.READY else "preview_failed",
+            "session_id": session_id,
+            "user_id": user_id,
+            "project_id": project_id,
+            "preview_url": meta.preview_url,
+            "project_type": meta.project_type,
+            "status": meta.status.value,
+            "error": meta.preview_error,
+            "timestamp": iso_now(),
+        })
+        tree = workspace.get_file_tree(user_id, project_id)
+        emit({
+            "type": "file_tree",
+            "session_id": session_id,
+            "user_id": user_id,
+            "project_id": project_id,
+            "tree": tree["tree"],
+            "files": tree["files"],
+            "preview_url": meta.preview_url,
+            "status": meta.status.value,
+            "timestamp": iso_now(),
+        })
+    except Exception as exc:
+        emit({
+            "type": "preview_failed",
+            "session_id": session_id,
+            "user_id": user_id,
+            "project_id": project_id,
+            "error": str(exc),
+            "timestamp": iso_now(),
+        })
 
 
 @app.get("/health")
@@ -175,115 +289,143 @@ async def health() -> Dict[str, Any]:
 
 
 @app.get("/")
-async def root() -> Dict[str, Any]:
-    return {
-        "name": "ai-coder",
-        "routes": [
-            "/health",
-            "/workspace",
-            "/ws/chat",
-            "/api/run",
-            "/api/session/bootstrap",
-            "/api/session/{session_id}",
-            "/api/reset",
-        ],
-    }
-
-
-@app.post("/api/session/bootstrap")
-async def session_bootstrap(request: SessionBootstrapRequest) -> Dict[str, Any]:
-    """Store development prompt for a session (called by Django before opening workspace tab)."""
-    resolved_workdir = resolve_working_directory(request.working_directory)
-    record = session_store.set_bootstrap(
-        request.session_id,
-        prompt=request.prompt,
-        working_directory=resolved_workdir or "",
-        project_id=request.project_id,
-        project_name=request.project_name,
-    )
-    logger.info(
-        "[session-bootstrap] stored session=%s prompt_chars=%s project=%s workdir=%s",
-        request.session_id,
-        record["prompt_chars"],
-        request.project_id,
-        request.working_directory,
-    )
-    return {"success": True, **record}
-
-
-@app.get("/api/session/{session_id}")
-async def get_session_bootstrap(session_id: str) -> Dict[str, Any]:
-    record = session_store.get_bootstrap(session_id)
-    if record is None:
-        logger.warning("[session-bootstrap] miss session=%s", session_id)
-        raise HTTPException(status_code=404, detail=f"No bootstrap payload for session '{session_id}'")
-    logger.info(
-        "[session-bootstrap] fetch session=%s prompt_chars=%s",
-        session_id,
-        record.get("prompt_chars"),
-    )
-    return record
+async def root() -> FileResponse:
+    ui = ROOT_DIR / "agent_frontend.html"
+    if ui.is_file():
+        return FileResponse(ui)
+    return FileResponse(__file__)  # pragma: no cover
 
 
 @app.get("/workspace")
-async def workspace() -> FileResponse:
-    """Agent UI used by AI Developer (opens in a separate browser tab)."""
-    page = ROOT_DIR / "agent_frontend.html"
-    if not page.is_file():
-        raise HTTPException(status_code=404, detail="agent_frontend.html not found")
-    return FileResponse(page)
+async def workspace_ui() -> FileResponse:
+    return FileResponse(ROOT_DIR / "agent_frontend.html")
 
 
-@app.post("/api/run")
-async def start_background_run(request: BackgroundRunRequest) -> Dict[str, Any]:
-    """Start an agent run without keeping a WebSocket connection (used by Django)."""
-    session_id = request.session_id or str(uuid.uuid4())
-    loop = asyncio.get_running_loop()
-    event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
-    stop_event = threading.Event()
+@app.post("/api/session/bootstrap")
+async def bootstrap_session(request: SessionBootstrapRequest) -> Dict[str, Any]:
+    session_id = request.session_id.strip()
+    prompt = (request.prompt or request.development_prompt or "").strip()
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
 
-    def emit(event: Dict[str, Any]) -> None:
-        loop.call_soon_threadsafe(event_queue.put_nowait, event)
-
-    history = session_store.get_history(session_id)
-    working_directory = resolve_working_directory(request.working_directory)
-
-    def worker() -> None:
-        previous_cwd = os.getcwd()
-        try:
-            if working_directory and os.path.isdir(working_directory):
-                os.chdir(working_directory)
-                logger.info("[api/run] cwd=%s", os.getcwd())
-            run_agent(
-                request.prompt,
-                history,
-                event_sink=emit,
-                stop_check=stop_event.is_set,
-            )
-        except Exception as exc:
-            emit({"type": "error", "session_id": session_id, "error": str(exc), "timestamp": iso_now()})
-        finally:
-            os.chdir(previous_cwd)
-            emit({"type": "run_complete", "session_id": session_id, "timestamp": iso_now()})
-
-    asyncio.create_task(asyncio.to_thread(worker))
+    project_id = request.project_id or session_id
+    user_id = request.user_id or "default"
+    session_store.bind_project(session_id, user_id, project_id)
+    bootstrapped_sessions[session_id] = {
+        "session_id": session_id,
+        "prompt": prompt,
+        "development_prompt": prompt,
+        "working_directory": request.working_directory or "",
+        "project_id": project_id,
+        "project_name": request.project_name or "",
+        "user_id": user_id,
+        "prompt_chars": len(prompt),
+        "timestamp": iso_now(),
+    }
     return {
         "success": True,
         "session_id": session_id,
-        "message": "Agent run started.",
-        "timestamp": iso_now(),
+        "prompt_chars": len(prompt),
     }
+
+
+@app.get("/api/session/{session_id}")
+async def get_bootstrapped_session(session_id: str) -> Dict[str, Any]:
+    data = bootstrapped_sessions.get(session_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Session prompt not found")
+    return data
+
+
+@app.get("/api/projects/{user_id}/{project_id}/files/tree")
+async def api_file_tree(user_id: str, project_id: str) -> Dict[str, Any]:
+    return workspace.get_file_tree(user_id, project_id)
+
+
+@app.get("/api/projects/{user_id}/{project_id}/file")
+async def api_get_file(user_id: str, project_id: str, path: str) -> Dict[str, Any]:
+    try:
+        return workspace.read_file(user_id, project_id, path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/projects/{user_id}/{project_id}/preview")
+async def api_preview_status(user_id: str, project_id: str) -> Dict[str, Any]:
+    meta = workspace.load_meta(user_id, project_id)
+    return meta.to_dict()
+
+
+@app.get("/api/projects/{user_id}/{project_id}/download")
+async def api_download_project(user_id: str, project_id: str) -> Response:
+    project_dir = get_project_dir(user_id, project_id)
+    if not any(project_dir.rglob("*")):
+        raise HTTPException(status_code=404, detail="Project is empty")
+    payload = create_project_zip(project_dir)
+    filename = f"{sanitize_id(project_id)}.zip"
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/preview/{user_id}/{project_id}")
+async def serve_preview_root(user_id: str, project_id: str) -> RedirectResponse:
+    return RedirectResponse(url=f"/preview/{sanitize_id(user_id)}/{sanitize_id(project_id)}/", status_code=307)
+
+
+@app.get("/preview/{user_id}/{project_id}/{file_path:path}")
+async def serve_preview_file(user_id: str, project_id: str, file_path: str = "") -> Response:
+    serve_dir = workspace.get_preview_serve_dir(user_id, project_id)
+    if serve_dir is None:
+        raise HTTPException(status_code=404, detail="Preview not ready")
+
+    if not file_path or file_path.endswith("/"):
+        file_path = "index.html"
+
+    try:
+        target = resolve_project_path(file_path, serve_dir)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Invalid path")
+
+    if target.is_dir():
+        target = target / "index.html"
+
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    media_types = {
+        ".html": "text/html",
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+    }
+    media_type = media_types.get(target.suffix.lower(), "application/octet-stream")
+    return FileResponse(target, media_type=media_type)
 
 
 @app.websocket("/ws/chat")
 async def chat_socket(websocket: WebSocket) -> None:
     await websocket.accept()
     session_id = str(uuid.uuid4())
-    logger.info("[ws] connected internal=%s", session_id)
+    sm = session_store.bind_project(session_id, "default", session_id)
+    print(f"[ws] connected session={session_id} project={sm.user_id}/{sm.project_id}")
     loop = asyncio.get_running_loop()
     event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
     stop_event = threading.Event()
     current_run_task: Optional[asyncio.Task[Any]] = None
+    preview_task: Optional[asyncio.Task[Any]] = None
 
     async def sender_loop() -> None:
         try:
@@ -293,15 +435,24 @@ async def chat_socket(websocket: WebSocket) -> None:
                     return
                 if event.get("type") == "generated_file":
                     path = event.get("path", "")
-                    if isinstance(path, str) and path:
-                        session_store.upsert_generated_file(
-                            session_id,
-                            path,
-                            str(event.get("content", "")),
-                            str(event.get("source_tool", "")),
-                        )
-                        logger.info("[ws] generated_file session=%s path=%s", session_id, path)
-                logger.debug("[ws] -> session=%s event=%s", session_id, event.get("type"))
+                    content = str(event.get("content", ""))
+                    uid = event.get("user_id", sm.user_id)
+                    pid = event.get("project_id", sm.project_id)
+                    if isinstance(path, str) and path and content:
+                        synced = workspace.sync_file(uid, pid, path, content, str(event.get("source_tool", "")))
+                        if synced:
+                            session_store.upsert_generated_file(
+                                session_id,
+                                synced["path"],
+                                synced["content"],
+                                synced.get("source_tool", ""),
+                            )
+                            event["path"] = synced["path"]
+                            event["in_project"] = True
+                            print(f"[ws] generated_file {uid}/{pid} path={synced['path']}")
+                        else:
+                            event["in_project"] = False
+                print(f"[ws] -> session={session_id} event={event.get('type')}")
                 await websocket.send_text(json.dumps(event))
         except WebSocketDisconnect:
             return
@@ -309,62 +460,105 @@ async def chat_socket(websocket: WebSocket) -> None:
     sender_task = asyncio.create_task(sender_loop())
 
     def emit(event: Dict[str, Any]) -> None:
+        event.setdefault("user_id", sm.user_id)
+        event.setdefault("project_id", sm.project_id)
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
-    def start_run(prompt: str, run_session_id: str, working_directory: Optional[str] = None) -> None:
-        nonlocal current_run_task
+    def start_run(prompt: str, run_session_id: str, user_id: str, project_id: str) -> None:
+        nonlocal current_run_task, preview_task
         stop_event.clear()
-
+        project_dir = str(get_project_dir(user_id, project_id))
+        full_prompt = _project_context_prompt(user_id, project_id) + prompt
         history = session_store.get_history(run_session_id)
 
-        resolved_workdir = resolve_working_directory(working_directory)
-
         def worker() -> None:
-            previous_cwd = os.getcwd()
+            original_cwd = os.getcwd()
+            os.chdir(project_dir)
+            os.environ["CODER_BUDDY_PROJECT_ROOT"] = project_dir
             try:
-                if resolved_workdir and os.path.isdir(resolved_workdir):
-                    os.chdir(resolved_workdir)
-                    logger.info("[ws] run cwd=%s session=%s", os.getcwd(), run_session_id)
                 output = run_agent(
-                    prompt,
+                    full_prompt,
                     history,
                     event_sink=emit,
                     stop_check=stop_event.is_set,
+                    project_root=project_dir,
                 )
+                moved = adopt_stray_repo_root_files(
+                    Path(project_dir),
+                    WORKSPACE_ROOT,
+                )
+                if moved:
+                    emit({
+                        "type": "agent_log",
+                        "message": f"Moved into project folder: {', '.join(moved)}",
+                        "session_id": run_session_id,
+                        "timestamp": iso_now(),
+                    })
+                tree = workspace.get_file_tree(user_id, project_id)
+                emit({
+                    "type": "file_tree",
+                    "session_id": run_session_id,
+                    "user_id": user_id,
+                    "project_id": project_id,
+                    "tree": tree["tree"],
+                    "files": tree["files"],
+                    "timestamp": iso_now(),
+                })
                 emit(
                     {
                         "type": "response",
                         "session_id": run_session_id,
+                        "user_id": user_id,
+                        "project_id": project_id,
                         "prompt": prompt,
                         "output": output,
                         "timestamp": iso_now(),
                     }
                 )
-            except Exception as exc:  # pragma: no cover - websocket boundary
+            except Exception as exc:  # pragma: no cover
                 emit(
                     {
                         "type": "error",
                         "session_id": run_session_id,
+                        "user_id": user_id,
+                        "project_id": project_id,
                         "error": str(exc),
                         "timestamp": iso_now(),
                     }
                 )
             finally:
-                os.chdir(previous_cwd)
+                with suppress(Exception):
+                    os.chdir(original_cwd)
+                os.environ.pop("CODER_BUDDY_PROJECT_ROOT", None)
+                workspace.end_generation(user_id, project_id)
                 emit(
                     {
                         "type": "run_complete",
                         "session_id": run_session_id,
+                        "user_id": user_id,
+                        "project_id": project_id,
                         "timestamp": iso_now(),
                     }
                 )
 
         current_run_task = asyncio.create_task(asyncio.to_thread(worker))
 
+        def on_run_done(task: asyncio.Task[Any]) -> None:
+            nonlocal preview_task
+            with suppress(asyncio.CancelledError, Exception):
+                task.result()
+            preview_task = asyncio.create_task(
+                _schedule_preview_build(emit, user_id, project_id, run_session_id)
+            )
+
+        current_run_task.add_done_callback(
+            lambda t: loop.call_soon_threadsafe(on_run_done, t)
+        )
+
     try:
         while True:
             raw_message = await websocket.receive_text()
-            logger.info("[ws] <- session=%s type=%s", session_id, raw_message[:120])
+            print(f"[ws] <- session={session_id} raw={raw_message[:300]}")
 
             try:
                 payload = SocketRequest.model_validate_json(raw_message)
@@ -379,16 +573,25 @@ async def chat_socket(websocket: WebSocket) -> None:
                 )
                 continue
 
+            if payload.user_id or payload.project_id:
+                sm = session_store.bind_project(
+                    session_id,
+                    payload.user_id or sm.user_id,
+                    payload.project_id or sm.project_id,
+                )
+
             if payload.type == "reset":
                 stop_event.set()
                 target_session_id = payload.session_id or session_id
                 session_store.reset(target_session_id)
                 session_id = target_session_id
-                logger.info("[ws] reset session=%s", session_id)
+                print(f"[ws] reset session={session_id}")
                 await websocket.send_text(
                     SocketResponse(
                         type="reset",
                         session_id=session_id,
+                        user_id=sm.user_id,
+                        project_id=sm.project_id,
                         timestamp=iso_now(),
                     ).model_dump_json()
                 )
@@ -396,28 +599,50 @@ async def chat_socket(websocket: WebSocket) -> None:
 
             if payload.type == "stop":
                 stop_event.set()
-                logger.info("[ws] stopping requested session=%s", payload.session_id or session_id)
+                workspace.end_generation(sm.user_id, sm.project_id)
                 await websocket.send_text(
                     SocketResponse(
                         type="stopping",
                         session_id=payload.session_id or session_id,
+                        user_id=sm.user_id,
+                        project_id=sm.project_id,
                         timestamp=iso_now(),
                     ).model_dump_json()
                 )
                 continue
 
             if payload.type == "list_files":
-                target_session_id = payload.session_id or session_id
-                files = session_store.get_generated_files(target_session_id)
-                logger.info("[ws] list_files session=%s count=%s", target_session_id, len(files))
+                tree = workspace.get_file_tree(sm.user_id, sm.project_id)
                 await websocket.send_text(
                     json.dumps(
                         {
-                            "type": "files",
-                            "session_id": target_session_id,
-                            "files": files,
+                            "type": "file_tree",
+                            "session_id": session_id,
+                            "user_id": sm.user_id,
+                            "project_id": sm.project_id,
+                            "tree": tree["tree"],
+                            "files": tree["files"],
+                            "preview_url": tree.get("preview_url", ""),
+                            "status": tree.get("status", "idle"),
                             "timestamp": iso_now(),
                         }
+                    )
+                )
+                continue
+
+            if payload.type == "build_preview":
+                if preview_task and not preview_task.done():
+                    await websocket.send_text(
+                        json.dumps({
+                            "type": "error",
+                            "error": "Preview build already in progress.",
+                            "timestamp": iso_now(),
+                        })
+                    )
+                    continue
+                preview_task = asyncio.create_task(
+                    _schedule_preview_build(
+                        emit, sm.user_id, sm.project_id, session_id, force=payload.force
                     )
                 )
                 continue
@@ -435,12 +660,61 @@ async def chat_socket(websocket: WebSocket) -> None:
                 continue
 
             session_id = payload.session_id or session_id
+            sm = session_store.bind_project(
+                session_id,
+                payload.user_id or sm.user_id,
+                payload.project_id or sm.project_id,
+            )
+
+            uploaded_refs = _save_reference_images(session_id, payload.reference_images or [])
+            if uploaded_refs:
+                for ref in uploaded_refs:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "generated_file",
+                                "session_id": session_id,
+                                "user_id": sm.user_id,
+                                "project_id": sm.project_id,
+                                "path": ref["path"],
+                                "name": ref["name"],
+                                "type": "image",
+                                "content": "",
+                                "source_tool": "uploaded_reference",
+                                "timestamp": iso_now(),
+                            }
+                        )
+                    )
+
+                prompt += "\n\nReference images uploaded by user:\n"
+                for ref in uploaded_refs:
+                    prompt += f"- {ref['path']} ({ref['media_type']})\n"
+                prompt += (
+                    "Use load_local_reference_image(file_path) on the paths above, then "
+                    "analyze_reference_image(...) or generate_frontend_from_reference(...) "
+                    "before generating UI code."
+                )
+
             if current_run_task is not None and not current_run_task.done():
                 await websocket.send_text(
                     SocketResponse(
                         type="error",
                         session_id=session_id,
-                        error="An agent run is already in progress. Stop it before starting a new one.",
+                        error="An agent run is already in progress for this connection. Stop it first.",
+                        timestamp=iso_now(),
+                    ).model_dump_json()
+                )
+                continue
+
+            ok, err = workspace.begin_generation(sm.user_id, sm.project_id)
+            if not ok:
+                await websocket.send_text(
+                    SocketResponse(
+                        type="error",
+                        session_id=session_id,
+                        error=err,
+                        user_id=sm.user_id,
+                        project_id=sm.project_id,
                         timestamp=iso_now(),
                     ).model_dump_json()
                 )
@@ -450,26 +724,21 @@ async def chat_socket(websocket: WebSocket) -> None:
                 SocketResponse(
                     type="ack",
                     session_id=session_id,
+                    user_id=sm.user_id,
+                    project_id=sm.project_id,
                     prompt=prompt,
                     timestamp=iso_now(),
                 ).model_dump_json()
             )
 
-            run_session = payload.session_id or session_id
-            logger.info(
-                "[ws] start_run session=%s prompt_chars=%s workdir=%s",
-                run_session,
-                len(prompt),
-                payload.working_directory,
-            )
-            start_run(prompt, run_session, resolve_working_directory(payload.working_directory))
+            start_run(prompt, session_id, sm.user_id, sm.project_id)
     except WebSocketDisconnect:
         stop_event.set()
-        logger.info("[ws] disconnected session=%s", session_id)
+        print(f"[ws] disconnected session={session_id}")
         return
     except Exception as exc:
         stop_event.set()
-        logger.exception("[ws] error session=%s: %s", session_id, exc)
+        print(f"[ws] error session={session_id}: {exc}")
         await websocket.send_text(
             SocketResponse(
                 type="error",
