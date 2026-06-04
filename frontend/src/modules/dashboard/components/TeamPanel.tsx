@@ -25,7 +25,7 @@ export function TeamPanel({ team, owner, members }: TeamPanelProps) {
       <ul className="member-list">
         {members.map((member) => (
           <li key={member.id}>
-            <Image src={member.avatarUrl} alt={member.displayName} className="member-avatar" width={36} height={36} />
+            <Image src={member.avatarUrl} alt={member.displayName} className="member-avatar" width={36} height={36} unoptimized />
             <div>
               <strong>{member.displayName}</strong>
               <span>{member.role.toUpperCase()}</span>

@@ -641,7 +641,7 @@ export function TasksWorkspaceShell() {
                   return (
                     <li key={item.id}>
                       <div className="approval-main">
-                        <Image src={qaMember.avatarUrl} alt={qaMember.displayName} width={38} height={38} />
+                        <Image src={qaMember.avatarUrl} alt={qaMember.displayName} width={38} height={38} unoptimized />
                         <div>
                           <strong>
                             {qaMember.displayName} on {task.name}
@@ -804,7 +804,7 @@ export function TasksWorkspaceShell() {
                   >
                     <div className="comment-head">
                       <div className="comment-author">
-                        <Image src={author.avatarUrl} alt={author.displayName} width={34} height={34} />
+                        <Image src={author.avatarUrl} alt={author.displayName} width={34} height={34} unoptimized />
                         <strong>{author.displayName}</strong>
                         <span className="role-chip">{roleLabel(comment.role)}</span>
                         {comment.qaReview ? <span className="qa-review-tag">QA Review</span> : null}

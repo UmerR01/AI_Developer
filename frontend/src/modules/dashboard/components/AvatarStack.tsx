@@ -27,6 +27,7 @@ export function AvatarStack({ members, maxVisible = 3 }: AvatarStackProps) {
           title={member.displayName}
           width={32}
           height={32}
+          unoptimized
         />
       ))}
       {showCountBubble ? <span className="avatar-count">+{hiddenCount}</span> : null}

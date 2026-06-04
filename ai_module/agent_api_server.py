@@ -344,6 +344,29 @@ async def api_file_tree(user_id: str, project_id: str) -> Dict[str, Any]:
     return workspace.get_file_tree(user_id, project_id)
 
 
+@app.get("/api/projects/{user_id}/{project_id}/chat")
+async def api_chat_history(user_id: str, project_id: str) -> Dict[str, Any]:
+    return {
+        "user_id": sanitize_id(user_id),
+        "project_id": sanitize_id(project_id),
+        "messages": workspace.load_chat(user_id, project_id),
+    }
+
+
+@app.put("/api/projects/{user_id}/{project_id}/chat")
+async def api_save_chat(user_id: str, project_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    messages = payload.get("messages") if isinstance(payload, dict) else []
+    if not isinstance(messages, list):
+        raise HTTPException(status_code=400, detail="messages must be a list")
+    workspace.save_chat(user_id, project_id, messages)
+    return {
+        "success": True,
+        "user_id": sanitize_id(user_id),
+        "project_id": sanitize_id(project_id),
+        "count": len(messages),
+    }
+
+
 @app.get("/api/projects/{user_id}/{project_id}/file")
 async def api_get_file(user_id: str, project_id: str, path: str) -> Dict[str, Any]:
     try:

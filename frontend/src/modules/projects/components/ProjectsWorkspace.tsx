@@ -381,6 +381,7 @@ function ProjectAvatarStack({ members, maxVisible = 4 }: { members: Account[]; m
           title={`${member.displayName} (${memberRoleLabel(member.role)})`}
           width={34}
           height={34}
+          unoptimized
         />
       ))}
       {hiddenCount > 0 ? <span className="project-avatar-overflow">+{hiddenCount}</span> : null}
@@ -1100,7 +1101,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   openProjectDetails(project);
                 }}
               >
-                <Image src="/folder-icon.png" alt="" className="project-folder-icon" width={44} height={44} draggable={false} />
+                <Image src="/folder-icon.png" alt="" className="project-folder-icon" width={120} height={120} draggable={false} />
                 <span className="project-folder-name">{project.name}</span>
                 {project.isDeleted ? (
                   <button
@@ -1162,7 +1163,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
           {/* ── Storage Card (like reference image) ── */}
           <article className="detail-storage-card">
             <div className="detail-storage-icon-wrap">
-              <Image src="/storage.png" alt="" className="detail-storage-folder" width={54} height={54} draggable={false} />
+              <Image src="/storage.png" alt="" className="detail-storage-folder" width={140} height={140} draggable={false} />
             </div>
 
             {(() => {
@@ -1374,7 +1375,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   </div>
                   <span className="file-size">{formatBytes(fileRow.size)}</span>
                   <span className="file-uploader-row">
-                    <Image src={selectedProject.ownerId ? accountById[selectedProject.ownerId]?.avatarUrl || "/storage.png" : "/storage.png"} alt="" className="file-uploader-avatar" width={24} height={24} />
+                    <Image src={selectedProject.ownerId ? accountById[selectedProject.ownerId]?.avatarUrl || "/storage.png" : "/storage.png"} alt="" className="file-uploader-avatar" width={24} height={24} unoptimized />
                     <span className="file-uploader">{fileRow.uploadedByName}</span>
                   </span>
                   <span className="file-date">{formatDateLabel(fileRow.uploadedAt)}</span>
@@ -1578,7 +1579,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                   <div className="add-member-candidates">
                     {availableAdminMembers.slice(0, 6).map((member) => (
                       <button key={member.id} type="button" className="add-member-candidate" onClick={() => addMemberToTeam(member.id)}>
-                        <Image src={member.avatarUrl} alt={member.displayName} width={30} height={30} />
+                        <Image src={member.avatarUrl} alt={member.displayName} width={30} height={30} unoptimized />
                         <div>
                           <strong>{member.displayName}</strong>
                           <span>{member.email}</span>
@@ -1604,7 +1605,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                 {selectedMembers.map((member) => (
                   <li key={member.id}>
                     <div className="member-main">
-                      <Image src={member.avatarUrl} alt={member.displayName} width={34} height={34} />
+                      <Image src={member.avatarUrl} alt={member.displayName} width={34} height={34} unoptimized />
                       <div>
                         <strong>{member.displayName}</strong>
                         <div className="member-chips">

@@ -80,7 +80,7 @@ export function DashboardTopBar({ activeAccount, title = "Dashboard", notificati
         </div>
 
         <div className="topbar-profile">
-          <Image src={activeAccount.avatarUrl} alt={activeAccount.displayName} width={42} height={42} />
+          <Image src={activeAccount.avatarUrl} alt={activeAccount.displayName} width={42} height={42} unoptimized />
           <div className="topbar-profile-info">
             <span className="topbar-profile-name">{activeAccount.displayName}</span>
             <span className="topbar-profile-role">{roleLabel}</span>
