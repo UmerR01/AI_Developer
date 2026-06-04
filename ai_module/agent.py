@@ -736,6 +736,31 @@ def run_agent(
         _emit_event(event_sink, "stopped", reason="stop_requested_before_start")
         return "⏹ Generation stopped before it began."
 
+    from project_context import enter_project_root, leave_project_root
+
+    root_token = enter_project_root(project_root)
+    try:
+        return _run_agent_loop(
+            user_input,
+            message_history,
+            event_sink=event_sink,
+            stop_check=stop_check,
+            project_root=project_root,
+        )
+    finally:
+        leave_project_root(root_token)
+
+
+def _run_agent_loop(
+    user_input: str,
+    message_history: List,
+    event_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
+    stop_check: Optional[Callable[[], bool]] = None,
+    project_root: Optional[str] = None,
+) -> str:
+    def stop_requested() -> bool:
+        return bool(stop_check and stop_check())
+
     is_gen       = _is_generation_task(user_input)
     max_iter     = MAX_ITERATIONS if is_gen else 15
     mode_label   = "🏗️  GENERATION" if is_gen else "🔍 DEBUG/EDIT"

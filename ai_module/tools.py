@@ -188,10 +188,9 @@ CACHE_TTL      = int(os.getenv("CACHE_TTL",  "3600"))   # seconds
 
 HTTP_TIMEOUT   = 20   # seconds for all httpx calls
 
-BASE_DIR = os.getcwd()
+from project_context import get_active_project_root, is_safe_path, resolve_in_project  # noqa: E402
 
-def is_safe_path(path: str) -> bool:
-    return os.path.abspath(path).startswith(BASE_DIR)
+BASE_DIR = str(get_active_project_root())
 
 def _get_redis() -> Optional[redis_lib.Redis]:
     try:
@@ -2282,7 +2281,8 @@ def run_shell_command(
         python -m pytest
     """
     try:
-        if not is_safe_path(working_directory):
+        cwd = resolve_in_project(working_directory)
+        if not is_safe_path(cwd):
             return "EXIT CODE: -1\nAccess denied: working directory outside project."
 
         # Block destructive commands
@@ -2295,7 +2295,7 @@ def run_shell_command(
         result = subprocess.run(
             command,
             shell=True,
-            cwd=working_directory,
+            cwd=cwd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -2303,7 +2303,7 @@ def run_shell_command(
 
         output = f"EXIT CODE: {result.returncode}\n"
         output += f"COMMAND: {command}\n"
-        output += f"DIRECTORY: {working_directory}\n"
+        output += f"DIRECTORY: {cwd}\n"
 
         if result.stdout:
             # Trim very long output (npm install is chatty)

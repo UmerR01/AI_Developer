@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  agentProjectKey,
+  bootstrapAgentSession,
+  buildAgentWorkspaceUrl,
+  inferAgentUserId,
+} from "../../../../lib/agentClient";
 import { createProject, reviewProjectBrief } from "../../api";
 import type { ProjectRecord } from "../../types";
 import "./project-create.css";
@@ -43,26 +49,6 @@ function makeAvatar(name: string): string {
   return `${first}${second}`.toUpperCase();
 }
 
-function agentBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_AI_AGENT_URL ?? "http://localhost:8001").replace(/\/+$/, "");
-}
-
-function agentWebSocketUrl(baseUrl: string): string {
-  return baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/ws/chat";
-}
-
-function buildAgentWorkspaceUrl(projectId: string, projectName: string, sessionId: string): string {
-  const baseUrl = agentBaseUrl();
-  const params = new URLSearchParams({
-    autostart: "1",
-    projectId,
-    projectName,
-    session: sessionId,
-    ws: agentWebSocketUrl(baseUrl),
-  });
-  return `${baseUrl}/workspace?${params.toString()}`;
-}
-
 function buildProjectAnalysisPrompt(input: {
   projectName: string;
   repositoryUrl: string;
@@ -97,37 +83,6 @@ function buildProjectAnalysisPrompt(input: {
   }
 
   return sections.join("\n\n");
-}
-
-async function bootstrapAgentSession(input: {
-  sessionId: string;
-  prompt: string;
-  projectId: string;
-  projectName: string;
-  workingDirectory?: string;
-}): Promise<{ success: boolean; message?: string }> {
-  const response = await fetch(`${agentBaseUrl()}/api/session/bootstrap`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      session_id: input.sessionId,
-      prompt: input.prompt,
-      working_directory: input.workingDirectory || undefined,
-      project_id: input.projectId,
-      project_name: input.projectName,
-    }),
-  });
-
-  if (!response.ok) {
-    return { success: false, message: `Agent bootstrap failed with HTTP ${response.status}.` };
-  }
-
-  const payload = await response.json().catch(() => null) as { success?: boolean; message?: string } | null;
-  if (payload && payload.success === false) {
-    return { success: false, message: payload.message || "Agent server could not store the prompt." };
-  }
-
-  return { success: true };
 }
 
 export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateWizardProps) {
@@ -359,7 +314,8 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
 
       onCreated?.(created.project);
 
-      const sessionId = `project-${created.project.id}`;
+      const sessionId = agentProjectKey(created.project.id);
+      const agentUserId = inferAgentUserId(created.project.folderPath);
       setReviewTitle("Opening AI workspace");
       setReviewSubtitle("The project is saved. Sending your prompt to the AI-module workspace.");
 
@@ -369,6 +325,7 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
         projectId: created.project.id,
         projectName: created.project.name,
         workingDirectory: created.project.folderPath,
+        userId: agentUserId,
       });
 
       if (!bootstrap.success) {
@@ -380,7 +337,17 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
       }
 
       onClose();
-      window.open(buildAgentWorkspaceUrl(created.project.id, created.project.name, sessionId), "_blank", "noopener,noreferrer");
+      window.open(
+        buildAgentWorkspaceUrl({
+          projectId: created.project.id,
+          projectName: created.project.name,
+          sessionId,
+          userId: agentUserId,
+          autostart: true,
+        }),
+        "_blank",
+        "noopener,noreferrer",
+      );
       router.push(`/projects/${created.project.id}?tab=overview`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to open the AI workspace.");
