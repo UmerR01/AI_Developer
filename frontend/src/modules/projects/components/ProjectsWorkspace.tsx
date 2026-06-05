@@ -30,7 +30,6 @@ import {
 import type { ProjectRecord, ProjectState } from "../types";
 import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
-import { buildNextAgentWorkspacePath } from "../../agent-workspace/utils";
 import { ProjectCreateWizard } from "./new-project/ProjectCreateWizard";
 
 interface ProjectsWorkspaceProps {
@@ -788,7 +787,7 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       autostart: true,
     });
 
-    window.open(`${window.location.origin}${workspacePath}`, "_blank", "noopener,noreferrer");
+    window.open(workspaceUrl, "_blank", "noopener,noreferrer");
 
     setDevelopmentStartedByProject((current) => ({ ...current, [selectedProject.id]: true }));
     setDevelopmentProgressByProject((current) => ({ ...current, [selectedProject.id]: 8 }));
