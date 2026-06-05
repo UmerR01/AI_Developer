@@ -27,7 +27,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from pathlib import Path
-from typing import Callable, Optional, TypeVar
+from typing import Callable, Optional, Tuple, TypeVar
 
 T = TypeVar("T")
 
@@ -2763,6 +2763,125 @@ def check_file_consistency(
     report.append(f"\nFiles scanned: {len(all_files)}")
     report.append(f"Exports found: {len(exports)}")
     return "\n".join(report)
+
+
+@tool
+def build_and_publish_preview(project_directory: str = ".", force: bool = False) -> str:
+    """
+    Build the frontend (or validate static HTML) and publish the app preview URL.
+    Call this as the FINAL step after all frontend files are written.
+
+    - React/Vite (package.json): reuses existing dist/ when fresh; otherwise npm install + npm run build
+    - Static HTML: validates structure and serves the index.html folder
+    - Sets preview_url for the live App Preview panel
+
+    Args:
+        project_directory: project root (use "." when cwd is the project folder)
+        force: if True, rebuild even when dist/ already exists
+    """
+    if not is_safe_path(project_directory):
+        return "Access denied: path outside project workspace."
+    if not os.path.isdir(project_directory):
+        return f"Directory '{project_directory}' not found."
+
+    user_id = os.getenv("CODER_BUDDY_USER_ID", "default")
+    project_id = os.getenv("CODER_BUDDY_PROJECT_ID", "")
+    if not project_id:
+        return "Error: project context missing (CODER_BUDDY_PROJECT_ID)."
+
+    from project_workspace import workspace
+
+    meta = workspace.run_preview_build_sync(user_id, project_id, force=force)
+    if meta.status.value == "ready":
+        workspace.mark_agent_preview_published(user_id, project_id)
+        return json.dumps({
+            "status": "ready",
+            "preview_url": meta.preview_url,
+            "preview_dir": meta.preview_dir,
+            "project_type": meta.project_type,
+            "message": "✅ Preview published successfully.",
+        })
+    return json.dumps({
+        "status": "failed",
+        "error": meta.preview_error or "Preview build failed.",
+        "project_type": meta.project_type,
+    })
+
+
+@tool
+def diagnose_ui_screenshot(image_json: str, context: str = "") -> str:
+    """
+    Analyze a UI error or broken-layout screenshot and return structured diagnosis.
+
+    Use when the user uploads an error screenshot or after preview/build failures.
+    Returns JSON with error_type, visible_symptoms, suspected_causes, and files_to_check.
+
+    Args:
+        image_json: image_ref, data_uri JSON, or output from load_local_reference_image
+        context: optional extra context (build log snippet, user message)
+    """
+    try:
+        data = _resolve_image_payload(image_json)
+    except ValueError as e:
+        return json.dumps({"status": "failed", "error": str(e)})
+
+    data_uri = data.get("data_uri")
+    if not data_uri:
+        b64 = data.get("base64")
+        media_type = data.get("media_type", "image/png")
+        if b64:
+            data_uri = f"data:{media_type};base64,{b64}"
+        else:
+            return json.dumps({"status": "failed", "error": "Image payload missing data_uri/base64"})
+
+    prompt = (
+        "You are a senior frontend debugger. Analyze this UI screenshot.\n"
+        f"Context: {context or 'User reports a broken UI or build/preview error.'}\n\n"
+        "Return ONLY valid JSON (no markdown) with this schema:\n"
+        "{\n"
+        '  "error_type": "blank_page|layout_broken|build_error|runtime_error|styling|routing|other",\n'
+        '  "visible_symptoms": ["..."],\n'
+        '  "suspected_causes": ["..."],\n'
+        '  "files_to_check": ["relative/paths/in/project"],\n'
+        '  "fix_priority": ["routing","imports","css","components","config"]\n'
+        "}\n"
+        "Be specific about what you see (blank main area, error overlay, wrong colors, etc.)."
+    )
+
+    llm = _get_vision_llm()
+    raw = ""
+    for msg in _vision_messages(data_uri, prompt):
+        try:
+            resp = llm.invoke([msg])
+            raw = str(resp.content).strip()
+            break
+        except Exception:
+            continue
+
+    if not raw:
+        return json.dumps({"status": "failed", "error": "Vision analysis failed."})
+
+    cleaned = raw
+    if "```" in cleaned:
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)```", cleaned)
+        if m:
+            cleaned = m.group(1).strip()
+
+    try:
+        diagnosis = json.loads(cleaned)
+        diagnosis["status"] = "ok"
+        diagnosis["image_ref"] = data.get("image_ref", "")
+        return json.dumps(diagnosis, indent=2)
+    except json.JSONDecodeError:
+        return json.dumps({
+            "status": "ok",
+            "error_type": "other",
+            "visible_symptoms": [raw[:500]],
+            "suspected_causes": [],
+            "files_to_check": [],
+            "fix_priority": ["components"],
+            "raw_analysis": raw[:1500],
+        }, indent=2)
 
 
 

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 from strawberry.types import Info
@@ -314,6 +315,9 @@ def _seed_owner(username: str):
         return user_model.objects.order_by("id").first()
 
 
+_seed_projects_lock = threading.Lock()
+
+
 def ensure_seed_projects() -> None:
     seeds = [
         {
@@ -414,19 +418,29 @@ def ensure_seed_projects() -> None:
         },
     ]
 
-    existing_slugs = set(Project.objects.values_list("slug", flat=True))
+    seed_slugs = [data["slug"] for data in seeds]
+    if Project.objects.filter(slug__in=seed_slugs).count() == len(seed_slugs):
+        return
 
-    for data in seeds:
-        if data["slug"] in existing_slugs:
-            continue
-        owner = data.get("owner")
-        if owner:
-            storage = get_or_create_storage_for_user(owner)
-            data["storage"] = storage
-            data["folder_path"] = f"{storage.folder_name}/{data['slug']}"
-            data["used_storage"] = 0
-        Project.objects.create(**data)
-        existing_slugs.add(data["slug"])
+    with _seed_projects_lock:
+        for data in seeds:
+            slug = data["slug"]
+            if Project.objects.filter(slug=slug).exists():
+                continue
+
+            payload = {key: value for key, value in data.items() if key != "slug"}
+            owner = payload.pop("owner", None)
+            if owner:
+                storage = get_or_create_storage_for_user(owner)
+                payload["owner"] = owner
+                payload["storage"] = storage
+                payload["folder_path"] = f"{storage.folder_name}/{slug}"
+                payload["used_storage"] = 0
+
+            try:
+                Project.objects.get_or_create(slug=slug, defaults=payload)
+            except IntegrityError:
+                continue
 
 
 def find_project_or_none(project_id: str) -> Project | None:

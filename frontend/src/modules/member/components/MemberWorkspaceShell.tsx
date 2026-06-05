@@ -422,7 +422,7 @@ export function MemberWorkspaceShell() {
                   {filteredMembers.map((member) => (
                     <article key={member.id} className="member-card-v2" onClick={() => openProfile(member)}>
                       <div className="member-card-v2-left">
-                        <Image src={member.avatarUrl} alt={member.displayName} className="member-card-v2-avatar" width={52} height={52} />
+                        <Image src={member.avatarUrl} alt={member.displayName} className="member-card-v2-avatar" width={52} height={52} unoptimized />
                         <span className={`member-card-v2-dot ${getMemberStatus(member) === "active" ? "active" : "pending"}`} />
                       </div>
                       <div className="member-card-v2-body">
@@ -463,7 +463,7 @@ export function MemberWorkspaceShell() {
                   {filteredMembers.map((member) => (
                     <article key={member.id} className="member-list-row" onClick={() => openProfile(member)}>
                       <div className="member-list-main">
-                        <Image src={member.avatarUrl} alt={member.displayName} className="member-list-avatar" width={42} height={42} />
+                        <Image src={member.avatarUrl} alt={member.displayName} className="member-list-avatar" width={42} height={42} unoptimized />
                         <div className="member-list-name-group">
                           <strong>{member.displayName}</strong>
                           <span>{member.email}</span>
@@ -531,7 +531,7 @@ export function MemberWorkspaceShell() {
             </button>
 
             <div className="member-drawer-top">
-              <Image src={selectedMember.avatarUrl} alt={selectedMember.displayName} className="member-drawer-avatar" width={88} height={88} />
+              <Image src={selectedMember.avatarUrl} alt={selectedMember.displayName} className="member-drawer-avatar" width={88} height={88} unoptimized />
               <h3>{selectedMember.displayName}</h3>
               <span className={`member-role-chip role-${selectedMember.role}`}>{roleLabel(selectedMember.role)}</span>
               <p className="member-status-text">

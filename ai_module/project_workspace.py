@@ -9,7 +9,9 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import zipfile
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -19,6 +21,20 @@ from typing import Any, Dict, List, Optional, Tuple
 ROOT_DIR = Path(__file__).resolve().parent
 PROJECTS_ROOT = ROOT_DIR / "generated_projects"
 META_FILENAME = ".ai-coder-meta.json"
+CHAT_FILENAME = ".ai-coder-chat.json"
+MAX_CHAT_MESSAGES = 200
+SIDECAR_FILENAMES = {META_FILENAME, CHAT_FILENAME}
+IGNORED_PROJECT_DIRS = {
+    ".cache",
+    ".git",
+    ".next",
+    "__pycache__",
+    "build",
+    "coverage",
+    "dist",
+    "node_modules",
+}
+BUSY_STALE_SECONDS = 30 * 60
 
 # Binary extensions — skip reading full content for UI
 BINARY_SUFFIXES = {
@@ -143,6 +159,27 @@ def is_under_project(path: Path, project_dir: Path) -> bool:
         return False
 
 
+def is_ignored_project_path(path: Path, project_dir: Path) -> bool:
+    try:
+        parts = path.resolve().relative_to(project_dir.resolve()).parts
+    except ValueError:
+        return False
+    return any(part in IGNORED_PROJECT_DIRS for part in parts)
+
+
+def is_stale_busy_meta(meta: "ProjectMeta") -> bool:
+    if meta.status not in (ProjectStatus.GENERATING, ProjectStatus.BUILDING):
+        return False
+    try:
+        updated_at = datetime.fromisoformat(meta.updated_at.replace("Z", "+00:00"))
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    age = datetime.now(timezone.utc) - updated_at
+    return age.total_seconds() > BUSY_STALE_SECONDS
+
+
 def to_relative_path(file_path: str, project_dir: Path) -> str:
     abs_path = Path(file_path).resolve()
     proj = project_dir.resolve()
@@ -183,7 +220,9 @@ def find_static_entry(project_dir: Path) -> Optional[Path]:
         return root_index
     html_files = sorted(
         p for p in project_dir.rglob("*.html")
-        if p.is_file() and META_FILENAME not in p.parts
+        if p.is_file()
+        and not any(part in SIDECAR_FILENAMES for part in p.parts)
+        and not is_ignored_project_path(p, project_dir)
     )
     return html_files[0] if html_files else None
 
@@ -233,7 +272,11 @@ def list_project_files(project_dir: Path) -> List[Dict[str, Any]]:
     if not project_dir.exists():
         return files
     for path in sorted(project_dir.rglob("*")):
-        if not path.is_file() or META_FILENAME in path.parts:
+        if (
+            not path.is_file()
+            or any(part in SIDECAR_FILENAMES for part in path.parts)
+            or is_ignored_project_path(path, project_dir)
+        ):
             continue
         rel = path.relative_to(project_dir).as_posix()
         entry: Dict[str, Any] = {
@@ -256,7 +299,11 @@ def create_project_zip(project_dir: Path) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in sorted(project_dir.rglob("*")):
-            if not path.is_file() or META_FILENAME in path.parts:
+            if (
+                not path.is_file()
+                or any(part in SIDECAR_FILENAMES for part in path.parts)
+                or is_ignored_project_path(path, project_dir)
+            ):
                 continue
             arcname = path.relative_to(project_dir).as_posix()
             zf.write(path, arcname)
@@ -273,6 +320,7 @@ class ProjectMeta:
     preview_dir: str = ""
     preview_url: str = ""
     preview_error: str = ""
+    agent_preview_published: bool = False
     updated_at: str = field(default_factory=iso_now)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -284,6 +332,7 @@ class ProjectMeta:
             "preview_dir": self.preview_dir,
             "preview_url": self.preview_url,
             "preview_error": self.preview_error,
+            "agent_preview_published": self.agent_preview_published,
             "updated_at": self.updated_at,
         }
 
@@ -302,6 +351,7 @@ class ProjectMeta:
             preview_dir=data.get("preview_dir", ""),
             preview_url=data.get("preview_url", ""),
             preview_error=data.get("preview_error", ""),
+            agent_preview_published=bool(data.get("agent_preview_published", False)),
             updated_at=data.get("updated_at", iso_now()),
         )
 
@@ -354,6 +404,47 @@ class ProjectWorkspace:
     def meta_path(self, project_dir: Path) -> Path:
         return project_dir / META_FILENAME
 
+    def chat_path(self, project_dir: Path) -> Path:
+        return project_dir / CHAT_FILENAME
+
+    def load_chat(self, user_id: str, project_id: str) -> List[Dict[str, Any]]:
+        chat_file = self.chat_path(get_project_dir(user_id, project_id))
+        if not chat_file.is_file():
+            return []
+        try:
+            data = json.loads(chat_file.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+        messages = data.get("messages") if isinstance(data, dict) else data
+        if not isinstance(messages, list):
+            return []
+        return [message for message in messages if isinstance(message, dict)][-MAX_CHAT_MESSAGES:]
+
+    def save_chat(self, user_id: str, project_id: str, messages: List[Dict[str, Any]]) -> None:
+        cleaned: List[Dict[str, Any]] = []
+        for message in messages[-MAX_CHAT_MESSAGES:]:
+            if not isinstance(message, dict):
+                continue
+            role = str(message.get("role") or "agent")
+            content = str(message.get("content") or "")
+            meta = str(message.get("meta") or "")
+            if role not in {"user", "agent"} or meta in {"payload", "raw"} or not content.strip():
+                continue
+            cleaned.append(
+                {
+                    "role": role,
+                    "content": content[:8000],
+                    "meta": meta,
+                    "timestamp": message.get("timestamp") or iso_now(),
+                }
+            )
+
+        project_dir = get_project_dir(user_id, project_id)
+        self.chat_path(project_dir).write_text(
+            json.dumps({"messages": cleaned}, indent=2),
+            encoding="utf-8",
+        )
+
     def load_meta(self, user_id: str, project_id: str) -> ProjectMeta:
         key = project_key(user_id, project_id)
         project_dir = self.project_dir_for(user_id, project_id)
@@ -393,12 +484,20 @@ class ProjectWorkspace:
         return meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING)
 
     def begin_generation(self, user_id: str, project_id: str) -> Tuple[bool, str]:
-        if self.is_busy(user_id, project_id):
-            meta = self.load_meta(user_id, project_id)
-            return False, f"Project is busy ({meta.status.value}). Wait for the current run to finish."
         meta = self.load_meta(user_id, project_id)
+        if meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING):
+            if is_stale_busy_meta(meta):
+                meta.status = ProjectStatus.IDLE
+                meta.preview_error = "Cleared stale busy state from an interrupted run."
+                self.save_meta(meta)
+            else:
+                return False, f"Project is busy ({meta.status.value}). Wait for the current run to finish."
+        meta = self.load_meta(user_id, project_id)
+        if meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING):
+            return False, f"Project is busy ({meta.status.value}). Wait for the current run to finish."
         meta.status = ProjectStatus.GENERATING
         meta.preview_error = ""
+        meta.agent_preview_published = False
         self.save_meta(meta)
         return True, ""
 
@@ -450,7 +549,9 @@ class ProjectWorkspace:
         paths = [
             p.relative_to(project_dir).as_posix()
             for p in project_dir.rglob("*")
-            if p.is_file() and META_FILENAME not in p.parts
+            if p.is_file()
+            and not any(part in SIDECAR_FILENAMES for part in p.parts)
+            and not is_ignored_project_path(p, project_dir)
         ]
         meta = self.load_meta(user_id, project_id)
         return {
@@ -512,6 +613,29 @@ class ProjectWorkspace:
                 return folder
         return None
 
+    async def _run_command(
+        self,
+        args: List[str],
+        project_dir: Path,
+        timeout: int = 600,
+    ) -> Tuple[int, str]:
+        def run() -> subprocess.CompletedProcess[bytes]:
+            return subprocess.run(
+                args,
+                cwd=str(project_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=timeout,
+            )
+
+        try:
+            completed = await asyncio.to_thread(run)
+            output = (completed.stdout or b"").decode("utf-8", errors="replace")
+            return completed.returncode, output
+        except subprocess.TimeoutExpired as exc:
+            output = (exc.output or b"").decode("utf-8", errors="replace")
+            return -1, f"{output}\nCommand timed out after {timeout} seconds."
+
     async def run_preview_build(
         self,
         user_id: str,
@@ -547,8 +671,8 @@ class ProjectWorkspace:
 
                 if ok:
                     rel_serve = serve_dir.relative_to(project_dir).as_posix()
-                    if rel_serve == ".":
-                        rel_serve = ""
+                    if rel_serve in ("", "."):
+                        rel_serve = "."
                     meta.preview_dir = rel_serve
                     meta.preview_url = self.preview_url_for(user_id, project_id)
                     meta.status = ProjectStatus.READY
@@ -586,32 +710,95 @@ class ProjectWorkspace:
 
         if not (project_dir / "node_modules").is_dir():
             install_args = [npm, "ci"] if (project_dir / "package-lock.json").is_file() else [npm, "install"]
-            install = await asyncio.create_subprocess_exec(
-                *install_args,
-                cwd=str(project_dir),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            out, _ = await asyncio.wait_for(install.communicate(), timeout=600)
-            if install.returncode != 0:
-                log = (out or b"").decode("utf-8", errors="replace")[-2000:]
+            install_code, install_output = await self._run_command(install_args, project_dir)
+            if install_code != 0:
+                log = install_output[-2000:]
                 return False, f"npm install failed:\n{log}", project_dir
 
-        build = await asyncio.create_subprocess_exec(
-            npm, "run", "build",
-            cwd=str(project_dir),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        out, _ = await asyncio.wait_for(build.communicate(), timeout=600)
-        if build.returncode != 0:
-            log = (out or b"").decode("utf-8", errors="replace")[-2000:]
+        build_code, build_output = await self._run_command([npm, "run", "build"], project_dir)
+        if build_code != 0:
+            log = build_output[-2000:]
             return False, f"npm run build failed:\n{log}", project_dir
 
         built = self._existing_built_dir(project_dir)
         if built:
             return True, "", built
         return False, "Build finished but dist/index.html was not created.", project_dir
+
+    def mark_agent_preview_published(self, user_id: str, project_id: str) -> None:
+        meta = self.load_meta(user_id, project_id)
+        meta.agent_preview_published = True
+        self.save_meta(meta)
+
+    def run_preview_build_sync(
+        self,
+        user_id: str,
+        project_id: str,
+        force: bool = False,
+    ) -> "ProjectMeta":
+        return asyncio.run(self.run_preview_build(user_id, project_id, force=force))
+
+    def capture_preview_screenshot_sync(
+        self,
+        user_id: str,
+        project_id: str,
+    ) -> Tuple[bool, str, Optional[Path]]:
+        """Capture a screenshot of the live preview or local index.html for debugging."""
+        project_dir = get_project_dir(user_id, project_id)
+        meta = self.load_meta(user_id, project_id)
+        debug_dir = project_dir / "debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        out_path = debug_dir / "last_preview.png"
+
+        target_url = ""
+        if meta.status == ProjectStatus.READY and meta.preview_url:
+            target_url = meta.preview_url
+        else:
+            entry = find_static_entry(project_dir)
+            if entry:
+                target_url = entry.resolve().as_uri()
+            else:
+                built = self._existing_built_dir(project_dir)
+                if built and (built / "index.html").is_file():
+                    target_url = (built / "index.html").resolve().as_uri()
+
+        if not target_url:
+            return False, "No preview URL or index.html available to capture.", None
+
+        playwright_url = os.getenv("PLAYWRIGHT_URL", "http://localhost:3000")
+        try:
+            import httpx
+
+            resp = httpx.post(
+                f"{playwright_url}/screenshot",
+                json={"url": target_url, "full_page": True, "wait": 2000},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                b64 = data.get("screenshot") or data.get("base64") or data.get("data", "")
+                if b64:
+                    import base64
+
+                    out_path.write_bytes(base64.b64decode(b64))
+                    return True, str(out_path), out_path
+        except Exception:
+            pass
+
+        try:
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True)
+                page = browser.new_page(viewport={"width": 1440, "height": 900})
+                page.goto(target_url, wait_until="domcontentloaded", timeout=15000)
+                page.wait_for_timeout(2000)
+                png_bytes = page.screenshot(full_page=True)
+                browser.close()
+            out_path.write_bytes(png_bytes)
+            return True, str(out_path), out_path
+        except Exception as exc:
+            return False, f"Screenshot capture failed: {exc}", None
 
 
 workspace = ProjectWorkspace()

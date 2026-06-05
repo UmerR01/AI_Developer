@@ -23,6 +23,7 @@ import { ProjectCreateStepAiReview } from "./ProjectCreateStepAiReview";
 import { ProjectCreateStepDescription } from "./ProjectCreateStepDescription";
 import { ProjectCreateStepFinalBrief } from "./ProjectCreateStepFinalBrief";
 import { ProjectCreateStepSetup } from "./ProjectCreateStepSetup";
+import { buildNextAgentWorkspacePath } from "../../../agent-workspace/utils";
 
 interface ProjectCreateWizardProps {
   open: boolean;

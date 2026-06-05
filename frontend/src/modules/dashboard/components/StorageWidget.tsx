@@ -22,7 +22,7 @@ export function StorageWidget({ usedBytes, totalBytes }: StorageWidgetProps) {
   return (
     <article className="dash-storage-card">
       <div className="dash-storage-icon-wrap">
-        <Image src="/storage.png" alt="" className="dash-storage-img" width={46} height={46} draggable={false} />
+        <Image src="/storage.png" alt="" className="dash-storage-img" width={160} height={160} draggable={false} />
       </div>
 
       <div className="dash-storage-info">

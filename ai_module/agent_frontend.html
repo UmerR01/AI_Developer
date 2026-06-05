@@ -190,7 +190,7 @@
       flex: 1;
       overflow-x: hidden;
       overflow-y: auto;
-      padding: 18px;
+      padding: 18px 18px 28px;
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -287,6 +287,158 @@
       font-size: 0.95rem;
       max-width: 100%;
       overflow-x: hidden;
+    }
+
+    .message-body.md {
+      white-space: normal;
+    }
+
+    .message-body.md p,
+    .message-body.md ul,
+    .message-body.md ol {
+      margin: 0 0 12px;
+    }
+
+    .message-body.md p:last-child,
+    .message-body.md ul:last-child,
+    .message-body.md ol:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-body.md h3,
+    .message-body.md h4 {
+      margin: 16px 0 8px;
+      line-height: 1.35;
+    }
+
+    .message-body.md ul,
+    .message-body.md ol {
+      padding-left: 20px;
+    }
+
+    .message-body.md li {
+      margin: 5px 0;
+    }
+
+    .message-body.md code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .message-body.md pre {
+      margin: 12px 0;
+      white-space: pre;
+    }
+
+    .working-slot {
+      align-self: stretch;
+      padding: 8px 0 2px;
+      flex: 0 0 auto;
+    }
+
+    .working-card {
+      align-self: flex-start;
+      width: max-content;
+      max-width: 100%;
+      border: 0;
+      background: transparent;
+      overflow: visible;
+    }
+
+    .working-card[open] {
+      width: min(520px, 100%);
+    }
+
+    .working-card summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      width: max-content;
+      max-width: 100%;
+      padding: 3px 7px;
+      border: 1px solid rgba(74, 173, 198, 0.72);
+      border-radius: 6px;
+      background: rgba(13, 22, 26, 0.92);
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.78rem;
+      user-select: none;
+    }
+
+    .working-card summary::-webkit-details-marker { display: none; }
+
+    .working-title {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      color: var(--text-secondary);
+    }
+
+    .working-card:not([open]) .working-title::after {
+      content: "›";
+      margin-left: 4px;
+      color: var(--accent);
+    }
+
+    .working-dots::after {
+      content: "...";
+      display: inline-block;
+      width: 18px;
+      margin-left: 2px;
+      text-align: left;
+      overflow: hidden;
+      animation: workingDots 1.2s steps(4, end) infinite;
+    }
+
+    @keyframes workingDots {
+      0% { width: 0; }
+      25% { width: 6px; }
+      50% { width: 12px; }
+      75%, 100% { width: 18px; }
+    }
+
+    .working-count {
+      color: var(--text-secondary);
+      font-size: 0.76rem;
+      font-weight: 600;
+      white-space: nowrap;
+      margin-left: auto;
+    }
+
+    .working-list {
+      display: grid;
+      gap: 8px;
+      width: min(520px, calc(100vw - 64px));
+      max-height: min(260px, 38vh);
+      overflow-y: auto;
+      margin-top: 6px;
+      padding: 8px 10px 10px;
+      border: 1px solid rgba(74, 173, 198, 0.22);
+      border-radius: 6px;
+      background: rgba(13, 22, 26, 0.92);
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+      line-height: 1.55;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1a1a transparent;
+    }
+
+    .working-item {
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 8px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .working-item strong {
+      color: var(--text);
+      font-weight: 700;
     }
 
     .composer {
@@ -803,10 +955,10 @@
         <div class="composer">
           <div id="uploadList" class="ref-preview-row"></div>
           <div class="chat-input-wrap">
-            <textarea id="promptInput" placeholder="Describe what you want to build or change…" rows="3"></textarea>
+            <textarea id="promptInput" placeholder="Describe what you want to build or change… (paste images with Ctrl+V)" rows="3"></textarea>
             <div class="chat-actions">
               <div class="chat-actions-left">
-                <label class="icon-btn" for="referenceImagesInput" title="Attach reference images">📎</label>
+                <label class="icon-btn" for="referenceImagesInput" title="Attach images (or paste with Ctrl+V)">📎</label>
                 <input id="referenceImagesInput" type="file" accept="image/*" multiple aria-label="Upload reference images" />
               </div>
               <div class="chat-actions-left">
@@ -879,8 +1031,12 @@
       connected: false,
       sessionId: launchSession || localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
       userId: launchUserId,
-      projectId: launchSession || (launchProjectId ? `project-${launchProjectId}` : '') || localStorage.getItem('aiCoderProjectId') || '',
+      projectId: launchProjectId || localStorage.getItem('aiCoderProjectId') || launchSession || '',
       messages: [],
+      workingItems: [],
+      workingOpen: false,
+      runStartedAt: 0,
+      runElapsedMs: 0,
       files: [],
       fileTree: [],
       collapsedDirs: {},
@@ -985,8 +1141,29 @@
     }
 
     function setGenerating(isGenerating) {
+      if (isGenerating && !state.generating) {
+        state.runStartedAt = Date.now();
+        state.runElapsedMs = 0;
+        clearInterval(runTimer);
+        runTimer = setInterval(() => {
+          if (!state.generating || !state.runStartedAt) return;
+          state.runElapsedMs = Date.now() - state.runStartedAt;
+          if (!state.workingOpen) {
+            renderMessages();
+          }
+        }, 1000);
+      }
+
+      if (!isGenerating && state.generating) {
+        state.runElapsedMs = state.runStartedAt ? Date.now() - state.runStartedAt : state.runElapsedMs;
+        state.runStartedAt = 0;
+        clearInterval(runTimer);
+        runTimer = null;
+      }
+
       state.generating = isGenerating;
       updateGenerationControls();
+      renderMessages();
     }
 
     function updateGenerationControls() {
@@ -1005,13 +1182,113 @@
         .replaceAll("'", '&#39;');
     }
 
+    function renderInlineMarkdown(value) {
+      return escapeHtml(value)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    }
+
+    function renderMarkdown(value) {
+      const lines = String(value || '').replace(/\r\n/g, '\n').split('\n');
+      const html = [];
+      let listType = '';
+      let inCode = false;
+      let codeLines = [];
+
+      function closeList() {
+        if (listType) {
+          html.push(`</${listType}>`);
+          listType = '';
+        }
+      }
+
+      function closeCode() {
+        if (inCode) {
+          html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+          codeLines = [];
+          inCode = false;
+        }
+      }
+
+      for (const line of lines) {
+        if (line.trim().startsWith('```')) {
+          if (inCode) closeCode();
+          else {
+            closeList();
+            inCode = true;
+            codeLines = [];
+          }
+          continue;
+        }
+
+        if (inCode) {
+          codeLines.push(line);
+          continue;
+        }
+
+        const trimmed = line.trim();
+        if (!trimmed) {
+          closeList();
+          continue;
+        }
+
+        const heading = trimmed.match(/^(#{2,4})\s+(.+)$/);
+        if (heading) {
+          closeList();
+          const tag = heading[1].length >= 4 ? 'h4' : 'h3';
+          html.push(`<${tag}>${renderInlineMarkdown(heading[2])}</${tag}>`);
+          continue;
+        }
+
+        const ordered = trimmed.match(/^\d+\.\s+(.+)$/);
+        if (ordered) {
+          if (listType !== 'ol') {
+            closeList();
+            listType = 'ol';
+            html.push('<ol>');
+          }
+          html.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`);
+          continue;
+        }
+
+        const unordered = trimmed.match(/^[-*]\s+(.+)$/);
+        if (unordered) {
+          if (listType !== 'ul') {
+            closeList();
+            listType = 'ul';
+            html.push('<ul>');
+          }
+          html.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`);
+          continue;
+        }
+
+        closeList();
+        html.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+      }
+
+      closeCode();
+      closeList();
+      return html.join('');
+    }
+
     function timeLabel() {
       return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    let treeRefreshTimer = null;
+    function formatDuration(ms) {
+      const totalSeconds = Math.max(0, Math.floor((ms || 0) / 1000));
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    }
 
-    function addMessage(role, content, meta = '') {
+    let treeRefreshTimer = null;
+    let chatSaveTimer = null;
+    let runTimer = null;
+
+    function addMessage(role, content, meta = '', options = {}) {
+      if (meta === 'payload' || meta === 'raw') return;
       const text = String(content || '');
       if (text.length > 8000) {
         content = text.slice(0, 8000) + '\n… (truncated)';
@@ -1021,10 +1298,39 @@
         state.messages = state.messages.slice(-200);
       }
       renderMessages();
+      if (options.persist !== false) {
+        scheduleChatSave();
+      }
     }
 
     function addActivity(text, meta = 'activity') {
-      addMessage('agent', text, meta);
+      const visibleChatMeta = new Set(['file', 'complete', 'assistant', 'system', 'error', 'stop']);
+      if (visibleChatMeta.has(meta)) {
+        addMessage('agent', text, meta);
+        return;
+      }
+      addWorkingUpdate(meta || 'Working', text, meta);
+    }
+
+    function addWorkingUpdate(title, detail = '', kind = 'working') {
+      const label = String(title || '').trim();
+      const body = String(detail || '').trim();
+      if (!label && !body) return;
+      state.workingItems.push({
+        title: label || 'Working',
+        detail: body,
+        kind,
+        timestamp: Date.now(),
+      });
+      if (state.workingItems.length > 40) {
+        state.workingItems = state.workingItems.slice(-40);
+      }
+      renderMessages();
+    }
+
+    function clearWorkingUpdates() {
+      state.workingItems = [];
+      renderMessages();
     }
 
     function scheduleFileTreeRefresh() {
@@ -1038,20 +1344,99 @@
       });
     }
 
+    function scheduleChatSave() {
+      clearTimeout(chatSaveTimer);
+      chatSaveTimer = setTimeout(() => {
+        saveChatHistory().catch((error) => console.warn('[agent-ui] save chat', error));
+      }, 500);
+    }
+
+    async function saveChatHistory() {
+      const base = resolveApiBaseUrl();
+      const userId = encodeURIComponent(getUserId());
+      const projectId = encodeURIComponent(getProjectId());
+      await fetch(`${base}/api/projects/${userId}/${projectId}/chat`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: state.messages }),
+      });
+    }
+
+    async function loadChatHistory() {
+      try {
+        const base = resolveApiBaseUrl();
+        const userId = encodeURIComponent(getUserId());
+        const projectId = encodeURIComponent(getProjectId());
+        const resp = await fetch(`${base}/api/projects/${userId}/${projectId}/chat`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (Array.isArray(data.messages) && data.messages.length) {
+          state.messages = data.messages
+            .filter((message) => !['payload', 'raw'].includes(message.meta))
+            .slice(-200);
+          renderMessages();
+        }
+      } catch (error) {
+        console.warn('[agent-ui] load chat', error);
+      }
+    }
+
+    async function loadProjectSnapshot() {
+      try {
+        const base = resolveApiBaseUrl();
+        const userId = encodeURIComponent(getUserId());
+        const projectId = encodeURIComponent(getProjectId());
+        const resp = await fetch(`${base}/api/projects/${userId}/${projectId}/files/tree`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        applyFileTreePayload(data);
+        refreshPreviewStatus();
+      } catch (error) {
+        console.warn('[agent-ui] load files', error);
+      }
+    }
+
     function renderMessages() {
-      els.chatLog.innerHTML = state.messages.map((message) => {
+      const chatHtml = state.messages.map((message) => {
         const roleLabel = message.role === 'user' ? 'You' : 'Agent';
+        const metaLabel = message.meta === 'you' ? '' : (message.meta || timeLabel());
+        const bodyHtml = message.role === 'agent'
+          ? renderMarkdown(message.content)
+          : escapeHtml(message.content);
         return `
           <article class="message ${message.role}">
             <div class="message-meta">
               <span>${roleLabel}</span>
-              <span>${escapeHtml(message.meta || timeLabel())}</span>
+              <span>${escapeHtml(metaLabel)}</span>
             </div>
-            <div class="message-body">${escapeHtml(message.content)}</div>
+            <div class="message-body ${message.role === 'agent' ? 'md' : ''}">${bodyHtml}</div>
           </article>
         `;
       }).join('');
-      scrollChatToBottom();
+      const hasWorkingDetails = state.workingItems.length > 0;
+      const workingHtml = state.generating
+        ? `
+          <div class="working-slot">
+            <details class="working-card" ${state.workingOpen ? 'open' : ''}>
+              <summary>
+                <span class="working-title">Working for ${escapeHtml(formatDuration(state.runElapsedMs))}<span class="working-dots"></span></span>
+                <span class="working-count">${hasWorkingDetails ? `${state.workingItems.length} update${state.workingItems.length === 1 ? '' : 's'}` : 'details'}</span>
+              </summary>
+              <div class="working-list">
+                ${hasWorkingDetails ? state.workingItems.slice(-20).map((item) => `
+                  <div class="working-item">
+                    <strong>${escapeHtml(item.title)}</strong>${item.detail ? `<br>${escapeHtml(item.detail)}` : ''}
+                  </div>
+                `).join('') : '<div class="working-item"><strong>Preparing</strong><br>Waiting for the next agent update.</div>'}
+              </div>
+            </details>
+          </div>
+        `
+        : '';
+      els.chatLog.innerHTML = chatHtml + workingHtml;
+      if (!state.workingOpen) {
+        scrollChatToBottom();
+      }
     }
 
     function indexFiles(files) {
@@ -1124,6 +1509,16 @@
       }
     }
 
+    function revokeUploadBlob(item) {
+      if (item && item.blobUrl) URL.revokeObjectURL(item.blobUrl);
+    }
+
+    function clearReferenceUploads() {
+      state.referenceUploads.forEach(revokeUploadBlob);
+      state.referenceUploads = [];
+      renderUploads();
+    }
+
     function renderUploads() {
       if (!state.referenceUploads.length) {
         els.uploadList.innerHTML = '';
@@ -1132,7 +1527,7 @@
 
       els.uploadList.innerHTML = state.referenceUploads.map((item, index) => `
         <div class="ref-chip">
-          <img src="${escapeHtml(item.data_uri)}" alt="" />
+          <img src="${escapeHtml(item.blobUrl || item.data_uri)}" alt="" />
           <span>${escapeHtml(item.name)}</span>
           <button type="button" data-remove-upload="${index}">×</button>
         </div>
@@ -1148,23 +1543,27 @@
       });
     }
 
-    async function onReferenceImagesSelected(event) {
-      const files = Array.from(event.target.files || []);
-      if (!files.length) return;
-
+    async function addReferenceImagesFromFiles(files) {
       for (const file of files) {
-        if (!file.type.startsWith('image/')) continue;
+        if (!file || !file.type.startsWith('image/')) continue;
         const dataUri = await fileToDataUri(file);
+        const name = file.name || `pasted-image-${Date.now()}.png`;
         state.referenceUploads.push({
-          name: file.name,
+          name,
           media_type: file.type || 'image/png',
           data_uri: dataUri,
+          blobUrl: URL.createObjectURL(file),
           size_kb: Math.round((file.size / 1024) * 10) / 10,
         });
       }
-
-      event.target.value = '';
       renderUploads();
+    }
+
+    async function onReferenceImagesSelected(event) {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
+      await addReferenceImagesFromFiles(files);
+      event.target.value = '';
     }
 
     function pushStructuredFiles(payload) {
@@ -1326,7 +1725,7 @@
       socket.addEventListener('open', () => {
         setConnection(true);
         if (!state.messages.length) {
-          addMessage('agent', 'Connected. Describe what you want to build.', 'system');
+          addMessage('agent', 'Connected. Describe what you want to build.', 'system', { persist: false });
         }
         if (!state.projectId) {
           state.projectId = state.sessionId;
@@ -1376,7 +1775,13 @@
         if (payload.type === 'ack') {
           setGenerating(true);
           setProjectStatus('generating');
-          addMessage('agent', `Received: ${payload.prompt || ''}`, 'ack');
+          state.workingItems = [];
+          state.workingOpen = false;
+          addWorkingUpdate('Request received', String(payload.prompt || '').slice(0, 240), 'ack');
+          return;
+        }
+
+        if (payload.type === 'user_input') {
           return;
         }
 
@@ -1408,7 +1813,7 @@
         }
 
         if (payload.type === 'assistant_message' && payload.content) {
-          addActivity(String(payload.content).slice(0, 500), 'assistant');
+          addWorkingUpdate('Drafting final response', String(payload.content).slice(0, 500), 'assistant');
           return;
         }
 
@@ -1433,6 +1838,23 @@
           return;
         }
 
+        if (payload.type === 'preview_skipped') {
+          addMessage('agent', payload.reason || 'Preview skipped — no frontend files yet.', 'system');
+          return;
+        }
+
+        if (payload.type === 'reference_images_saved') {
+          const images = Array.isArray(payload.images) ? payload.images : [];
+          if (images.length) {
+            const labels = images.map((img) => {
+              const mode = img.reference_mode === 'error' ? 'error screenshot' : 'design reference';
+              return `${img.name || 'image'} (${mode})`;
+            }).join(', ');
+            addActivity(`Auto-detected image intent: ${labels}`, 'activity');
+          }
+          return;
+        }
+
         if (payload.type === 'file_tree') {
           applyFileTreePayload(payload);
           refreshPreviewStatus();
@@ -1451,6 +1873,7 @@
           if (maybeJson) pushStructuredFiles(maybeJson);
           requestFileManifest();
           setGenerating(false);
+          clearWorkingUpdates();
           return;
         }
 
@@ -1481,10 +1904,11 @@
 
         if (payload.type === 'stopped' || payload.type === 'run_complete') {
           setGenerating(false);
+          clearWorkingUpdates();
           if (payload.type === 'stopped') {
             addMessage('agent', 'Generation stopped.', 'stop');
           } else {
-            addActivity('Agent run finished. Preparing preview…', 'system');
+            addActivity('Agent run finished.', 'system');
             requestFileManifest();
             refreshPreviewStatus();
           }
@@ -1516,14 +1940,14 @@
           return;
         }
 
-        addMessage('agent', JSON.stringify(payload, null, 2), 'payload');
+        console.debug('[agent-ui] ignored payload', payload);
       });
 
       socket.addEventListener('close', () => {
         setConnection(false);
         setGenerating(false);
         console.log('[agent-ui] websocket closed');
-        addMessage('agent', 'Socket closed.', 'system');
+        addMessage('agent', 'Socket closed.', 'system', { persist: false });
       });
 
       socket.addEventListener('error', () => {
@@ -1550,9 +1974,10 @@
 
     function sendPrompt() {
       const prompt = els.promptInput.value.trim();
-      if (!prompt) return;
+      const hasImages = state.referenceUploads.length > 0;
+      if (!prompt && !hasImages) return;
       if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        state.pendingPrompt = prompt;
+        state.pendingPrompt = prompt || (hasImages ? 'Please analyze the attached image(s).' : '');
         connect();
         return;
       }
@@ -1560,19 +1985,21 @@
       const sessionId = state.sessionId;
       const userId = getUserId();
       const projectId = getProjectId();
+      const outgoingPrompt = prompt || (hasImages ? 'Please analyze the attached image(s).' : '');
       saveWorkspaceIds(sessionId, userId, projectId);
-      addMessage('user', prompt, 'you');
+      addMessage('user', outgoingPrompt, 'you');
       state.socket.send(JSON.stringify({
         type: 'message',
-        prompt,
+        prompt: outgoingPrompt,
         session_id: sessionId,
         user_id: userId,
         project_id: projectId,
-        reference_images: state.referenceUploads,
+        reference_images: state.referenceUploads.map(({ name, media_type, data_uri, size_kb }) => ({
+          name, media_type, data_uri, size_kb,
+        })),
       }));
       els.promptInput.value = '';
-      state.referenceUploads = [];
-      renderUploads();
+      clearReferenceUploads();
       setGenerating(true);
     }
 
@@ -1615,11 +2042,31 @@
       });
     });
 
+    els.promptInput.addEventListener('paste', (event) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles = [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (!imageFiles.length) return;
+      event.preventDefault();
+      addReferenceImagesFromFiles(imageFiles).catch((err) => {
+        addMessage('agent', `Failed to paste image: ${String(err)}`, 'error');
+      });
+    });
+
     els.uploadList.addEventListener('click', (event) => {
       const target = event.target.closest('[data-remove-upload]');
       if (!target) return;
       const index = Number(target.getAttribute('data-remove-upload'));
       if (Number.isNaN(index)) return;
+      revokeUploadBlob(state.referenceUploads[index]);
       state.referenceUploads.splice(index, 1);
       renderUploads();
     });
@@ -1637,6 +2084,18 @@
       showSelectedFile(row.dataset.path);
     });
 
+    els.chatLog.addEventListener('click', (event) => {
+      const summary = event.target.closest('.working-card summary');
+      if (!summary) return;
+      const details = summary.closest('.working-card');
+      setTimeout(() => {
+        state.workingOpen = Boolean(details?.open);
+        if (state.workingOpen) {
+          details?.scrollIntoView({ block: 'nearest' });
+        }
+      }, 0);
+    });
+
     els.tabs.forEach((tab) => {
       tab.addEventListener('click', () => activateTab(tab.dataset.tab));
     });
@@ -1650,6 +2109,7 @@
 
     async function loadAutostartPrompt() {
       if (!launchAutostart) return;
+      if (state.messages.length || state.files.length) return;
       const sessionId = state.sessionId;
       try {
         const base = resolveApiBaseUrl();
@@ -1670,7 +2130,9 @@
     renderUploads();
     setConnection(false);
     updateGenerationControls();
-    loadAutostartPrompt().finally(() => connect());
+    Promise.all([loadChatHistory(), loadProjectSnapshot()])
+      .then(() => loadAutostartPrompt())
+      .finally(() => connect());
   </script>
 </body>
 </html>
