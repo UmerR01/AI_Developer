@@ -796,6 +796,14 @@ async def chat_socket(websocket: WebSocket) -> None:
         history = session_store.get_history(run_session_id)
 
         def worker() -> None:
+            previous_env = {
+                "CODER_BUDDY_PROJECT_ROOT": os.environ.get("CODER_BUDDY_PROJECT_ROOT"),
+                "CODER_BUDDY_USER_ID": os.environ.get("CODER_BUDDY_USER_ID"),
+                "CODER_BUDDY_PROJECT_ID": os.environ.get("CODER_BUDDY_PROJECT_ID"),
+            }
+            os.environ["CODER_BUDDY_PROJECT_ROOT"] = project_dir
+            os.environ["CODER_BUDDY_USER_ID"] = user_id
+            os.environ["CODER_BUDDY_PROJECT_ID"] = project_id
             try:
                 output = run_agent(
                     full_prompt,
@@ -849,6 +857,11 @@ async def chat_socket(websocket: WebSocket) -> None:
                     }
                 )
             finally:
+                for key, value in previous_env.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
                 workspace.end_generation(user_id, project_id)
                 emit(
                     {
