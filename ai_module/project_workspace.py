@@ -70,6 +70,42 @@ def get_project_dir(user_id: str, project_id: str) -> Path:
     return path
 
 
+def infer_user_id_from_workdir(working_directory: str) -> str:
+    parts = Path(working_directory).resolve().parts
+    if "storage" in parts:
+        idx = parts.index("storage")
+        if idx + 1 < len(parts):
+            return sanitize_id(parts[idx + 1], "default")
+    return "default"
+
+
+def resolve_project_dir(
+    user_id: str,
+    project_id: str,
+    working_directory: Optional[str] = None,
+) -> Path:
+    if working_directory and str(working_directory).strip():
+        path = Path(working_directory).resolve()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    return get_project_dir(user_id, project_id)
+
+
+def public_url_prefix() -> str:
+    prefix = (os.getenv("APP_URL_PREFIX") or "").strip()
+    if prefix and not prefix.startswith("/"):
+        prefix = "/" + prefix
+    return prefix.rstrip("/")
+
+
+def public_base_url() -> str:
+    return (
+        os.getenv("PREVIEW_BASE_URL")
+        or os.getenv("AI_AGENT_PUBLIC_URL")
+        or "http://localhost:8001"
+    ).rstrip("/")
+
+
 # Frontend artifacts the agent often creates at repo root by mistake (cwd not set).
 _REPO_ROOT_ARTIFACTS = (
     "src",
@@ -322,9 +358,42 @@ class ProjectMeta:
 
 class ProjectWorkspace:
     def __init__(self, base_url: Optional[str] = None) -> None:
-        self._base_url = (base_url or os.getenv("PREVIEW_BASE_URL", "http://localhost:8001")).rstrip("/")
+        self._base_url = (base_url or public_base_url()).rstrip("/")
+        self._url_prefix = public_url_prefix()
         self._meta_cache: Dict[str, ProjectMeta] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
+        self._external_dirs: Dict[str, Path] = {}
+
+    def register_project_dir(
+        self,
+        user_id: str,
+        project_id: str,
+        working_directory: Optional[str],
+    ) -> Path:
+        project_dir = resolve_project_dir(user_id, project_id, working_directory)
+        self._external_dirs[project_key(user_id, project_id)] = project_dir
+        return project_dir
+
+    def project_dir_for(self, user_id: str, project_id: str) -> Path:
+        key = project_key(user_id, project_id)
+        if key in self._external_dirs:
+            return self._external_dirs[key]
+        return get_project_dir(user_id, project_id)
+
+    def rewrite_preview_url(
+        self,
+        url: str,
+        user_id: str,
+        project_id: str,
+    ) -> str:
+        """Replace stale localhost URLs in meta with the public agent base URL."""
+        canonical = self.preview_url_for(user_id, project_id)
+        if not url:
+            return canonical
+        lower = url.lower()
+        if "localhost" in lower or "127.0.0.1" in lower:
+            return canonical
+        return url
 
     def _lock_for(self, user_id: str, project_id: str) -> asyncio.Lock:
         key = project_key(user_id, project_id)
@@ -378,12 +447,15 @@ class ProjectWorkspace:
 
     def load_meta(self, user_id: str, project_id: str) -> ProjectMeta:
         key = project_key(user_id, project_id)
-        project_dir = get_project_dir(user_id, project_id)
+        project_dir = self.project_dir_for(user_id, project_id)
         meta_file = self.meta_path(project_dir)
         if meta_file.is_file():
             try:
                 data = json.loads(meta_file.read_text(encoding="utf-8"))
                 meta = ProjectMeta.from_dict(data, user_id, project_id)
+                meta.preview_url = self.rewrite_preview_url(
+                    meta.preview_url, user_id, project_id
+                )
                 self._meta_cache[key] = meta
                 return meta
             except Exception:
@@ -396,7 +468,7 @@ class ProjectWorkspace:
         key = project_key(meta.user_id, meta.project_id)
         meta.updated_at = iso_now()
         self._meta_cache[key] = meta
-        project_dir = get_project_dir(meta.user_id, meta.project_id)
+        project_dir = self.project_dir_for(meta.user_id, meta.project_id)
         self.meta_path(project_dir).write_text(
             json.dumps(meta.to_dict(), indent=2),
             encoding="utf-8",
@@ -405,7 +477,7 @@ class ProjectWorkspace:
     def preview_url_for(self, user_id: str, project_id: str) -> str:
         u = sanitize_id(user_id)
         p = sanitize_id(project_id)
-        return f"{self._base_url}/preview/{u}/{p}/"
+        return f"{self._base_url}{self._url_prefix}/preview/{u}/{p}/"
 
     def is_busy(self, user_id: str, project_id: str) -> bool:
         meta = self.load_meta(user_id, project_id)
@@ -444,7 +516,7 @@ class ProjectWorkspace:
         source_tool: str = "",
     ) -> Optional[Dict[str, str]]:
         """Persist a file under the project. Returns None for paths outside the project (e.g. screenshots)."""
-        project_dir = get_project_dir(user_id, project_id)
+        project_dir = self.project_dir_for(user_id, project_id)
         proj_resolved = project_dir.resolve()
 
         if os.path.isabs(path):
@@ -473,7 +545,7 @@ class ProjectWorkspace:
         }
 
     def get_file_tree(self, user_id: str, project_id: str) -> Dict[str, Any]:
-        project_dir = get_project_dir(user_id, project_id)
+        project_dir = self.project_dir_for(user_id, project_id)
         paths = [
             p.relative_to(project_dir).as_posix()
             for p in project_dir.rglob("*")
@@ -489,12 +561,12 @@ class ProjectWorkspace:
             "tree": build_file_tree(paths),
             "files": list_project_files(project_dir),
             "status": meta.status.value,
-            "preview_url": meta.preview_url,
+            "preview_url": self.rewrite_preview_url(meta.preview_url, user_id, project_id),
             "project_type": meta.project_type,
         }
 
     def read_file(self, user_id: str, project_id: str, path: str) -> Dict[str, Any]:
-        project_dir = get_project_dir(user_id, project_id)
+        project_dir = self.project_dir_for(user_id, project_id)
         target = resolve_project_path(path, project_dir)
         if not target.is_file():
             raise FileNotFoundError(path)
@@ -508,17 +580,29 @@ class ProjectWorkspace:
         }
 
     def get_preview_serve_dir(self, user_id: str, project_id: str) -> Optional[Path]:
+        project_dir = self.project_dir_for(user_id, project_id)
         meta = self.load_meta(user_id, project_id)
-        project_dir = get_project_dir(user_id, project_id)
-        # Static sites at project root store preview_dir as "" or "." — both mean project_dir.
-        preview_subdir = (meta.preview_dir or ".").strip() or "."
-        serve = (project_dir / preview_subdir).resolve()
-        if is_under_project(serve, project_dir) and serve.is_dir():
-            if preview_subdir == ".":
-                if find_static_entry(project_dir) or (serve / "index.html").is_file():
+
+        if meta.status == ProjectStatus.READY:
+            if meta.preview_dir in ("", "."):
+                if find_static_entry(project_dir):
+                    return project_dir
+            elif meta.preview_dir:
+                serve = (project_dir / meta.preview_dir).resolve()
+                if is_under_project(serve, project_dir) and serve.is_dir():
                     return serve
-            elif (serve / "index.html").is_file():
+
+        if meta.preview_dir and meta.preview_dir not in ("", "."):
+            serve = (project_dir / meta.preview_dir).resolve()
+            if is_under_project(serve, project_dir) and serve.is_dir():
                 return serve
+
+        built = self._existing_built_dir(project_dir)
+        if built:
+            return built
+
+        if find_static_entry(project_dir):
+            return project_dir
         return None
 
     def _existing_built_dir(self, project_dir: Path) -> Optional[Path]:
@@ -565,7 +649,7 @@ class ProjectWorkspace:
             meta.preview_error = ""
             self.save_meta(meta)
 
-            project_dir = get_project_dir(user_id, project_id)
+            project_dir = self.project_dir_for(user_id, project_id)
             project_type = detect_project_type(project_dir)
             meta.project_type = project_type
 

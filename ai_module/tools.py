@@ -188,43 +188,9 @@ CACHE_TTL      = int(os.getenv("CACHE_TTL",  "3600"))   # seconds
 
 HTTP_TIMEOUT   = 20   # seconds for all httpx calls
 
-BASE_DIR = os.getcwd()
+from project_context import get_active_project_root, is_safe_path, resolve_in_project  # noqa: E402
 
-
-def _project_root() -> str:
-    root = os.getenv("CODER_BUDDY_PROJECT_ROOT", "").strip()
-    if root and os.path.isdir(root):
-        return os.path.abspath(root)
-    return os.path.abspath(BASE_DIR)
-
-
-def is_safe_path(path: str) -> bool:
-    if not path:
-        return False
-    root = _project_root()
-    try:
-        return os.path.commonpath([root, os.path.abspath(path)]) == root
-    except ValueError:
-        return False
-
-
-def compress_image_bytes(image_bytes: bytes, media_type: str, max_dim: int = 1200) -> Tuple[bytes, str]:
-    """Resize/compress image bytes for faster upload and vision processing."""
-    try:
-        from PIL import Image as PILImage
-
-        img = PILImage.open(io.BytesIO(image_bytes))
-        if img.width > max_dim or img.height > max_dim:
-            img.thumbnail((max_dim, max_dim), PILImage.LANCZOS)
-        out = io.BytesIO()
-        fmt = "JPEG" if media_type in ("image/jpeg", "image/jpg") else "PNG"
-        save_type = "image/jpeg" if fmt == "JPEG" else "image/png"
-        if fmt == "JPEG" and img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        img.save(out, format=fmt, quality=85)
-        return out.getvalue(), save_type
-    except Exception:
-        return image_bytes, media_type or "image/png"
+BASE_DIR = str(get_active_project_root())
 
 def _get_redis() -> Optional[redis_lib.Redis]:
     try:
@@ -2315,7 +2281,8 @@ def run_shell_command(
         python -m pytest
     """
     try:
-        if not is_safe_path(working_directory):
+        cwd = resolve_in_project(working_directory)
+        if not is_safe_path(cwd):
             return "EXIT CODE: -1\nAccess denied: working directory outside project."
 
         # Block destructive commands
@@ -2328,7 +2295,7 @@ def run_shell_command(
         result = subprocess.run(
             command,
             shell=True,
-            cwd=working_directory,
+            cwd=cwd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -2336,7 +2303,7 @@ def run_shell_command(
 
         output = f"EXIT CODE: {result.returncode}\n"
         output += f"COMMAND: {command}\n"
-        output += f"DIRECTORY: {working_directory}\n"
+        output += f"DIRECTORY: {cwd}\n"
 
         if result.stdout:
             # Trim very long output (npm install is chatty)

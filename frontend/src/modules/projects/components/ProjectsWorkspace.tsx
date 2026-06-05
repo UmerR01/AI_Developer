@@ -6,6 +6,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChangeEvent, DragEvent, useEffect, useMemo, useState } from "react";
 
 import {
+  agentProjectKey,
+  bootstrapAgentSession,
+  buildAgentWorkspaceUrl,
+  fetchProjectPreview,
+  inferAgentUserId,
+  rebuildProjectPreview,
+  resolveAgentWorkspaceUrl,
+  resolvePreviewOpenUrl,
+} from "../../../lib/agentClient";
+import {
   archiveProject,
   // createProject,
   deleteProjectFile,
@@ -435,6 +445,8 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [developmentStartedByProject, setDevelopmentStartedByProject] = useState<Record<string, boolean>>({});
   const [developmentProgressByProject, setDevelopmentProgressByProject] = useState<Record<string, number>>({});
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
   const [generatedFilesByProject] = useState<Record<string, ProjectFileRow[]>>({});
   const [generatedTasksByProject] = useState<Record<string, ProjectTaskCard[]>>({});
   const [agentUpgradeModalOpen, setAgentUpgradeModalOpen] = useState(false);
@@ -722,12 +734,28 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
   const developmentStarted = selectedProject ? Boolean(developmentStartedByProject[selectedProject.id]) : false;
   const developmentProgress = selectedProject ? developmentProgressByProject[selectedProject.id] ?? 0 : 0;
 
+  const agentUserIdFor = (project: ProjectRecord) => inferAgentUserId(project.folderPath);
+
+  const openAgentWorkspace = (project: ProjectRecord, autostart: boolean) => {
+    const userId = agentUserIdFor(project);
+    const sessionId = agentProjectKey(project.id);
+    const url = buildAgentWorkspaceUrl({
+      projectId: project.id,
+      projectName: project.name,
+      sessionId,
+      userId,
+      autostart,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const startProjectDevelopment = async () => {
     if (!selectedProject || developmentStartedByProject[selectedProject.id]) {
       return;
     }
 
     setErrorMessage(null);
+    setPreviewMessage(null);
     const result = await startAgentRun(selectedProject.id);
     if (!result.success) {
       setErrorMessage(result.message || "Unable to start AI development.");
@@ -738,18 +766,57 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       setProjects((current) => current.map((item) => (item.id === result.project?.id ? { ...item, ...result.project } : item)));
     }
 
-    const sessionId = `project-${selectedProject.id}`;
-    const workspacePath = buildNextAgentWorkspacePath(
-      selectedProject.id,
+    const userId = agentUserIdFor(selectedProject);
+    const sessionId = agentProjectKey(selectedProject.id);
+
+    if (!result.agentWorkspaceUrl) {
+      await bootstrapAgentSession({
+        sessionId,
+        prompt: `Continue development for "${selectedProject.name}".`,
+        projectId: selectedProject.id,
+        projectName: selectedProject.name,
+        workingDirectory: selectedProject.folderPath,
+        userId,
+      });
+    }
+
+    const workspaceUrl = resolveAgentWorkspaceUrl(result.agentWorkspaceUrl, {
+      projectId: selectedProject.id,
+      projectName: selectedProject.name,
       sessionId,
-      selectedProject.name,
-      true,
-    );
+      userId,
+      autostart: true,
+    });
 
     window.open(`${window.location.origin}${workspacePath}`, "_blank", "noopener,noreferrer");
 
     setDevelopmentStartedByProject((current) => ({ ...current, [selectedProject.id]: true }));
     setDevelopmentProgressByProject((current) => ({ ...current, [selectedProject.id]: 8 }));
+  };
+
+  const openProjectPreview = async (project: ProjectRecord, forceRebuild: boolean) => {
+    const userId = agentUserIdFor(project);
+    setPreviewLoading(true);
+    setPreviewMessage(null);
+    setErrorMessage(null);
+    try {
+      let meta = await fetchProjectPreview(userId, project.id);
+      if (forceRebuild || !meta || meta.status !== "ready") {
+        setPreviewMessage("Building app preview…");
+        meta = await rebuildProjectPreview(userId, project.id, true);
+      }
+      if (!meta || meta.status === "failed") {
+        setPreviewMessage(meta?.preview_error || "Preview build failed. Open the agent workspace and click Rebuild Preview.");
+        return;
+      }
+      const url = resolvePreviewOpenUrl(meta, userId, project.id);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setPreviewMessage("Preview opened in a new tab.");
+    } catch (error) {
+      setPreviewMessage(error instanceof Error ? error.message : "Unable to open preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const handleTaskDrop = (targetColumn: TaskColumn) => {
@@ -1255,15 +1322,33 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
               <div>
                 <strong>AI Development</strong>
                 <p>Trigger agents to scaffold files and tasks.</p>
+                {previewMessage ? <p className="detail-preview-hint">{previewMessage}</p> : null}
               </div>
-              <button
-                type="button"
-                className="action-btn-primary"
-                onClick={startProjectDevelopment}
-                disabled={developmentStarted}
-              >
-                {developmentStarted ? "Started" : "Start Development"}
-              </button>
+              <div className="detail-dev-actions">
+                <button
+                  type="button"
+                  className="action-btn-primary"
+                  onClick={startProjectDevelopment}
+                  disabled={developmentStarted}
+                >
+                  {developmentStarted ? "Started" : "Start Development"}
+                </button>
+                <button
+                  type="button"
+                  className="action-btn-ghost"
+                  onClick={() => selectedProject && openAgentWorkspace(selectedProject, false)}
+                >
+                  Open Agent Workspace
+                </button>
+                <button
+                  type="button"
+                  className="action-btn-ghost"
+                  onClick={() => selectedProject && openProjectPreview(selectedProject, true)}
+                  disabled={previewLoading}
+                >
+                  {previewLoading ? "Building preview…" : "View App Preview"}
+                </button>
+              </div>
             </div>
 
             {developmentStarted ? (

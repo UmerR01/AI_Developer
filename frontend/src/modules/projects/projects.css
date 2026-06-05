@@ -835,6 +835,18 @@
   font-size: 0.75rem;
 }
 
+.detail-dev-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.detail-preview-hint {
+  margin-top: 6px !important;
+  color: var(--accent) !important;
+}
+
 .detail-dev-progress {
   display: grid;
   gap: 8px;
