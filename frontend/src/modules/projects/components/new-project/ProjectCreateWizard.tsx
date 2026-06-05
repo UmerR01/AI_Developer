@@ -17,6 +17,7 @@ import { ProjectCreateStepAiReview } from "./ProjectCreateStepAiReview";
 import { ProjectCreateStepDescription } from "./ProjectCreateStepDescription";
 import { ProjectCreateStepFinalBrief } from "./ProjectCreateStepFinalBrief";
 import { ProjectCreateStepSetup } from "./ProjectCreateStepSetup";
+import { buildNextAgentWorkspacePath } from "../../../agent-workspace/utils";
 
 interface ProjectCreateWizardProps {
   open: boolean;
@@ -41,26 +42,6 @@ function makeAvatar(name: string): string {
   const first = words[0]?.[0] ?? "P";
   const second = words[1]?.[0] ?? words[0]?.[1] ?? "R";
   return `${first}${second}`.toUpperCase();
-}
-
-function agentBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_AI_AGENT_URL ?? "http://localhost:8001").replace(/\/+$/, "");
-}
-
-function agentWebSocketUrl(baseUrl: string): string {
-  return baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:") + "/ws/chat";
-}
-
-function buildAgentWorkspaceUrl(projectId: string, projectName: string, sessionId: string): string {
-  const baseUrl = agentBaseUrl();
-  const params = new URLSearchParams({
-    autostart: "1",
-    projectId,
-    projectName,
-    session: sessionId,
-    ws: agentWebSocketUrl(baseUrl),
-  });
-  return `${baseUrl}/workspace?${params.toString()}`;
 }
 
 function buildProjectAnalysisPrompt(input: {
@@ -380,7 +361,11 @@ export function ProjectCreateWizard({ open, onClose, onCreated }: ProjectCreateW
       }
 
       onClose();
-      window.open(buildAgentWorkspaceUrl(created.project.id, created.project.name, sessionId), "_blank", "noopener,noreferrer");
+      window.open(
+        `${window.location.origin}${buildNextAgentWorkspacePath(created.project.id, sessionId, created.project.name)}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
       router.push(`/projects/${created.project.id}?tab=overview`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to open the AI workspace.");

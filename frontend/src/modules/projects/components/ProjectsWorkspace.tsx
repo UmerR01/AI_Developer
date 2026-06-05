@@ -20,6 +20,7 @@ import {
 import type { ProjectRecord, ProjectState } from "../types";
 import { DASHBOARD_DATA } from "../../dashboard/data/mockDashboardData";
 import type { Account } from "../../dashboard/types";
+import { buildNextAgentWorkspacePath } from "../../agent-workspace/utils";
 import { ProjectCreateWizard } from "./new-project/ProjectCreateWizard";
 
 interface ProjectsWorkspaceProps {
@@ -737,11 +738,15 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
       setProjects((current) => current.map((item) => (item.id === result.project?.id ? { ...item, ...result.project } : item)));
     }
 
-    const workspaceUrl =
-      result.agentWorkspaceUrl ||
-      `${process.env.NEXT_PUBLIC_AI_AGENT_URL ?? "http://localhost:8001"}/workspace?autostart=1&projectId=${encodeURIComponent(selectedProject.id)}&projectName=${encodeURIComponent(selectedProject.name)}&session=${encodeURIComponent(`project-${selectedProject.id}`)}`;
+    const sessionId = `project-${selectedProject.id}`;
+    const workspacePath = buildNextAgentWorkspacePath(
+      selectedProject.id,
+      sessionId,
+      selectedProject.name,
+      true,
+    );
 
-    window.open(workspaceUrl, "_blank", "noopener,noreferrer");
+    window.open(`${window.location.origin}${workspacePath}`, "_blank", "noopener,noreferrer");
 
     setDevelopmentStartedByProject((current) => ({ ...current, [selectedProject.id]: true }));
     setDevelopmentProgressByProject((current) => ({ ...current, [selectedProject.id]: 8 }));

@@ -955,10 +955,10 @@
         <div class="composer">
           <div id="uploadList" class="ref-preview-row"></div>
           <div class="chat-input-wrap">
-            <textarea id="promptInput" placeholder="Describe what you want to build or change…" rows="3"></textarea>
+            <textarea id="promptInput" placeholder="Describe what you want to build or change… (paste images with Ctrl+V)" rows="3"></textarea>
             <div class="chat-actions">
               <div class="chat-actions-left">
-                <label class="icon-btn" for="referenceImagesInput" title="Attach reference images">📎</label>
+                <label class="icon-btn" for="referenceImagesInput" title="Attach images (or paste with Ctrl+V)">📎</label>
                 <input id="referenceImagesInput" type="file" accept="image/*" multiple aria-label="Upload reference images" />
               </div>
               <div class="chat-actions-left">
@@ -1494,6 +1494,16 @@
       }
     }
 
+    function revokeUploadBlob(item) {
+      if (item && item.blobUrl) URL.revokeObjectURL(item.blobUrl);
+    }
+
+    function clearReferenceUploads() {
+      state.referenceUploads.forEach(revokeUploadBlob);
+      state.referenceUploads = [];
+      renderUploads();
+    }
+
     function renderUploads() {
       if (!state.referenceUploads.length) {
         els.uploadList.innerHTML = '';
@@ -1502,7 +1512,7 @@
 
       els.uploadList.innerHTML = state.referenceUploads.map((item, index) => `
         <div class="ref-chip">
-          <img src="${escapeHtml(item.data_uri)}" alt="" />
+          <img src="${escapeHtml(item.blobUrl || item.data_uri)}" alt="" />
           <span>${escapeHtml(item.name)}</span>
           <button type="button" data-remove-upload="${index}">×</button>
         </div>
@@ -1518,23 +1528,27 @@
       });
     }
 
-    async function onReferenceImagesSelected(event) {
-      const files = Array.from(event.target.files || []);
-      if (!files.length) return;
-
+    async function addReferenceImagesFromFiles(files) {
       for (const file of files) {
-        if (!file.type.startsWith('image/')) continue;
+        if (!file || !file.type.startsWith('image/')) continue;
         const dataUri = await fileToDataUri(file);
+        const name = file.name || `pasted-image-${Date.now()}.png`;
         state.referenceUploads.push({
-          name: file.name,
+          name,
           media_type: file.type || 'image/png',
           data_uri: dataUri,
+          blobUrl: URL.createObjectURL(file),
           size_kb: Math.round((file.size / 1024) * 10) / 10,
         });
       }
-
-      event.target.value = '';
       renderUploads();
+    }
+
+    async function onReferenceImagesSelected(event) {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
+      await addReferenceImagesFromFiles(files);
+      event.target.value = '';
     }
 
     function pushStructuredFiles(payload) {
@@ -1753,6 +1767,23 @@
           return;
         }
 
+        if (payload.type === 'preview_skipped') {
+          addMessage('agent', payload.reason || 'Preview skipped — no frontend files yet.', 'system');
+          return;
+        }
+
+        if (payload.type === 'reference_images_saved') {
+          const images = Array.isArray(payload.images) ? payload.images : [];
+          if (images.length) {
+            const labels = images.map((img) => {
+              const mode = img.reference_mode === 'error' ? 'error screenshot' : 'design reference';
+              return `${img.name || 'image'} (${mode})`;
+            }).join(', ');
+            addActivity(`Auto-detected image intent: ${labels}`, 'activity');
+          }
+          return;
+        }
+
         if (payload.type === 'file_tree') {
           applyFileTreePayload(payload);
           refreshPreviewStatus();
@@ -1806,7 +1837,7 @@
           if (payload.type === 'stopped') {
             addMessage('agent', 'Generation stopped.', 'stop');
           } else {
-            addActivity('Agent run finished. Preparing preview…', 'system');
+            addActivity('Agent run finished.', 'system');
             requestFileManifest();
             refreshPreviewStatus();
           }
@@ -1872,9 +1903,10 @@
 
     function sendPrompt() {
       const prompt = els.promptInput.value.trim();
-      if (!prompt) return;
+      const hasImages = state.referenceUploads.length > 0;
+      if (!prompt && !hasImages) return;
       if (!state.socket || state.socket.readyState !== WebSocket.OPEN) {
-        state.pendingPrompt = prompt;
+        state.pendingPrompt = prompt || (hasImages ? 'Please analyze the attached image(s).' : '');
         connect();
         return;
       }
@@ -1882,19 +1914,21 @@
       const sessionId = state.sessionId;
       const userId = getUserId();
       const projectId = getProjectId();
+      const outgoingPrompt = prompt || (hasImages ? 'Please analyze the attached image(s).' : '');
       saveWorkspaceIds(sessionId, userId, projectId);
-      addMessage('user', prompt, 'you');
+      addMessage('user', outgoingPrompt, 'you');
       state.socket.send(JSON.stringify({
         type: 'message',
-        prompt,
+        prompt: outgoingPrompt,
         session_id: sessionId,
         user_id: userId,
         project_id: projectId,
-        reference_images: state.referenceUploads,
+        reference_images: state.referenceUploads.map(({ name, media_type, data_uri, size_kb }) => ({
+          name, media_type, data_uri, size_kb,
+        })),
       }));
       els.promptInput.value = '';
-      state.referenceUploads = [];
-      renderUploads();
+      clearReferenceUploads();
       setGenerating(true);
     }
 
@@ -1931,11 +1965,31 @@
       });
     });
 
+    els.promptInput.addEventListener('paste', (event) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles = [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (!imageFiles.length) return;
+      event.preventDefault();
+      addReferenceImagesFromFiles(imageFiles).catch((err) => {
+        addMessage('agent', `Failed to paste image: ${String(err)}`, 'error');
+      });
+    });
+
     els.uploadList.addEventListener('click', (event) => {
       const target = event.target.closest('[data-remove-upload]');
       if (!target) return;
       const index = Number(target.getAttribute('data-remove-upload'));
       if (Number.isNaN(index)) return;
+      revokeUploadBlob(state.referenceUploads[index]);
       state.referenceUploads.splice(index, 1);
       renderUploads();
     });

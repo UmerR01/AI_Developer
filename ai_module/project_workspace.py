@@ -284,6 +284,7 @@ class ProjectMeta:
     preview_dir: str = ""
     preview_url: str = ""
     preview_error: str = ""
+    agent_preview_published: bool = False
     updated_at: str = field(default_factory=iso_now)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -295,6 +296,7 @@ class ProjectMeta:
             "preview_dir": self.preview_dir,
             "preview_url": self.preview_url,
             "preview_error": self.preview_error,
+            "agent_preview_published": self.agent_preview_published,
             "updated_at": self.updated_at,
         }
 
@@ -313,6 +315,7 @@ class ProjectMeta:
             preview_dir=data.get("preview_dir", ""),
             preview_url=data.get("preview_url", ""),
             preview_error=data.get("preview_error", ""),
+            agent_preview_published=bool(data.get("agent_preview_published", False)),
             updated_at=data.get("updated_at", iso_now()),
         )
 
@@ -422,6 +425,7 @@ class ProjectWorkspace:
             return False, f"Project is busy ({meta.status.value}). Wait for the current run to finish."
         meta.status = ProjectStatus.GENERATING
         meta.preview_error = ""
+        meta.agent_preview_published = False
         self.save_meta(meta)
         return True, ""
 
@@ -505,12 +509,16 @@ class ProjectWorkspace:
 
     def get_preview_serve_dir(self, user_id: str, project_id: str) -> Optional[Path]:
         meta = self.load_meta(user_id, project_id)
-        if not meta.preview_dir:
-            return None
         project_dir = get_project_dir(user_id, project_id)
-        serve = (project_dir / meta.preview_dir).resolve()
+        # Static sites at project root store preview_dir as "" or "." — both mean project_dir.
+        preview_subdir = (meta.preview_dir or ".").strip() or "."
+        serve = (project_dir / preview_subdir).resolve()
         if is_under_project(serve, project_dir) and serve.is_dir():
-            return serve
+            if preview_subdir == ".":
+                if find_static_entry(project_dir) or (serve / "index.html").is_file():
+                    return serve
+            elif (serve / "index.html").is_file():
+                return serve
         return None
 
     def _existing_built_dir(self, project_dir: Path) -> Optional[Path]:
@@ -579,8 +587,8 @@ class ProjectWorkspace:
 
                 if ok:
                     rel_serve = serve_dir.relative_to(project_dir).as_posix()
-                    if rel_serve == ".":
-                        rel_serve = ""
+                    if rel_serve in ("", "."):
+                        rel_serve = "."
                     meta.preview_dir = rel_serve
                     meta.preview_url = self.preview_url_for(user_id, project_id)
                     meta.status = ProjectStatus.READY
@@ -632,6 +640,81 @@ class ProjectWorkspace:
         if built:
             return True, "", built
         return False, "Build finished but dist/index.html was not created.", project_dir
+
+    def mark_agent_preview_published(self, user_id: str, project_id: str) -> None:
+        meta = self.load_meta(user_id, project_id)
+        meta.agent_preview_published = True
+        self.save_meta(meta)
+
+    def run_preview_build_sync(
+        self,
+        user_id: str,
+        project_id: str,
+        force: bool = False,
+    ) -> "ProjectMeta":
+        return asyncio.run(self.run_preview_build(user_id, project_id, force=force))
+
+    def capture_preview_screenshot_sync(
+        self,
+        user_id: str,
+        project_id: str,
+    ) -> Tuple[bool, str, Optional[Path]]:
+        """Capture a screenshot of the live preview or local index.html for debugging."""
+        project_dir = get_project_dir(user_id, project_id)
+        meta = self.load_meta(user_id, project_id)
+        debug_dir = project_dir / "debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        out_path = debug_dir / "last_preview.png"
+
+        target_url = ""
+        if meta.status == ProjectStatus.READY and meta.preview_url:
+            target_url = meta.preview_url
+        else:
+            entry = find_static_entry(project_dir)
+            if entry:
+                target_url = entry.resolve().as_uri()
+            else:
+                built = self._existing_built_dir(project_dir)
+                if built and (built / "index.html").is_file():
+                    target_url = (built / "index.html").resolve().as_uri()
+
+        if not target_url:
+            return False, "No preview URL or index.html available to capture.", None
+
+        playwright_url = os.getenv("PLAYWRIGHT_URL", "http://localhost:3000")
+        try:
+            import httpx
+
+            resp = httpx.post(
+                f"{playwright_url}/screenshot",
+                json={"url": target_url, "full_page": True, "wait": 2000},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                b64 = data.get("screenshot") or data.get("base64") or data.get("data", "")
+                if b64:
+                    import base64
+
+                    out_path.write_bytes(base64.b64decode(b64))
+                    return True, str(out_path), out_path
+        except Exception:
+            pass
+
+        try:
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True)
+                page = browser.new_page(viewport={"width": 1440, "height": 900})
+                page.goto(target_url, wait_until="domcontentloaded", timeout=15000)
+                page.wait_for_timeout(2000)
+                png_bytes = page.screenshot(full_page=True)
+                browser.close()
+            out_path.write_bytes(png_bytes)
+            return True, str(out_path), out_path
+        except Exception as exc:
+            return False, f"Screenshot capture failed: {exc}", None
 
 
 workspace = ProjectWorkspace()

@@ -38,11 +38,19 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 from agent import SYSTEM_PROMPT, run_agent  # noqa: E402
+from tools import (  # noqa: E402
+    _get_vision_llm,
+    _png_or_media_data_uri,
+    _remember_reference_image,
+    _vision_messages,
+    compress_image_bytes,
+)
 from project_workspace import (  # noqa: E402
     ProjectStatus,
     ROOT_DIR as WORKSPACE_ROOT,
     adopt_stray_repo_root_files,
     create_project_zip,
+    detect_project_type,
     get_project_dir,
     iso_now,
     resolve_project_path,
@@ -85,6 +93,7 @@ class SocketRequest(BaseModel):
     user_id: Optional[str] = None
     project_id: Optional[str] = None
     reference_images: Optional[List[Dict[str, Any]]] = None
+    reference_mode: str = "design"
     force: bool = False
 
 
@@ -158,13 +167,138 @@ class SessionStore:
 session_store = SessionStore()
 bootstrapped_sessions: Dict[str, Dict[str, Any]] = {}
 
+_ERROR_INTENT_KEYWORDS = (
+    "error",
+    "bug",
+    "broken",
+    "fix this",
+    "fix the",
+    "not working",
+    "doesn't work",
+    "doesnt work",
+    "crash",
+    "exception",
+    "failed",
+    "failure",
+    "issue",
+    "wrong",
+    "stack trace",
+    "stacktrace",
+    "console error",
+    "typeerror",
+    "syntaxerror",
+    "referenceerror",
+    "404",
+    "500",
+    "ui broken",
+    "layout broken",
+    "misaligned",
+    "screenshot of error",
+    "error screenshot",
+)
 
-def _save_reference_images(session_id: str, images: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+_DESIGN_INTENT_KEYWORDS = (
+    "mockup",
+    "wireframe",
+    "figma",
+    "design reference",
+    "design ref",
+    "reference design",
+    "reference image",
+    "inspiration",
+    "look like",
+    "style reference",
+    "ui design",
+    "build this ui",
+    "match this design",
+    "target design",
+)
+
+
+def _score_intent_keywords(text: str, keywords: tuple[str, ...]) -> int:
+    lowered = text.lower()
+    return sum(1 for keyword in keywords if keyword in lowered)
+
+
+def _classify_reference_image_intent(
+    *,
+    data_uri: str,
+    prompt: str = "",
+    filename: str = "",
+) -> str:
+    """Return 'error' or 'design' based on user text and optional vision check."""
+    combined = f"{prompt} {filename}".strip()
+    error_score = _score_intent_keywords(combined, _ERROR_INTENT_KEYWORDS)
+    design_score = _score_intent_keywords(combined, _DESIGN_INTENT_KEYWORDS)
+
+    if error_score > design_score:
+        return "error"
+    if design_score > error_score:
+        return "design"
+
+    if isinstance(data_uri, str) and data_uri.startswith("data:image"):
+        try:
+            llm = _get_vision_llm()
+            question = (
+                "Classify this image for a coding assistant.\n"
+                "Reply with exactly one word:\n"
+                "- error — broken UI, bug screenshot, console/stack trace, failed layout\n"
+                "- design — mockup, wireframe, target UI to build, style reference"
+            )
+            for msg in _vision_messages(data_uri, question):
+                resp = llm.invoke([msg])
+                text = str(resp.content or "").strip().lower()
+                if "error" in text and "design" not in text:
+                    return "error"
+                if "design" in text:
+                    return "design"
+                break
+        except Exception:
+            pass
+
+    return "design"
+
+
+def _build_reference_image_prompt(prompt: str, saved_refs: List[Dict[str, str]]) -> str:
+    if not saved_refs:
+        return prompt
+
+    design_refs = [ref for ref in saved_refs if ref.get("reference_mode") != "error"]
+    error_refs = [ref for ref in saved_refs if ref.get("reference_mode") == "error"]
+    extra = ""
+
+    if design_refs:
+        extra += "\n\nReference design image(s) uploaded (also visible in this message):\n"
+        for ref in design_refs:
+            extra += f"- {ref['path']} (image_ref: {ref.get('image_ref', '')})\n"
+        extra += (
+            "Use the visible reference for design intent. "
+            "For extra detail you may call load_local_reference_image(file_path) or generate_frontend_from_reference(...)."
+        )
+
+    if error_refs:
+        extra += "\n\nUser uploaded ERROR/BROKEN UI screenshot(s). You can SEE the image in this message.\n"
+        for ref in error_refs:
+            extra += f"- {ref['path']} (image_ref: {ref.get('image_ref', '')})\n"
+        extra += (
+            "REQUIRED: call diagnose_ui_screenshot(image_json=<image_ref or path JSON>, context=<user issue>) "
+            "to get structured diagnosis, then fix the listed files, then build_and_publish_preview('.')."
+        )
+
+    return prompt + extra
+
+
+def _save_reference_images(
+    user_id: str,
+    project_id: str,
+    images: List[Dict[str, Any]],
+    prompt: str = "",
+) -> List[Dict[str, str]]:
     saved: List[Dict[str, str]] = []
     if not images:
         return saved
 
-    upload_root = ROOT_DIR / "reference_uploads" / session_id
+    upload_root = get_project_dir(user_id, project_id) / "reference_images"
     upload_root.mkdir(parents=True, exist_ok=True)
 
     for idx, item in enumerate(images, start=1):
@@ -200,14 +334,38 @@ def _save_reference_images(session_id: str, images: List[Dict[str, Any]]) -> Lis
             target = upload_root / f"{target.stem}_{idx}{target.suffix}"
 
         try:
-            target.write_bytes(base64.b64decode(b64))
+            raw_bytes = base64.b64decode(b64)
+            compressed, save_type = compress_image_bytes(raw_bytes, media_type)
+            target.write_bytes(compressed)
         except Exception:
             continue
 
+        rel_path = target.relative_to(get_project_dir(user_id, project_id)).as_posix()
+        data_uri = _png_or_media_data_uri(compressed, save_type)
+        payload = {
+            "data_uri": data_uri,
+            "media_type": save_type,
+            "path": rel_path,
+        }
+        image_ref = _remember_reference_image(payload)
+
+        mode = str(item.get("reference_mode") or "").strip().lower()
+        if mode not in {"error", "design"}:
+            mode = _classify_reference_image_intent(
+                data_uri=data_uri,
+                prompt=prompt,
+                filename=safe_name,
+            )
+
         saved.append({
             "name": safe_name,
-            "path": str(target),
-            "media_type": media_type,
+            "path": rel_path,
+            "absolute_path": str(target),
+            "media_type": save_type,
+            "image_ref": image_ref,
+            "data_uri": data_uri,
+            "reference_mode": mode,
+            "size_kb": str(round(len(compressed) / 1024, 1)),
         })
 
     return saved
@@ -219,12 +377,14 @@ def _project_context_prompt(user_id: str, project_id: str) -> str:
         f"PROJECT WORKSPACE (mandatory — read before any write tool):\n"
         f"- user_id: {user_id}\n"
         f"- project_id: {project_id}\n"
-        f"- Project directory (your cwd for this run): {project_dir}\n"
-        f"- The process chdir's into this folder. Write paths RELATIVE to it only.\n"
-        f"- CORRECT: src/App.jsx, package.json, index.html, public/favicon.ico\n"
-        f"- WRONG: ../src/App.jsx or files under the parent ai-coder repo outside this folder\n"
+        f"- YOUR ONLY WORKSPACE: {project_dir}\n"
+        f"- The process chdir's into this folder. ALL tools must use paths relative to it only.\n"
+        f"- CORRECT: src/App.jsx, package.json, index.html, reference_images/mockup.png\n"
+        f"- WRONG: ../src/App.jsx or any path outside {project_dir}\n"
+        f"- create_file, rewrite_file, run_shell_command, validate_* — scoped to this folder only.\n"
         f"- For a new Vite/React app create package.json and src/ HERE (not elsewhere).\n"
         f"- validate_frontend_project(project_directory=\".\") when package.json is in cwd.\n"
+        f"- FINAL STEP: build_and_publish_preview(project_directory=\".\") before task complete.\n"
         f"- For Vite/React set base: './' in vite.config.js so preview assets load correctly.\n\n"
     )
 
@@ -236,6 +396,32 @@ async def _schedule_preview_build(
     session_id: str,
     force: bool = False,
 ) -> None:
+    meta = workspace.load_meta(user_id, project_id)
+    if meta.agent_preview_published and meta.status == ProjectStatus.READY and not force:
+        emit({
+            "type": "preview_ready",
+            "session_id": session_id,
+            "user_id": user_id,
+            "project_id": project_id,
+            "preview_url": meta.preview_url,
+            "project_type": meta.project_type,
+            "status": meta.status.value,
+            "timestamp": iso_now(),
+        })
+        return
+
+    project_dir = get_project_dir(user_id, project_id)
+    if detect_project_type(project_dir) == "unknown" and not force:
+        emit({
+            "type": "preview_skipped",
+            "session_id": session_id,
+            "user_id": user_id,
+            "project_id": project_id,
+            "reason": "No package.json or index.html yet — preview runs after the agent creates frontend files.",
+            "timestamp": iso_now(),
+        })
+        return
+
     emit({
         "type": "preview_building",
         "session_id": session_id,
@@ -245,6 +431,13 @@ async def _schedule_preview_build(
     })
     try:
         meta = await workspace.run_preview_build(user_id, project_id, force=force)
+        screenshot_path = ""
+        if meta.status != ProjectStatus.READY:
+            ok, _, shot = await asyncio.to_thread(
+                workspace.capture_preview_screenshot_sync, user_id, project_id
+            )
+            if ok and shot:
+                screenshot_path = shot.relative_to(get_project_dir(user_id, project_id)).as_posix()
         emit({
             "type": "preview_ready" if meta.status == ProjectStatus.READY else "preview_failed",
             "session_id": session_id,
@@ -254,6 +447,7 @@ async def _schedule_preview_build(
             "project_type": meta.project_type,
             "status": meta.status.value,
             "error": meta.preview_error,
+            "debug_screenshot": screenshot_path,
             "timestamp": iso_now(),
         })
         tree = workspace.get_file_tree(user_id, project_id)
@@ -487,7 +681,13 @@ async def chat_socket(websocket: WebSocket) -> None:
         event.setdefault("project_id", sm.project_id)
         loop.call_soon_threadsafe(event_queue.put_nowait, event)
 
-    def start_run(prompt: str, run_session_id: str, user_id: str, project_id: str) -> None:
+    def start_run(
+        prompt: str,
+        run_session_id: str,
+        user_id: str,
+        project_id: str,
+        image_attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
         nonlocal current_run_task, preview_task
         stop_event.clear()
         project_dir = str(get_project_dir(user_id, project_id))
@@ -498,6 +698,8 @@ async def chat_socket(websocket: WebSocket) -> None:
             original_cwd = os.getcwd()
             os.chdir(project_dir)
             os.environ["CODER_BUDDY_PROJECT_ROOT"] = project_dir
+            os.environ["CODER_BUDDY_USER_ID"] = user_id
+            os.environ["CODER_BUDDY_PROJECT_ID"] = project_id
             try:
                 output = run_agent(
                     full_prompt,
@@ -505,6 +707,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                     event_sink=emit,
                     stop_check=stop_event.is_set,
                     project_root=project_dir,
+                    image_attachments=image_attachments,
                 )
                 moved = adopt_stray_repo_root_files(
                     Path(project_dir),
@@ -553,6 +756,8 @@ async def chat_socket(websocket: WebSocket) -> None:
                 with suppress(Exception):
                     os.chdir(original_cwd)
                 os.environ.pop("CODER_BUDDY_PROJECT_ROOT", None)
+                os.environ.pop("CODER_BUDDY_USER_ID", None)
+                os.environ.pop("CODER_BUDDY_PROJECT_ID", None)
                 workspace.end_generation(user_id, project_id)
                 emit(
                     {
@@ -570,6 +775,20 @@ async def chat_socket(websocket: WebSocket) -> None:
             nonlocal preview_task
             with suppress(asyncio.CancelledError, Exception):
                 task.result()
+            meta = workspace.load_meta(user_id, project_id)
+            if meta.agent_preview_published and meta.status == ProjectStatus.READY:
+                return
+            project_dir = get_project_dir(user_id, project_id)
+            if detect_project_type(project_dir) == "unknown":
+                emit({
+                    "type": "preview_skipped",
+                    "session_id": run_session_id,
+                    "user_id": user_id,
+                    "project_id": project_id,
+                    "reason": "No frontend scaffold yet — ask the agent to create the app, then preview will build automatically.",
+                    "timestamp": iso_now(),
+                })
+                return
             preview_task = asyncio.create_task(
                 _schedule_preview_build(emit, user_id, project_id, run_session_id)
             )
@@ -689,34 +908,41 @@ async def chat_socket(websocket: WebSocket) -> None:
                 payload.project_id or sm.project_id,
             )
 
-            uploaded_refs = _save_reference_images(session_id, payload.reference_images or [])
+            uploaded_refs = _save_reference_images(
+                sm.user_id,
+                sm.project_id,
+                payload.reference_images or [],
+                prompt=prompt,
+            )
+            image_attachments: List[Dict[str, Any]] = []
             if uploaded_refs:
-                for ref in uploaded_refs:
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "generated_file",
-                                "session_id": session_id,
-                                "user_id": sm.user_id,
-                                "project_id": sm.project_id,
-                                "path": ref["path"],
-                                "name": ref["name"],
-                                "type": "image",
-                                "content": "",
-                                "source_tool": "uploaded_reference",
-                                "timestamp": iso_now(),
-                            }
-                        )
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "reference_images_saved",
+                            "session_id": session_id,
+                            "user_id": sm.user_id,
+                            "project_id": sm.project_id,
+                            "images": [
+                                {
+                                    "name": ref["name"],
+                                    "path": ref["path"],
+                                    "image_ref": ref.get("image_ref", ""),
+                                    "reference_mode": ref.get("reference_mode", "design"),
+                                }
+                                for ref in uploaded_refs
+                            ],
+                            "timestamp": iso_now(),
+                        }
                     )
-
-                prompt += "\n\nReference images uploaded by user:\n"
-                for ref in uploaded_refs:
-                    prompt += f"- {ref['path']} ({ref['media_type']})\n"
-                prompt += (
-                    "Use load_local_reference_image(file_path) on the paths above, then "
-                    "analyze_reference_image(...) or generate_frontend_from_reference(...) "
-                    "before generating UI code."
                 )
+
+                image_attachments = [
+                    {"data_uri": ref["data_uri"], "name": ref["name"], "image_ref": ref.get("image_ref", "")}
+                    for ref in uploaded_refs
+                    if ref.get("data_uri")
+                ]
+                prompt = _build_reference_image_prompt(prompt, uploaded_refs)
 
             if current_run_task is not None and not current_run_task.done():
                 await websocket.send_text(
@@ -754,7 +980,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                 ).model_dump_json()
             )
 
-            start_run(prompt, session_id, sm.user_id, sm.project_id)
+            start_run(prompt, session_id, sm.user_id, sm.project_id, image_attachments=image_attachments)
     except WebSocketDisconnect:
         stop_event.set()
         print(f"[ws] disconnected session={session_id}")

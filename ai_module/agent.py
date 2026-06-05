@@ -51,8 +51,11 @@ from tools import (
     run_shell_command,
     validate_frontend_project,
     validate_static_frontend_files,
+    build_and_publish_preview,
+    diagnose_ui_screenshot,
     check_file_consistency,
     run_python_file,
+    _extract_data_uri_parts,
 )
 
 load_dotenv()
@@ -126,6 +129,8 @@ tools = [
     run_shell_command,
     validate_frontend_project,
     validate_static_frontend_files,
+    build_and_publish_preview,
+    diagnose_ui_screenshot,
     check_file_consistency,
     run_python_file,
 ]
@@ -156,6 +161,14 @@ PROJECT WORKSPACE RULES (when a PROJECT WORKSPACE block is present):
 - New React app: package.json + src/main.jsx + src/App.jsx + index.html at project root paths.
 - validate_frontend_project(project_directory=".") when package.json is in the project cwd.
 - run_shell_command npm commands from the project directory (cwd is already set).
+- FINAL STEP for any frontend task: build_and_publish_preview(project_directory=".") — required before task complete.
+- If user uploads an error/broken UI screenshot: diagnose_ui_screenshot(image_json, context) first, then fix files, then build_and_publish_preview.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREVIEW & VISUAL DEBUG RULES:
+- build_and_publish_preview(".") publishes the live App Preview (uses dist/ when already built).
+- For static HTML (no package.json): build_and_publish_preview validates and serves index.html folder.
+- diagnose_ui_screenshot returns structured JSON (error_type, files_to_check) — use it to target fixes.
+- After fixing UI issues, always rebuild preview with build_and_publish_preview before finishing.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FRONTEND RULES:
 - Always read the frontend skill by calling this tool frontend_skill() before doing any frontend code surgery. It gives you  best instructions in building context so that you generate professional frontend code with best practices.
@@ -568,6 +581,7 @@ WRITE_TOOLS = {
 VERIFY_TOOLS = {
     "run_python_file", "run_shell_command",
     "validate_frontend_project", "validate_static_frontend_files",
+    "build_and_publish_preview",
 }
 
 def extract_text(content) -> str:
@@ -617,6 +631,33 @@ def _is_static_frontend_project(project_directory: str) -> bool:
     return False
 
 
+def _looks_like_frontend_task(files_written: set) -> bool:
+    hints = (".html", ".css", ".jsx", ".tsx", ".vue", "package.json", "vite.config")
+    for fpath in files_written:
+        lower = str(fpath).lower().replace("\\", "/")
+        if any(h in lower for h in hints):
+            return True
+    return False
+
+
+def _build_user_message(text: str, image_attachments: Optional[List[Dict[str, Any]]] = None) -> HumanMessage:
+    if not image_attachments:
+        return HumanMessage(content=text)
+    parts: List[Any] = [{"type": "text", "text": text}]
+    for img in image_attachments:
+        uri = str(img.get("data_uri") or "")
+        parsed = _extract_data_uri_parts(uri)
+        if parsed:
+            parts.append({
+                "type": "image",
+                "base64": parsed["base64"],
+                "mime_type": parsed["mime_type"],
+            })
+    if len(parts) == 1:
+        return HumanMessage(content=text)
+    return HumanMessage(content=parts)
+
+
 def _task_complete_signal(
     tool_name: str,
     result_str: str,
@@ -628,13 +669,22 @@ def _task_complete_signal(
     Returns (should_stop, reason).
     """
     # Verification success → always done
+    if tool_name == "build_and_publish_preview":
+        try:
+            parsed = json.loads(result_str)
+            if parsed.get("status") == "ready":
+                return True, "✅ App preview published and ready"
+        except json.JSONDecodeError:
+            pass
+        return False, ""
+
     if tool_name in VERIFY_TOOLS:
         if "EXIT CODE: 0" in result_str:
             return True, "✅ Verification passed (exit code 0)"
         if "ALL CHECKS PASSED" in result_str:
-            return True, "✅ All validation checks passed"
+            return False, ""  # require build_and_publish_preview next
         if "STATIC FRONTEND CHECKS PASSED" in result_str:
-            return True, "✅ Static frontend checks passed"
+            return False, ""  # require build_and_publish_preview next
         if "EXIT CODE: 0" not in result_str and tool_name == "run_python_file":
             return False, ""   # failed run — keep going to fix
 
@@ -716,6 +766,7 @@ def run_agent(
     event_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
     stop_check: Optional[Callable[[], bool]] = None,
     project_root: Optional[str] = None,
+    image_attachments: Optional[List[Dict[str, Any]]] = None,
 ) -> str:
     """
     ReAct agent loop with:
@@ -726,7 +777,7 @@ def run_agent(
     - Progress window (stops if no write progress in last N iterations)
     - Adaptive MAX_ITERATIONS (higher for generation tasks)
     """
-    message_history.append(HumanMessage(content=user_input))
+    message_history.append(_build_user_message(user_input, image_attachments))
     _emit_event(event_sink, "user_input", content=user_input)
 
     def stop_requested() -> bool:
@@ -747,6 +798,8 @@ def run_agent(
     no_progress_streak             = 0    # consecutive iterations with no write success
     last_write_iteration           = -1
     verify_passed                  = False
+    preview_published              = False
+    preview_nudges                 = 0
 
     for iteration in range(max_iter):
         if stop_requested():
@@ -765,6 +818,21 @@ def run_agent(
 
         # ── No tool calls → final answer ──────────────────────────────────
         if not response.tool_calls:
+            if (
+                is_gen
+                and files_written
+                and _looks_like_frontend_task(files_written)
+                and not preview_published
+                and preview_nudges < 3
+            ):
+                preview_nudges += 1
+                message_history.append(HumanMessage(
+                    content=(
+                        "⚠️ SYSTEM: Frontend files were written but preview is not published. "
+                        "Call build_and_publish_preview(project_directory='.') NOW before giving your final answer."
+                    )
+                ))
+                continue
             final_text = extract_text(response.content)
             _emit_event(event_sink, "assistant_message", content=final_text, final=True)
             return final_text
@@ -948,6 +1016,30 @@ def run_agent(
             message_history.append(
                 ToolMessage(content=result_str, tool_call_id=tool_call_id)
             )
+
+            if tool_name == "build_and_publish_preview":
+                try:
+                    parsed = json.loads(result_str)
+                    if parsed.get("status") == "ready":
+                        preview_published = True
+                        _emit_event(
+                            event_sink,
+                            "preview_ready",
+                            preview_url=parsed.get("preview_url", ""),
+                            project_type=parsed.get("project_type", ""),
+                            status="ready",
+                        )
+                except json.JSONDecodeError:
+                    pass
+
+            if tool_name in ("validate_frontend_project", "validate_static_frontend_files"):
+                if "ALL CHECKS PASSED" in result_str or "STATIC FRONTEND CHECKS PASSED" in result_str:
+                    message_history.append(HumanMessage(
+                        content=(
+                            "Validation passed. Call build_and_publish_preview(project_directory='.') "
+                            "NOW to publish the live preview before finishing."
+                        )
+                    ))
 
             # ── Verification hard stop ────────────────────────────────────
             should_stop, reason = _task_complete_signal(
