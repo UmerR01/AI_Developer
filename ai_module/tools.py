@@ -175,6 +175,27 @@ def _png_or_media_data_uri(image_bytes: bytes, media_type: str) -> str:
     return f"data:{media_type};base64,{b64}"
 
 
+def compress_image_bytes(image_bytes: bytes, media_type: str, max_dim: int = 1200) -> Tuple[bytes, str]:
+    """Resize/compress image bytes for faster upload and vision processing."""
+    try:
+        from PIL import Image as PILImage
+
+        img = PILImage.open(io.BytesIO(image_bytes))
+        if img.width > max_dim or img.height > max_dim:
+            img.thumbnail((max_dim, max_dim), PILImage.LANCZOS)
+
+        out = io.BytesIO()
+        fmt = "JPEG" if media_type in ("image/jpeg", "image/jpg") else "PNG"
+        save_type = "image/jpeg" if fmt == "JPEG" else "image/png"
+        if fmt == "JPEG" and img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        img.save(out, format=fmt, quality=85)
+        return out.getvalue(), save_type
+    except Exception:
+        return image_bytes, media_type or "image/png"
+
+
 
 # ──────────────────────────────────────────────
 # SERVICE CONFIG  (edit ports if yours differ)
