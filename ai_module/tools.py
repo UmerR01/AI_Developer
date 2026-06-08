@@ -1278,10 +1278,14 @@ def read_file_range(file_path: str, start_line: int, end_line: int) -> str:
 def list_files(directory: str = ".") -> str:
     """List all files and directories (recursive, max depth 3) in the given directory."""
     try:
+        resolved_dir = resolve_in_project(directory)
+        if not is_safe_path(resolved_dir):
+            return "Access denied."
+        
         result = []
-        for root, dirs, files in os.walk(directory):
+        for root, dirs, files in os.walk(resolved_dir):
             # limit depth
-            depth = root.replace(directory, "").count(os.sep)
+            depth = root.replace(resolved_dir, "").count(os.sep)
             if depth >= 3:
                 dirs.clear()
                 continue
@@ -1511,10 +1515,14 @@ SEARCH_EXTENSIONS = {
 def _walk_project_files(directory: str = ".", extensions: set = None) -> List[str]:
     """Yield all files under directory matching extensions, respecting safety."""
     exts = extensions or SEARCH_EXTENSIONS
+    resolved_dir = resolve_in_project(directory)
+    if not is_safe_path(resolved_dir):
+        return []
+        
     results = []
     skip_dirs = {".git", "__pycache__", ".venv", "venv", "node_modules",
                  ".mypy_cache", ".pytest_cache", "dist", "build", ".tox"}
-    for root, dirs, files in os.walk(directory):
+    for root, dirs, files in os.walk(resolved_dir):
         dirs[:] = [d for d in dirs if d not in skip_dirs]
         for fname in files:
             if os.path.splitext(fname)[1].lower() in exts:
@@ -1559,7 +1567,10 @@ def search_in_codebase(
     import re
 
     try:
-        if not os.path.isdir(directory):
+        resolved_dir = resolve_in_project(directory)
+        if not is_safe_path(resolved_dir):
+            return "Access denied."
+        if not os.path.isdir(resolved_dir):
             return f"Error: directory '{directory}' not found."
 
         flags = 0 if case_sensitive else re.IGNORECASE
@@ -1923,9 +1934,10 @@ def create_project_scaffold(
         A tree view of everything created, with any errors noted.
     """
     try:
-        if not is_safe_path(project_name):
+        resolved_project = resolve_in_project(project_name)
+        if not is_safe_path(resolved_project):
             return "Access denied."
-        if os.path.exists(project_name):
+        if os.path.exists(resolved_project):
             return f"Directory '{project_name}' already exists. Choose a different name or delete it first."
 
         lines   = [l.strip() for l in structure.strip().splitlines() if l.strip()]
@@ -1942,7 +1954,7 @@ def create_project_scaffold(
         errors  = []
 
         for entry in lines:
-            full_path = os.path.join(project_name, entry)
+            full_path = os.path.join(resolved_project, entry)
             if not is_safe_path(full_path):
                 errors.append(f"Skipped (unsafe path): {entry}")
                 continue
