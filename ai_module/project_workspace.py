@@ -60,12 +60,20 @@ def sanitize_id(value: str, fallback: str = "default") -> str:
     return cleaned[:128] or fallback
 
 
+def _clean_project_id(project_id: str) -> str:
+    if not project_id:
+        return project_id
+    if project_id.startswith("project-"):
+        return project_id[8:]
+    return project_id
+
+
 def project_key(user_id: str, project_id: str) -> str:
-    return f"{sanitize_id(user_id)}::{sanitize_id(project_id)}"
+    return f"{sanitize_id(user_id)}::{sanitize_id(_clean_project_id(project_id))}"
 
 
 def get_project_dir(user_id: str, project_id: str) -> Path:
-    path = PROJECTS_ROOT / sanitize_id(user_id) / sanitize_id(project_id)
+    path = PROJECTS_ROOT / sanitize_id(user_id) / sanitize_id(_clean_project_id(project_id))
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -323,6 +331,9 @@ class ProjectMeta:
     agent_preview_published: bool = False
     updated_at: str = field(default_factory=iso_now)
 
+    def __post_init__(self) -> None:
+        self.project_id = _clean_project_id(self.project_id)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "user_id": self.user_id,
@@ -363,6 +374,7 @@ class ProjectWorkspace:
         self._meta_cache: Dict[str, ProjectMeta] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
         self._external_dirs: Dict[str, Path] = {}
+        self._active_generations: set[tuple[str, str]] = set()
 
     def register_project_dir(
         self,
@@ -476,32 +488,34 @@ class ProjectWorkspace:
 
     def preview_url_for(self, user_id: str, project_id: str) -> str:
         u = sanitize_id(user_id)
-        p = sanitize_id(project_id)
+        p = sanitize_id(_clean_project_id(project_id))
         return f"{self._base_url}{self._url_prefix}/preview/{u}/{p}/"
 
     def is_busy(self, user_id: str, project_id: str) -> bool:
-        meta = self.load_meta(user_id, project_id)
-        return meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING)
+        return (user_id, project_id) in self._active_generations
 
     def begin_generation(self, user_id: str, project_id: str) -> Tuple[bool, str]:
         meta = self.load_meta(user_id, project_id)
-        if meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING):
-            if is_stale_busy_meta(meta):
-                meta.status = ProjectStatus.IDLE
-                meta.preview_error = "Cleared stale busy state from an interrupted run."
-                self.save_meta(meta)
-            else:
-                return False, f"Project is busy ({meta.status.value}). Wait for the current run to finish."
-        meta = self.load_meta(user_id, project_id)
-        if meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING):
+        key = (user_id, project_id)
+        
+        # If the file on disk is locked but not in our memory, reset it to idle!
+        if meta.status in (ProjectStatus.GENERATING, ProjectStatus.BUILDING) and key not in self._active_generations:
+            meta.status = ProjectStatus.IDLE
+            self.save_meta(meta)
+            
+        if key in self._active_generations:
             return False, f"Project is busy ({meta.status.value}). Wait for the current run to finish."
+            
         meta.status = ProjectStatus.GENERATING
         meta.preview_error = ""
         meta.agent_preview_published = False
         self.save_meta(meta)
+        self._active_generations.add(key)
         return True, ""
 
     def end_generation(self, user_id: str, project_id: str) -> None:
+        key = (user_id, project_id)
+        self._active_generations.discard(key)
         meta = self.load_meta(user_id, project_id)
         if meta.status == ProjectStatus.GENERATING:
             meta.status = ProjectStatus.IDLE
@@ -644,57 +658,62 @@ class ProjectWorkspace:
     ) -> ProjectMeta:
         lock = self._lock_for(user_id, project_id)
         async with lock:
-            meta = self.load_meta(user_id, project_id)
-            meta.status = ProjectStatus.BUILDING
-            meta.preview_error = ""
-            self.save_meta(meta)
-
-            project_dir = self.project_dir_for(user_id, project_id)
-            project_type = detect_project_type(project_dir)
-            meta.project_type = project_type
-
+            key = (user_id, project_id)
+            self._active_generations.add(key)
             try:
-                if project_type == "react":
-                    ok, err, serve_dir = await self._build_react(project_dir, force=force)
-                elif project_type == "static":
-                    # Plain static site only (no Vite) — do not serve dev index.html with /src/...
-                    if (project_dir / "package.json").is_file():
-                        ok, err, serve_dir = await self._build_react(project_dir, force=force)
-                        meta.project_type = "react"
-                    else:
-                        ok, err, serve_dir = True, "", project_dir
-                        entry = find_static_entry(project_dir)
-                        if not entry:
-                            ok, err = False, "No index.html found for static preview."
-                else:
-                    ok, err, serve_dir = False, "No package.json or index.html found.", project_dir
+                meta = self.load_meta(user_id, project_id)
+                meta.status = ProjectStatus.BUILDING
+                meta.preview_error = ""
+                self.save_meta(meta)
 
-                if ok:
-                    rel_serve = serve_dir.relative_to(project_dir).as_posix()
-                    if rel_serve in ("", "."):
-                        rel_serve = "."
-                    meta.preview_dir = rel_serve
-                    meta.preview_url = self.preview_url_for(user_id, project_id)
-                    meta.status = ProjectStatus.READY
-                    meta.preview_error = ""
-                else:
+                project_dir = self.project_dir_for(user_id, project_id)
+                project_type = detect_project_type(project_dir)
+                meta.project_type = project_type
+
+                try:
+                    if project_type == "react":
+                        ok, err, serve_dir = await self._build_react(project_dir, force=force)
+                    elif project_type == "static":
+                        # Plain static site only (no Vite) — do not serve dev index.html with /src/...
+                        if (project_dir / "package.json").is_file():
+                            ok, err, serve_dir = await self._build_react(project_dir, force=force)
+                            meta.project_type = "react"
+                        else:
+                            ok, err, serve_dir = True, "", project_dir
+                            entry = find_static_entry(project_dir)
+                            if not entry:
+                                ok, err = False, "No index.html found for static preview."
+                    else:
+                        ok, err, serve_dir = False, "No package.json or index.html found.", project_dir
+
+                    if ok:
+                        rel_serve = serve_dir.relative_to(project_dir).as_posix()
+                        if rel_serve in ("", "."):
+                            rel_serve = "."
+                        meta.preview_dir = rel_serve
+                        meta.preview_url = self.preview_url_for(user_id, project_id)
+                        meta.status = ProjectStatus.READY
+                        meta.preview_error = ""
+                    else:
+                        meta.status = ProjectStatus.FAILED
+                        meta.preview_error = err or "Preview build failed."
+                        meta.preview_url = ""
+                        meta.preview_dir = ""
+                except asyncio.TimeoutError:
                     meta.status = ProjectStatus.FAILED
-                    meta.preview_error = err or "Preview build failed."
+                    meta.preview_error = "Preview build timed out (10 min)."
                     meta.preview_url = ""
                     meta.preview_dir = ""
-            except asyncio.TimeoutError:
-                meta.status = ProjectStatus.FAILED
-                meta.preview_error = "Preview build timed out (10 min)."
-                meta.preview_url = ""
-                meta.preview_dir = ""
-            except Exception as exc:
-                meta.status = ProjectStatus.FAILED
-                meta.preview_error = f"{type(exc).__name__}: {exc}"
-                meta.preview_url = ""
-                meta.preview_dir = ""
+                except Exception as exc:
+                    meta.status = ProjectStatus.FAILED
+                    meta.preview_error = f"{type(exc).__name__}: {exc}"
+                    meta.preview_url = ""
+                    meta.preview_dir = ""
 
-            self.save_meta(meta)
-            return meta
+                self.save_meta(meta)
+                return meta
+            finally:
+                self._active_generations.discard(key)
 
     async def _build_react(self, project_dir: Path, force: bool = False) -> Tuple[bool, str, Path]:
         dist = project_dir / "dist"
@@ -800,5 +819,61 @@ class ProjectWorkspace:
         except Exception as exc:
             return False, f"Screenshot capture failed: {exc}", None
 
+    def reset_all_project_statuses(self) -> None:
+        """Scan generated_projects, storage, and bootstrapped session directories to reset active statuses to idle."""
+        dirs_to_scan = []
+        if PROJECTS_ROOT.exists():
+            dirs_to_scan.append(PROJECTS_ROOT)
+        
+        storage_root = ROOT_DIR.parent / "storage"
+        if storage_root.exists():
+            dirs_to_scan.append(storage_root)
+            
+        # Collect project directories to reset
+        project_dirs = []
+        for root in dirs_to_scan:
+            for user_dir in root.iterdir():
+                if not user_dir.is_dir() or user_dir.name in IGNORED_PROJECT_DIRS:
+                    continue
+                for project_dir in user_dir.iterdir():
+                    if project_dir.is_dir():
+                        project_dirs.append(project_dir)
+                        
+        # Also include any directories from bootstrapped sessions
+        try:
+            bootstrap_file = ROOT_DIR / ".bootstrap_sessions.json"
+            if bootstrap_file.is_file():
+                data = json.loads(bootstrap_file.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    for item in data.values():
+                        if isinstance(item, dict) and item.get("working_directory"):
+                            wd = Path(item["working_directory"]).resolve()
+                            if wd.is_dir():
+                                project_dirs.append(wd)
+        except Exception:
+            pass
+                
+        # Deduplicate and reset statuses
+        seen_dirs = set()
+        for p_dir in project_dirs:
+            p_dir_resolved = p_dir.resolve()
+            if p_dir_resolved in seen_dirs:
+                continue
+            seen_dirs.add(p_dir_resolved)
+            
+            meta_file = self.meta_path(p_dir_resolved)
+            if meta_file.is_file():
+                try:
+                    data = json.loads(meta_file.read_text(encoding="utf-8"))
+                    if data.get("status") in (ProjectStatus.GENERATING.value, ProjectStatus.BUILDING.value):
+                        data["status"] = ProjectStatus.IDLE.value
+                        data["updated_at"] = iso_now()
+                        meta_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                        print(f"[startup] Reset stuck project status to idle for {p_dir_resolved.name} in {p_dir_resolved.parent.name}")
+                except Exception:
+                    pass
+
 
 workspace = ProjectWorkspace()
+workspace.reset_all_project_statuses()
+

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import logging
 import os
 import sys
 import threading
@@ -10,12 +11,32 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import suppress
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("agent_api_server")
+
+# ── Tiktoken token estimator (graceful fallback if not installed) ─────────────
+try:
+    import tiktoken as _tiktoken
+    _ENC = _tiktoken.get_encoding("cl100k_base")
+    def _count_tokens(text: str) -> int:
+        return len(_ENC.encode(text))
+except Exception:
+    def _count_tokens(text: str) -> int:  # type: ignore[misc]
+        return len(text) // 4
+
+# ── Compaction threshold: tokens at which history is compressed ───────────────
+_COMPACT_TOKEN_THRESHOLD: int = int(os.getenv("CONTEXT_COMPACT_THRESHOLD", "100000"))
+_COMPACT_KEEP_LAST: int = int(os.getenv("CONTEXT_COMPACT_KEEP_LAST", "6"))
+_MAX_FILE_SUMMARIZE_BYTES: int = int(os.getenv("SUMMARIZE_MAX_FILE_BYTES", str(500 * 1024)))
+
+# ── In-memory summary cache  key=(user_id, project_id, rel_path, mtime_ns) ───
+_summary_cache: Dict[Tuple[str, str, str, int], Dict[str, Any]] = {}
 
 ROOT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ROOT_DIR.parent
@@ -33,7 +54,7 @@ if _creds_path and not os.path.isabs(_creds_path):
 
 os.chdir(ROOT_DIR)
 
-# Playwright and npm preview builds spawn subprocesses; Proactor loop is required on Windows.
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
@@ -50,10 +71,12 @@ from project_workspace import (  # noqa: E402
     ROOT_DIR as WORKSPACE_ROOT,
     adopt_stray_repo_root_files,
     create_project_zip,
+    detect_project_type,
     infer_user_id_from_workdir,
     iso_now,
     resolve_project_dir,
     resolve_project_path,
+    get_project_dir,
     sanitize_id,
     workspace,
 )
@@ -106,6 +129,11 @@ class ResetRequest(BaseModel):
     session_id: Optional[str] = None
     user_id: Optional[str] = None
     project_id: Optional[str] = None
+
+
+class FileSummarizeRequest(BaseModel):
+    path: str
+    force_refresh: bool = False
 
 
 class SessionBootstrapRequest(BaseModel):
@@ -162,7 +190,8 @@ class SessionStore:
     def bind_project(self, session_id: str, user_id: str, project_id: str) -> SessionMeta:
         meta = self.get_meta(session_id)
         meta.user_id = sanitize_id(user_id, "default")
-        meta.project_id = sanitize_id(project_id, session_id)
+        clean_pid = project_id[8:] if project_id.startswith("project-") else project_id
+        meta.project_id = sanitize_id(clean_pid, session_id)
         return meta
 
     def get_history(self, session_id: str) -> List[Any]:
@@ -199,6 +228,78 @@ class SessionStore:
 
 session_store = SessionStore()
 bootstrapped_sessions: Dict[str, Dict[str, Any]] = _load_bootstrap_cache()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Context helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _estimate_history_tokens(session_id: str) -> int:
+    """Return estimated token count for the full message history of a session."""
+    history = session_store.get_history(session_id)
+    total = 0
+    for msg in history:
+        content = getattr(msg, "content", "") or ""
+        if isinstance(content, list):
+            # multimodal messages — only count text parts
+            content = " ".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in content)
+        total += _count_tokens(str(content))
+    return total
+
+
+def _maybe_compact_history(session_id: str) -> bool:
+    """Compact history when token usage exceeds the configured threshold.
+
+    Replaces the oldest messages (beyond the last N) with a single compact
+    system message summarising them, then keeps the most recent messages intact.
+
+    Returns True when compaction was performed.
+    """
+    from langchain_core.messages import SystemMessage
+
+    estimated = _estimate_history_tokens(session_id)
+    if estimated <= _COMPACT_TOKEN_THRESHOLD:
+        return False
+
+    history = session_store.get_history(session_id)
+    if len(history) <= _COMPACT_KEEP_LAST + 1:  # +1 for system prompt
+        return False
+
+    logger.info(
+        "[context] compacting session=%s tokens_before=%d threshold=%d keep_last=%d",
+        session_id, estimated, _COMPACT_TOKEN_THRESHOLD, _COMPACT_KEEP_LAST,
+    )
+
+    system_msg = history[0]  # always keep original system prompt first
+    old_messages = history[1 : len(history) - _COMPACT_KEEP_LAST]
+    recent_messages = history[len(history) - _COMPACT_KEEP_LAST :]
+
+    # Build a brief textual summary of what happened in the old messages
+    summary_parts: List[str] = []
+    for msg in old_messages:
+        role = type(msg).__name__.replace("Message", "").lower()
+        content = getattr(msg, "content", "") or ""
+        if isinstance(content, list):
+            content = " ".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in content)
+        snippet = str(content)[:300].replace("\n", " ")
+        summary_parts.append(f"[{role}]: {snippet}")
+
+    compact_text = (
+        "[CONTEXT COMPACTED — earlier conversation summary]\n"
+        + "\n".join(summary_parts)
+        + "\n[End of compacted context. Continue from here.]"
+    )
+    compact_msg = SystemMessage(content=compact_text)
+
+    new_history = [system_msg, compact_msg] + recent_messages
+    session_store._histories[session_id] = new_history
+
+    tokens_after = _estimate_history_tokens(session_id)
+    logger.info(
+        "[context] compaction done session=%s tokens_after=%d messages=%d",
+        session_id, tokens_after, len(new_history),
+    )
+    return True
 
 _ERROR_INTENT_KEYWORDS = (
     "error",
@@ -539,6 +640,8 @@ async def bootstrap_session(request: SessionBootstrapRequest) -> Dict[str, Any]:
 
     workdir = (request.working_directory or "").strip() or None
     project_id = sanitize_id(request.project_id or session_id, session_id)
+    if project_id.startswith("project-"):
+        project_id = project_id[8:]
     user_id = sanitize_id(
         request.user_id or (infer_user_id_from_workdir(workdir) if workdir else "default"),
         "default",
@@ -615,6 +718,126 @@ async def api_get_file(user_id: str, project_id: str, path: str) -> Dict[str, An
         raise HTTPException(status_code=404, detail="File not found")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/projects/{user_id}/{project_id}/file/summarize")
+async def api_summarize_file(
+    user_id: str,
+    project_id: str,
+    request: FileSummarizeRequest,
+) -> Dict[str, Any]:
+    """Generate (or return cached) a structural AI summary for a project file.
+
+    Uses Gemini 2.5 Flash.  Responses are cached in-memory by (user, project,
+    path, mtime) so repeated calls are free until the file changes.
+    """
+    uid = sanitize_id(user_id, "default")
+    pid = sanitize_id(project_id, user_id)
+    rel_path = request.path.strip().lstrip("/")
+
+    # Resolve the absolute path safely inside the project workspace
+    try:
+        file_data = workspace.read_file(uid, pid, rel_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    content: str = file_data.get("content", "")
+    abs_path_str: str = file_data.get("absolute_path", "")
+
+    # Guard against enormous files
+    if len(content.encode("utf-8")) > _MAX_FILE_SUMMARIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large to summarize (max {_MAX_FILE_SUMMARIZE_BYTES // 1024} KB).",
+        )
+
+    # Build cache key from mtime so edits always invalidate the cache
+    mtime_ns: int = 0
+    if abs_path_str:
+        try:
+            mtime_ns = Path(abs_path_str).stat().st_mtime_ns
+        except OSError:
+            pass
+
+    cache_key = (uid, pid, rel_path, mtime_ns)
+    if not request.force_refresh and cache_key in _summary_cache:
+        cached = _summary_cache[cache_key]
+        return {
+            **cached,
+            "cached": True,
+        }
+
+    # --- Call Gemini 2.5 Flash to summarize ---
+    summarization_prompt = (
+        "You are a code analyst. Produce a STRUCTURAL SUMMARY of the file below.\n"
+        "Include:\n"
+        "  - Language and file purpose (one sentence)\n"
+        "  - All function / class / React component names with a one-line description each\n"
+        "  - All exported symbols\n"
+        "  - CSS custom properties / design tokens (if any)\n"
+        "  - Key external dependencies imported\n"
+        "Be concise — target ~400 tokens+. Do NOT reproduce the full source code.\n\n.It should be detailed one"
+        f"File: {rel_path}\n"
+        "---\n"
+        f"{content}"
+    )
+
+    summary_text: str
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        import google.auth
+        from google.auth.transport.requests import Request as GAuthRequest
+        from text_llm import resolve_credentials_path
+
+        resolve_credentials_path()
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        creds.refresh(GAuthRequest())
+
+        flash_llm = ChatGoogleGenerativeAI(
+            model=os.getenv("AI_SUMMARY_MODEL", "gemini-2.5-flash"),
+            credentials=creds,
+            project=os.getenv("GOOGLE_CLOUD_PROJECT", "joblynk-489820"),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "global"),
+            vertexai=True,
+        )
+        result = await asyncio.to_thread(flash_llm.invoke, summarization_prompt)
+        summary_text = str(result.content or "").strip()
+    except Exception as exc:
+        logger.warning("[summarize] LLM call failed for %s/%s/%s: %s", uid, pid, rel_path, exc)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Summarization LLM unavailable: {exc}",
+        )
+
+    tokens_estimated = _count_tokens(summary_text)
+    entry: Dict[str, Any] = {
+        "file_path": rel_path,
+        "summary": summary_text,
+        "tokens_estimated": tokens_estimated,
+        "cached": False,
+    }
+    _summary_cache[cache_key] = entry
+
+    logger.info(
+        "[summarize] generated summary for %s/%s/%s tokens=%d",
+        uid, pid, rel_path, tokens_estimated,
+    )
+    return entry
+
+
+@app.get("/api/projects/{user_id}/{project_id}/context/tokens")
+async def api_context_tokens(user_id: str, project_id: str, session_id: str) -> Dict[str, Any]:
+    """Return current estimated token count for a session's history."""
+    estimated = _estimate_history_tokens(session_id)
+    return {
+        "session_id": session_id,
+        "tokens_estimated": estimated,
+        "threshold": _COMPACT_TOKEN_THRESHOLD,
+        "pct_used": round(estimated / _COMPACT_TOKEN_THRESHOLD * 100, 1),
+        "compact_recommended": estimated > _COMPACT_TOKEN_THRESHOLD,
+    }
 
 
 @app.get("/api/projects/{user_id}/{project_id}/preview")
@@ -695,7 +918,12 @@ async def serve_preview_file(user_id: str, project_id: str, file_path: str = "")
         ".woff2": "font/woff2",
     }
     media_type = media_types.get(target.suffix.lower(), "application/octet-stream")
-    return FileResponse(target, media_type=media_type)
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+    return FileResponse(target, media_type=media_type, headers=headers)
 
 
 @app.websocket("/ws/chat")
@@ -705,6 +933,7 @@ async def chat_socket(websocket: WebSocket) -> None:
     session_id = qp.get("session") or str(uuid.uuid4())
     user_id = qp.get("userId") or qp.get("user_id") or "default"
     project_id = qp.get("projectId") or qp.get("project_id") or session_id
+    project_name = qp.get("projectName") or qp.get("project_name") or ""
 
     boot = bootstrapped_sessions.get(session_id)
     if boot:
@@ -764,14 +993,17 @@ async def chat_socket(websocket: WebSocket) -> None:
     sender_task = asyncio.create_task(sender_loop())
 
     meta = workspace.load_meta(sm.user_id, sm.project_id)
+    estimated_tokens = _estimate_history_tokens(session_id)
     emit_ready = {
         "type": "workspace_ready",
         "session_id": session_id,
         "user_id": sm.user_id,
         "project_id": sm.project_id,
+        "project_name": boot.get("project_name") if boot else project_name,
         "preview_url": workspace.rewrite_preview_url(meta.preview_url, sm.user_id, sm.project_id),
         "status": meta.status.value,
         "project_type": meta.project_type,
+        "tokens_estimated": estimated_tokens,
         "timestamp": iso_now(),
     }
     loop.call_soon_threadsafe(event_queue.put_nowait, emit_ready)
@@ -790,8 +1022,7 @@ async def chat_socket(websocket: WebSocket) -> None:
     ) -> None:
         nonlocal current_run_task, preview_task
         stop_event.clear()
-        project_dir = str(resolve_project_dir(user_id, project_id))
-        workspace.register_project_dir(user_id, project_id, project_dir)
+        project_dir = str(workspace.project_dir_for(user_id, project_id))
         full_prompt = _project_context_prompt(user_id, project_id) + prompt
         history = session_store.get_history(run_session_id)
 
@@ -863,15 +1094,32 @@ async def chat_socket(websocket: WebSocket) -> None:
                     else:
                         os.environ[key] = value
                 workspace.end_generation(user_id, project_id)
+                # ── Tiered context: compact history if token budget exceeded ──
+                compacted = _maybe_compact_history(run_session_id)
+                tokens_now = _estimate_history_tokens(run_session_id)
                 emit(
                     {
                         "type": "run_complete",
                         "session_id": run_session_id,
                         "user_id": user_id,
                         "project_id": project_id,
+                        "tokens_estimated": tokens_now,
+                        "context_compacted": compacted,
                         "timestamp": iso_now(),
                     }
                 )
+                if compacted:
+                    emit(
+                        {
+                            "type": "context_compacted",
+                            "session_id": run_session_id,
+                            "user_id": user_id,
+                            "project_id": project_id,
+                            "tokens_after": tokens_now,
+                            "threshold": _COMPACT_TOKEN_THRESHOLD,
+                            "timestamp": iso_now(),
+                        }
+                    )
 
         current_run_task = asyncio.create_task(asyncio.to_thread(worker))
 
@@ -931,6 +1179,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                 target_session_id = payload.session_id or session_id
                 session_store.reset(target_session_id)
                 session_id = target_session_id
+                workspace.end_generation(sm.user_id, sm.project_id)
                 print(f"[ws] reset session={session_id}")
                 await websocket.send_text(
                     SocketResponse(

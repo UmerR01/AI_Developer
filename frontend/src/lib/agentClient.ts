@@ -153,3 +153,126 @@ export function resolvePreviewOpenUrl(meta: AgentPreviewMeta | null, userId: str
   }
   return buildAgentPreviewUrl(userId, projectId);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tiered Context Strategy helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FileSummaryResult {
+  file_path: string;
+  summary: string;
+  tokens_estimated: number;
+  cached: boolean;
+}
+
+/**
+ * Call the agent-server summarize endpoint for a single project file.
+ * Returns null if the request fails (caller can fall back to full-file send).
+ */
+export async function summarizeFile(
+  userId: string,
+  projectId: string,
+  filePath: string,
+  forceRefresh = false,
+): Promise<FileSummaryResult | null> {
+  try {
+    const u = encodeURIComponent(userId);
+    const p = encodeURIComponent(agentProjectKey(projectId));
+    const response = await fetch(
+      `${agentBaseUrl()}/api/projects/${u}/${p}/file/summarize`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: filePath, force_refresh: forceRefresh }),
+      },
+    );
+    if (!response.ok) return null;
+    return (await response.json()) as FileSummaryResult;
+  } catch {
+    return null;
+  }
+}
+
+/** Keywords that indicate the user wants to modify / write a file. */
+const MODIFY_KEYWORDS = [
+  "update",
+  "modify",
+  "change",
+  "edit",
+  "fix",
+  "add",
+  "remove",
+  "delete",
+  "refactor",
+  "implement",
+  "rewrite",
+  "create",
+  "build",
+  "replace",
+  "insert",
+  "append",
+  "rename",
+  "move",
+  "convert",
+  "migrate",
+];
+
+/**
+ * Classify user prompt as a read-only "read" operation or a write "modify"
+ * operation.  Used by the context manager to decide how much context to send.
+ */
+export function detectOperationType(prompt: string): "read" | "modify" {
+  const lower = prompt.toLowerCase();
+  for (const kw of MODIFY_KEYWORDS) {
+    if (lower.includes(kw)) return "modify";
+  }
+  return "read";
+}
+
+/**
+ * Assemble the tiered context prompt to inject into the WS message.
+ *
+ * - Read operation  → inject only the file summary (if available).
+ * - Modify (turn>0) → inject summary + ordered list of previously applied patches.
+ * - Modify (turn=0) → send plain prompt; caller should attach the full file separately.
+ */
+export function buildContextPayload(opts: {
+  prompt: string;
+  opType?: "read" | "modify";
+  fileSummary?: string | null;
+  appliedPatches?: string[];
+  isFirstModify?: boolean;
+}): string {
+  const { prompt, opType = "read", fileSummary, appliedPatches = [], isFirstModify = false } = opts;
+
+  if (opType === "read" && fileSummary) {
+    return (
+      `[FILE STRUCTURAL SUMMARY]\n${fileSummary}\n[END SUMMARY]\n\n` + prompt
+    );
+  }
+
+  if (opType === "modify" && !isFirstModify) {
+    const parts: string[] = [];
+
+    if (fileSummary) {
+      parts.push(`[FILE STRUCTURAL SUMMARY]\n${fileSummary}\n[END SUMMARY]`);
+    }
+
+    if (appliedPatches.length > 0) {
+      parts.push(
+        `[PATCHES APPLIED SO FAR (${appliedPatches.length})]\n` +
+          appliedPatches
+            .map((p, i) => `--- Patch ${i + 1} ---\n${p}`)
+            .join("\n\n") +
+          "\n[END PATCHES]",
+      );
+    }
+
+    parts.push(prompt);
+    return parts.join("\n\n");
+  }
+
+  // First modify turn or no summary available — send plain prompt
+  return prompt;
+}
+

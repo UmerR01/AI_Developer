@@ -940,6 +940,7 @@
         <div class="pill">Project: <strong id="projectText">—</strong></div>
         <div class="pill">Status: <strong id="projectStatus">idle</strong></div>
         <div class="pill">Files: <strong id="fileCount">0</strong></div>
+        <div class="pill" id="tokenPill" style="display:none;">Tokens: <strong id="tokenCount">0</strong></div>
         <button class="ghost" id="downloadBtn" type="button" style="padding:10px 14px;border-radius:999px;">Download ZIP</button>
       </div>
     </header>
@@ -1032,6 +1033,7 @@
       sessionId: launchSession || localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
       userId: launchUserId,
       projectId: launchProjectId || localStorage.getItem('aiCoderProjectId') || launchSession || '',
+      projectName: launchProjectName || localStorage.getItem('aiCoderProjectName') || '',
       messages: [],
       workingItems: [],
       workingOpen: false,
@@ -1076,6 +1078,8 @@
       panelAppPreview: document.getElementById('panelAppPreview'),
       referenceImagesInput: document.getElementById('referenceImagesInput'),
       uploadList: document.getElementById('uploadList'),
+      tokenPill: document.getElementById('tokenPill'),
+      tokenCount: document.getElementById('tokenCount'),
     };
 
     function resolveApiBaseUrl() {
@@ -1090,14 +1094,16 @@
       return state.userId || 'default';
     }
 
-    function saveWorkspaceIds(sessionId, userId, projectId) {
+    function saveWorkspaceIds(sessionId, userId, projectId, projectName) {
       state.sessionId = sessionId || state.sessionId;
       state.userId = userId || state.userId;
       state.projectId = projectId || state.projectId || state.sessionId;
+      state.projectName = projectName || state.projectName || '';
       localStorage.setItem('aiCoderSessionId', state.sessionId);
       localStorage.setItem('aiCoderUserId', state.userId);
       localStorage.setItem('aiCoderProjectId', state.projectId);
-      const label = launchProjectName || state.projectId;
+      localStorage.setItem('aiCoderProjectName', state.projectName);
+      const label = state.projectName || state.projectId;
       els.projectText.textContent = label;
     }
 
@@ -1125,11 +1131,41 @@
     function setPreviewUrl(url) {
       state.previewUrl = normalizePreviewUrl(url || '');
       if (state.previewUrl) {
-        els.appPreviewFrame.src = state.previewUrl;
+        let busterUrl = state.previewUrl;
+        try {
+          const parsed = new URL(state.previewUrl, window.location.origin);
+          parsed.searchParams.set('cb', Date.now().toString());
+          busterUrl = parsed.toString();
+        } catch (_) {}
+        els.appPreviewFrame.src = busterUrl;
         els.previewStatusText.textContent = `Live preview: ${state.previewUrl}`;
       } else {
         els.appPreviewFrame.removeAttribute('src');
         els.previewStatusText.textContent = 'Preview not ready yet.';
+      }
+    }
+
+    function updateTokenDisplay(tokens) {
+      state.tokensEstimated = tokens;
+      if (els.tokenCount && els.tokenPill) {
+        els.tokenCount.textContent = tokens.toLocaleString();
+        els.tokenPill.style.display = 'inline-flex';
+      }
+    }
+
+    async function loadTokenCount() {
+      try {
+        const base = resolveApiBaseUrl();
+        const userId = encodeURIComponent(getUserId());
+        const projectId = encodeURIComponent(getProjectId());
+        const resp = await fetch(`${base}/api/projects/${userId}/${projectId}/context/tokens?session_id=${encodeURIComponent(state.sessionId)}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data && typeof data.tokens_estimated === 'number') {
+          updateTokenDisplay(data.tokens_estimated);
+        }
+      } catch (error) {
+        console.warn('[agent-ui] load tokens', error);
       }
     }
 
@@ -1709,6 +1745,7 @@
         session: state.sessionId,
         userId: getUserId(),
         projectId: getProjectId(),
+        projectName: state.projectName,
       });
       return `${base}?${qs.toString()}`;
     }
@@ -1730,7 +1767,7 @@
         if (!state.projectId) {
           state.projectId = state.sessionId;
         }
-        saveWorkspaceIds(state.sessionId, getUserId(), getProjectId());
+        saveWorkspaceIds(state.sessionId, getUserId(), getProjectId(), state.projectName);
         requestFileManifest();
         refreshPreviewStatus();
         if (state.pendingPrompt) {
@@ -1757,17 +1794,21 @@
             payload.session_id,
             payload.user_id || getUserId(),
             payload.project_id || getProjectId(),
+            payload.project_name || state.projectName
           );
         }
 
         if (payload.type === 'workspace_ready') {
           if (payload.user_id || payload.project_id) {
-            saveWorkspaceIds(payload.session_id, payload.user_id, payload.project_id);
+            saveWorkspaceIds(payload.session_id, payload.user_id, payload.project_id, payload.project_name);
           }
           setProjectStatus(payload.status || 'idle', payload.project_type);
           if (payload.preview_url) {
             setPreviewUrl(payload.preview_url);
             if (payload.status === 'ready') activateTab('app-preview');
+          }
+          if (typeof payload.tokens_estimated === 'number') {
+            updateTokenDisplay(payload.tokens_estimated);
           }
           return;
         }
@@ -1911,7 +1952,19 @@
             addActivity('Agent run finished.', 'system');
             requestFileManifest();
             refreshPreviewStatus();
+            if (typeof payload.tokens_estimated === 'number') {
+              updateTokenDisplay(payload.tokens_estimated);
+            }
           }
+          return;
+        }
+
+        if (payload.type === 'context_compacted') {
+          const tokensAfter = payload.tokens_after;
+          if (typeof tokensAfter === 'number') {
+            updateTokenDisplay(tokensAfter);
+          }
+          addMessage('agent', `Context was compacted. Tokens after compaction: ${tokensAfter ? tokensAfter.toLocaleString() : '0'}`, 'system');
           return;
         }
 
@@ -1930,7 +1983,7 @@
         }
 
         if (payload.type === 'error') {
-          setConnection(false, 'error');
+          setGenerating(false);
           addMessage('agent', payload.error || 'Unknown socket error.', 'error');
           return;
         }
@@ -1986,7 +2039,7 @@
       const userId = getUserId();
       const projectId = getProjectId();
       const outgoingPrompt = prompt || (hasImages ? 'Please analyze the attached image(s).' : '');
-      saveWorkspaceIds(sessionId, userId, projectId);
+      saveWorkspaceIds(sessionId, userId, projectId, state.projectName);
       addMessage('user', outgoingPrompt, 'you');
       state.socket.send(JSON.stringify({
         type: 'message',
@@ -2124,13 +2177,13 @@
     }
 
     if (!state.projectId) state.projectId = state.sessionId;
-    saveWorkspaceIds(state.sessionId, state.userId, state.projectId);
+    saveWorkspaceIds(state.sessionId, state.userId, state.projectId, state.projectName);
     renderMessages();
     renderFileTree();
     renderUploads();
     setConnection(false);
     updateGenerationControls();
-    Promise.all([loadChatHistory(), loadProjectSnapshot()])
+    Promise.all([loadChatHistory(), loadProjectSnapshot(), loadTokenCount()])
       .then(() => loadAutostartPrompt())
       .finally(() => connect());
   </script>
