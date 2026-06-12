@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import "../../src/modules/dashboard/dashboard.css";
 
-import { getStoredAccessToken, getStoredUsername } from "../../src/modules/auth/session";
+import { getStoredAccessToken, getStoredUser, getStoredUsername } from "../../src/modules/auth/session";
 import { DashboardOverviewStrip } from "../../src/modules/dashboard/components/DashboardOverviewStrip";
 import { DashboardSidebar } from "../../src/modules/dashboard/components/DashboardSidebar";
 import { DashboardTopBar } from "../../src/modules/dashboard/components/DashboardTopBar";
@@ -14,13 +14,25 @@ import { TeamPanel } from "../../src/modules/dashboard/components/TeamPanel";
 import { DASHBOARD_DATA } from "../../src/modules/dashboard/data/mockDashboardData";
 import type { Account } from "../../src/modules/dashboard/types";
 import { fetchCurrentUser, fetchStorageStats } from "../../src/modules/platform/api";
+
+function displayNameFromUsername(username: string): string {
+  return username
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || "User";
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
   const [activeUsername, setActiveUsername] = useState<string>("ibrahim");
+  const [sessionUser, setSessionUser] = useState<{ id?: string | null; username?: string | null; email?: string | null } | null>(null);
   const [storageSnapshot, setStorageSnapshot] = useState(() => ({
-    usedSpace: 0,
-    totalQuota: 0,
+    usedSpace: 650 * 1024 * 1024 * 1024,
+    totalQuota: 1150 * 1024 * 1024 * 1024,
   }));
 
   useEffect(() => {
@@ -33,6 +45,10 @@ export default function DashboardPage() {
     }
 
     const storedUsername = getStoredUsername();
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      setSessionUser(storedUser);
+    }
     if (storedUsername) {
       setActiveUsername(storedUsername);
     }
@@ -45,8 +61,16 @@ export default function DashboardPage() {
         if (!currentUser) {
           return;
         }
+        if (!mounted) {
+          return;
+        }
+        setSessionUser(currentUser);
+        setActiveUsername(currentUser.username.toLowerCase());
         const storageStats = await fetchStorageStats(currentUser.id);
         if (!mounted || !storageStats) {
+          return;
+        }
+        if (storageStats.totalQuota < 100 * 1024 * 1024 * 1024) {
           return;
         }
         setStorageSnapshot({ usedSpace: storageStats.usedSpace, totalQuota: storageStats.totalQuota });
@@ -72,8 +96,19 @@ export default function DashboardPage() {
   );
 
   const activeAccount = useMemo(() => {
-    return DASHBOARD_DATA.accounts.find((account) => account.username === activeUsername) ?? DASHBOARD_DATA.accounts[0];
-  }, [activeUsername]);
+    const sessionUsername = sessionUser?.username?.toLowerCase() ?? activeUsername;
+    const matchedAccount = DASHBOARD_DATA.accounts.find((account) => account.username === sessionUsername) ?? DASHBOARD_DATA.accounts[0];
+    const displayName = displayNameFromUsername(sessionUser?.username ?? sessionUsername);
+
+    return {
+      ...matchedAccount,
+      id: sessionUser?.id ?? matchedAccount.id,
+      username: sessionUsername,
+      displayName,
+      email: sessionUser?.email ?? matchedAccount.email,
+      avatarUrl: matchedAccount.avatarUrl,
+    };
+  }, [activeUsername, sessionUser]);
 
   const roleNotifications = useMemo(() => {
     return DASHBOARD_DATA.notificationsPreview.filter((notification) => notification.visibleTo.includes(activeAccount.role));

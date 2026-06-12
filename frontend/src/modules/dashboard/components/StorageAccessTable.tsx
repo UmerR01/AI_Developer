@@ -23,28 +23,22 @@ function inferProjectView(project: StorageProject): "overview" | "review" | "dep
 export function StorageAccessTable({ projects, accountById }: StorageAccessTableProps) {
   return (
     <section className="dashboard-card access-card">
-      <div className="card-head">
-        <h2>Storage Access</h2>
+      <div className="card-head access-title-row">
+        <div>
+          <h2>Storage Access</h2>
+          <p>You can grant access to all files in your space to anyone, as well as allow them to download and edit the files.</p>
+        </div>
       </div>
 
-      <div className="access-table">
-        <div className="access-head">
-          <span>Project</span>
-          <span>Space Taken</span>
-          <span>Files Total</span>
-          <span>Members</span>
-          <span>Action</span>
-        </div>
+      <div className="access-table" aria-label="Storage access list">
         {projects.map((project) => (
           <div className="access-row" key={project.id}>
             <strong>{project.name}</strong>
+            <span>{project.filesTotal} Files</span>
             <span>{project.usedStorageGb} GB</span>
-            <span>{project.filesTotal} files</span>
             <AvatarStack members={getProjectMembers(project, accountById)} />
-            <Link className="row-action-btn" href={`/projects/${project.id}?view=${inferProjectView(project)}`} aria-label={`Open ${project.name}`} title="Open Project">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3.5 7.8c0-1.1.9-2 2-2h4l1.6 1.7h7.4c1.1 0 2 .9 2 2v6.8c0 1.1-.9 2-2 2H5.5c-1.1 0-2-.9-2-2V7.8Z" fill="none" stroke="currentColor" strokeWidth="1.7"/>
-              </svg>
+            <Link className="share-access-btn" href={`/projects/${project.id}?view=${inferProjectView(project)}`} aria-label={`Open ${project.name}`}>
+              Share access
             </Link>
           </div>
         ))}
