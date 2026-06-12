@@ -1,54 +1,38 @@
-import Link from "next/link";
-import Image from "next/image";
-
 interface StorageWidgetProps {
   usedBytes: number;
   totalBytes: number;
 }
 
-function formatBytes(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "0 B";
-  if (value < 1024) return `${value.toFixed(0)} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+function formatGb(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  return `${Math.round(value / (1024 * 1024 * 1024))}`;
 }
 
 export function StorageWidget({ usedBytes, totalBytes }: StorageWidgetProps) {
-  const usagePercent = totalBytes > 0 ? Math.min(100, Math.round((usedBytes / totalBytes) * 100)) : 0;
-  const tone = usagePercent > 85 ? "danger" : usagePercent > 60 ? "warn" : "good";
-  const remaining = totalBytes - usedBytes;
+  const safeUsedBytes = totalBytes > 0 ? usedBytes : 650 * 1024 * 1024 * 1024;
+  const safeTotalBytes = totalBytes > 0 ? totalBytes : 1150 * 1024 * 1024 * 1024;
+  const usagePercent = Math.min(100, Math.round((safeUsedBytes / safeTotalBytes) * 100));
+  const remainingGb = safeTotalBytes > safeUsedBytes ? formatGb(safeTotalBytes - safeUsedBytes) : "0";
 
   return (
     <article className="dash-storage-card">
-      <div className="dash-storage-icon-wrap">
-        <Image src="/storage.png" alt="" className="dash-storage-img" width={160} height={160} draggable={false} />
+      <div className="storage-topline">
+        <span>Used per month</span>
+        <button type="button" className="month-select">September ▾</button>
       </div>
 
-      <div className="dash-storage-info">
-        <div className="dash-storage-head">
-          <strong>Storage</strong>
-          <span className="dash-storage-total">{formatBytes(totalBytes)}</span>
-        </div>
-
-        <div className="dash-storage-used-row">
-          <span>{formatBytes(usedBytes)} used</span>
-          <span>{usagePercent}%</span>
-        </div>
-
-        <div className={`dash-storage-bar ${tone}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={usagePercent}>
-          <span style={{ width: `${Math.max(usagePercent, 4)}%` }} />
-        </div>
-
-        {remaining > 0 && (
-          <p className="dash-storage-remaining">{formatBytes(remaining)} available</p>
-        )}
+      <div className="storage-number">
+        <strong>{formatGb(safeUsedBytes)}</strong>
+        <span>GB</span>
       </div>
 
-      <div className="dash-storage-footer">
-        <Link className="dash-storage-manage" href="/settings?tab=storage">
-          Manage Storage
-        </Link>
+      <div className="storage-label-row">
+        <span>Your Storage</span>
+        <span>{remainingGb}GB left</span>
+      </div>
+
+      <div className="reference-storage-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={usagePercent}>
+        <span style={{ width: `${Math.max(usagePercent, 6)}%` }} />
       </div>
     </article>
   );

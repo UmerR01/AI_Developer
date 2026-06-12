@@ -11,13 +11,6 @@ interface DashboardTopBarProps {
   notifications: NotificationPreviewItem[];
 }
 
-function getRoleLabel(role: Account["role"]): string {
-  if (role === "admin") return "Admin";
-  if (role === "developer") return "Developer";
-  if (role === "qa") return "QA";
-  return "Support";
-}
-
 export function DashboardTopBar({ activeAccount, title = "Dashboard", notifications }: DashboardTopBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -36,15 +29,32 @@ export function DashboardTopBar({ activeAccount, title = "Dashboard", notificati
     return notifications.length.toString();
   }, [notifications.length]);
 
-  const roleLabel = getRoleLabel(activeAccount.role);
-
   return (
     <header className="dashboard-topbar">
       <div className="topbar-left">
         <h1 className="topbar-title">{title}</h1>
+        <form className="topbar-search" role="search" onSubmit={(event) => event.preventDefault()}>
+          {/* Search icon */}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input type="search" placeholder="Search space, folder, file etc" aria-label="Search dashboard" />
+          <kbd>alt+f</kbd>
+        </form>
       </div>
 
       <div className="topbar-right">
+        {/* Monitor / inbox icon — matches reference */}
+        <button type="button" className="topbar-icon-btn" aria-label="Storage inbox">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+        </button>
+
+        {/* Bell / notifications */}
         <div className="notification-wrap" ref={wrapperRef}>
           <button
             type="button"
@@ -79,14 +89,16 @@ export function DashboardTopBar({ activeAccount, title = "Dashboard", notificati
           )}
         </div>
 
+        {/* Profile: avatar + name + email (matching reference image) */}
         <div className="topbar-profile">
-          <Image src={activeAccount.avatarUrl} alt={activeAccount.displayName} width={42} height={42} unoptimized />
+          <Image src={activeAccount.avatarUrl} alt={activeAccount.displayName} width={40} height={40} unoptimized />
           <div className="topbar-profile-info">
             <span className="topbar-profile-name">{activeAccount.displayName}</span>
-            <span className="topbar-profile-role">{roleLabel}</span>
+            <span className="topbar-profile-email">{activeAccount.email}</span>
           </div>
         </div>
       </div>
     </header>
   );
 }
+
