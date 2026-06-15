@@ -18,9 +18,9 @@ from apps.projects.services import (
     admin_profile_for_user,
     attach_file_to_project,
     create_project_folder,
-    ensure_seed_projects,
     configure_user_integration,
     find_project_or_none,
+    find_project_for_user,
     get_authenticated_user,
     get_or_create_user_subscription,
     get_or_create_storage_for_user,
@@ -257,6 +257,8 @@ class ProjectMutation:
 
         owner = actor
         if input.owner_id:
+            if not is_user_admin(actor):
+                return ProjectMutationPayload(success=False, message="Not authorized to set a different owner.", project=None)
             owner_candidate = user_by_id(str(input.owner_id))
             if owner_candidate is None:
                 return ProjectMutationPayload(success=False, message="Owner not found.", project=None)
@@ -307,8 +309,7 @@ class ProjectMutation:
         if actor is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -354,8 +355,7 @@ class ProjectMutation:
         if actor is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -377,7 +377,7 @@ class ProjectMutation:
         if actor is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -397,7 +397,7 @@ class ProjectMutation:
         if actor is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -419,7 +419,7 @@ class ProjectMutation:
         if actor is None:
             return TeamMemberMutationPayload(success=False, message="Authentication required.", member=None)
 
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return TeamMemberMutationPayload(success=False, message="Project not found.", member=None)
 
@@ -460,7 +460,7 @@ class ProjectMutation:
         if actor is None:
             return TeamMemberMutationPayload(success=False, message="Authentication required.", member=None)
 
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return TeamMemberMutationPayload(success=False, message="Project not found.", member=None)
 
@@ -488,7 +488,7 @@ class ProjectMutation:
         if actor is None:
             return FileMutationPayload(success=False, message="Authentication required.", file=None, project=None)
 
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), actor)
         if project is None:
             return FileMutationPayload(success=False, message="Project not found.", file=None, project=None)
 
@@ -806,8 +806,7 @@ class ProjectMutation:
         if user is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), user)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -854,8 +853,7 @@ class ProjectMutation:
         if user is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), user)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -882,8 +880,7 @@ class ProjectMutation:
         if user is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), user)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -914,8 +911,7 @@ class ProjectMutation:
         if user is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), user)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 
@@ -944,8 +940,7 @@ class ProjectMutation:
         if user is None:
             return ProjectMutationPayload(success=False, message="Authentication required.", project=None)
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(input.project_id))
+        project = find_project_for_user(str(input.project_id), user)
         if project is None:
             return ProjectMutationPayload(success=False, message="Project not found.", project=None)
 

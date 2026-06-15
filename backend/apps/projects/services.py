@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import threading
+
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
@@ -307,140 +307,13 @@ def to_project_type(project: Project) -> ProjectType:
     )
 
 
-def _seed_owner(username: str):
-    user_model = get_user_model()
-    try:
-        return user_model.objects.get(username=username)
-    except user_model.DoesNotExist:
-        return user_model.objects.order_by("id").first()
-
-
-_seed_projects_lock = threading.Lock()
-
-
 def ensure_seed_projects() -> None:
-    seeds = [
-        {
-            "slug": "ai-agent-workspace",
-            "name": "AI Agent Workspace",
-            "owner": _seed_owner("ibrahim"),
-            "description": "Core platform workspace for role-aware agent collaboration flows.",
-            "state": Project.STATE_IN_REVIEW,
-            "tasks_json": [
-                {"id": "task-1", "title": "Validate dashboard handoff", "assignee": "Zahid", "status": "in_progress"},
-                {"id": "task-2", "title": "Patch role-aware controls", "assignee": "Ismail", "status": "todo"},
-            ],
-            "activity_json": [
-                {"id": "a1", "text": "QA comments were submitted for review", "time": "18m ago"},
-                {"id": "a2", "text": "Agent run completed for sprint 4", "time": "42m ago"},
-                {"id": "a3", "text": "Deployment checklist updated", "time": "1h ago"},
-            ],
-            "artifacts_json": [
-                {"id": "ar1", "name": "requirements-v4.md", "type": "spec"},
-                {"id": "ar2", "name": "dashboard.tsx", "type": "code"},
-                {"id": "ar3", "name": "qa-checklist.md", "type": "test"},
-            ],
-            "open_comments": 5,
-            "approved_comments": 2,
-            "pushed_comments": 1,
-            "deployments_json": [
-                {"id": "d1", "version": "v0.6.0", "status": "success", "deployedAt": "2026-04-18 15:14"},
-            ],
-        },
-        {
-            "slug": "projects-module-foundation",
-            "name": "Projects Module Foundation",
-            "owner": _seed_owner("ismail"),
-            "description": "Unified Projects workspace with list, view tabs, and action flow.",
-            "state": Project.STATE_DRAFT,
-            "tasks_json": [
-                {"id": "task-3", "title": "Implement overview tab", "assignee": "Ismail", "status": "in_progress"},
-                {"id": "task-4", "title": "Prepare deployment mock", "assignee": "Faizan", "status": "todo"},
-            ],
-            "activity_json": [
-                {"id": "a4", "text": "Project draft initialized", "time": "30m ago"},
-                {"id": "a5", "text": "Task board seeded", "time": "1h ago"},
-            ],
-            "artifacts_json": [
-                {"id": "ar4", "name": "projects-plan.md", "type": "spec"},
-                {"id": "ar5", "name": "project-shell.tsx", "type": "code"},
-            ],
-            "open_comments": 0,
-            "approved_comments": 0,
-            "pushed_comments": 0,
-            "deployments_json": [],
-        },
-        {
-            "slug": "support-workflow-revamp",
-            "name": "Support Workflow Revamp",
-            "owner": _seed_owner("ai_dev"),
-            "description": "Refine support ticket triage and escalation visibility.",
-            "state": Project.STATE_IN_PROGRESS,
-            "tasks_json": [
-                {"id": "task-5", "title": "Tag escalation priorities", "assignee": "AI_dev", "status": "in_progress"},
-                {"id": "task-6", "title": "Audit ticket states", "assignee": "Ibrahim", "status": "todo"},
-            ],
-            "activity_json": [
-                {"id": "a6", "text": "Support queue synced", "time": "58m ago"},
-                {"id": "a7", "text": "Escalation matrix reviewed", "time": "2h ago"},
-            ],
-            "artifacts_json": [
-                {"id": "ar6", "name": "ticket-routing.md", "type": "spec"},
-                {"id": "ar7", "name": "support-state.json", "type": "design"},
-            ],
-            "open_comments": 2,
-            "approved_comments": 1,
-            "pushed_comments": 0,
-            "deployments_json": [],
-        },
-        {
-            "slug": "testing-and-qc-suite",
-            "name": "Testing and QC Suite",
-            "owner": _seed_owner("zahid"),
-            "description": "Centralized testing and QA validation pipelines.",
-            "state": Project.STATE_IN_REVIEW,
-            "tasks_json": [
-                {"id": "task-7", "title": "Validate regression notes", "assignee": "Zahid", "status": "in_progress"},
-                {"id": "task-8", "title": "Finalize test report", "assignee": "Faizan", "status": "todo"},
-            ],
-            "activity_json": [
-                {"id": "a8", "text": "Regression cycle completed", "time": "24m ago"},
-                {"id": "a9", "text": "Review queue updated with QA comments", "time": "47m ago"},
-            ],
-            "artifacts_json": [
-                {"id": "ar8", "name": "qa-regression-report.md", "type": "test"},
-                {"id": "ar9", "name": "release-checklist.md", "type": "spec"},
-            ],
-            "open_comments": 4,
-            "approved_comments": 1,
-            "pushed_comments": 0,
-            "deployments_json": [],
-        },
-    ]
+    """No-op: seed projects removed. Only real user data is shown."""
+    return
 
-    seed_slugs = [data["slug"] for data in seeds]
-    if Project.objects.filter(slug__in=seed_slugs).count() == len(seed_slugs):
-        return
 
-    with _seed_projects_lock:
-        for data in seeds:
-            slug = data["slug"]
-            if Project.objects.filter(slug=slug).exists():
-                continue
 
-            payload = {key: value for key, value in data.items() if key != "slug"}
-            owner = payload.pop("owner", None)
-            if owner:
-                storage = get_or_create_storage_for_user(owner)
-                payload["owner"] = owner
-                payload["storage"] = storage
-                payload["folder_path"] = f"{storage.folder_name}/{slug}"
-                payload["used_storage"] = 0
 
-            try:
-                Project.objects.get_or_create(slug=slug, defaults=payload)
-            except IntegrityError:
-                continue
 
 
 def find_project_or_none(project_id: str) -> Project | None:
@@ -481,10 +354,25 @@ def team_members_for_project(project: Project) -> list[TeamMemberType]:
 
 
 def list_projects_for_owner(owner_id: str | None):
-    queryset = Project.objects.select_related("owner", "storage")
-    if owner_id:
-        queryset = queryset.filter(owner_id=owner_id)
+    """Return projects for a specific owner. Pass None only for admin all-view."""
+    queryset = Project.objects.select_related("owner", "storage").filter(is_deleted=False)
+    if owner_id is not None:
+        queryset = queryset.filter(owner__id=owner_id)
     return queryset.order_by("-updated_at")
+
+
+def find_project_for_user(project_id: str, user) -> "Project | None":
+    """Return a project only if the user is the owner, an active team member, or an admin."""
+    project = find_project_or_none(project_id)
+    if project is None:
+        return None
+    if project.owner_id is not None and str(project.owner_id) == str(user.id):
+        return project
+    if project.team_members.filter(user=user, status=TeamMember.STATUS_ACTIVE).exists():
+        return project
+    if is_user_admin(user):
+        return project
+    return None
 
 
 def latest_project_for_user(user) -> Project | None:

@@ -5,8 +5,8 @@ from strawberry.types import Info
 
 from apps.projects.services import (
     admin_profile_for_user,
-    ensure_seed_projects,
     file_list_for_project,
+    find_project_for_user,
     find_project_or_none,
     get_authenticated_user,
     is_user_admin,
@@ -50,9 +50,7 @@ class ProjectQuery:
         if user is None:
             return []
 
-        ensure_seed_projects()
-
-        queryset = list_projects_for_owner(None)
+        queryset = list_projects_for_owner(str(user.id))
         if search:
             queryset = queryset.filter(name__icontains=search)
 
@@ -71,9 +69,7 @@ class ProjectQuery:
         if user is None:
             return None
 
-        ensure_seed_projects()
-
-        project = find_project_or_none(str(project_id))
+        project = find_project_for_user(str(project_id), user)
         if project is None:
             return None
 
@@ -85,8 +81,7 @@ class ProjectQuery:
         if user is None:
             return None
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(id))
+        project = find_project_for_user(str(id), user)
         if project is None:
             return None
 
@@ -98,8 +93,10 @@ class ProjectQuery:
         if user is None:
             return []
 
-        ensure_seed_projects()
-        queryset = list_projects_for_owner(str(owner_id) if owner_id else None)
+        if is_user_admin(user):
+            queryset = list_projects_for_owner(str(owner_id) if owner_id else None)
+        else:
+            queryset = list_projects_for_owner(str(user.id))
         return [to_project_type(project) for project in queryset]
 
     @strawberry.field
@@ -108,8 +105,7 @@ class ProjectQuery:
         if user is None:
             return []
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(project_id))
+        project = find_project_for_user(str(project_id), user)
         if project is None:
             return []
 
@@ -121,8 +117,7 @@ class ProjectQuery:
         if user is None:
             return []
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(project_id))
+        project = find_project_for_user(str(project_id), user)
         if project is None:
             return []
 
@@ -139,8 +134,7 @@ class ProjectQuery:
         if user is None:
             return []
 
-        ensure_seed_projects()
-        project = find_project_or_none(str(project_id))
+        project = find_project_for_user(str(project_id), user)
         if project is None:
             return []
 
