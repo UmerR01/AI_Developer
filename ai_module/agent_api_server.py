@@ -60,6 +60,25 @@ from project_workspace import (  # noqa: E402
     workspace,
 )
 
+def _is_generation_intent_with_image(prompt: str, image_b64: str, media_type: str = "image/png") -> bool:
+    try:
+        llm = _get_vision_llm()
+        question = (
+            "Analyze the user prompt and the image.\n"
+            f"User Prompt: {prompt}\n\n"
+            "Does the user want you to generate, build, modify, or create code or files based on this image?\n"
+            "Reply with exactly one word: 'yes' or 'no'."
+        )
+        data_uri = f"data:{media_type};base64,{image_b64}"
+        msgs = _vision_messages(data_uri, question)
+        resp = llm.invoke(msgs)
+        text = str(resp.content or "").strip().lower()
+        print(f"[intent-classifier] Classification output: {text}")
+        return "yes" in text
+    except Exception as e:
+        print(f"[intent-classifier] error: {e}")
+        return False
+
 BOOTSTRAP_CACHE_FILE = ROOT_DIR / ".bootstrap_sessions.json"
 
 
@@ -527,7 +546,14 @@ async def root() -> FileResponse:
 
 @app.get("/workspace")
 async def workspace_ui() -> FileResponse:
-    return FileResponse(ROOT_DIR / "agent_frontend.html")
+    return FileResponse(
+        ROOT_DIR / "agent_frontend.html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
 
 
 @app.post("/api/session/bootstrap")
@@ -1054,12 +1080,36 @@ async def chat_socket(websocket: WebSocket) -> None:
                 payload.project_id or sm.project_id,
             )
 
-            uploaded_refs = _save_reference_images(
-                sm.user_id,
-                sm.project_id,
-                payload.reference_images or [],
-                prompt=prompt,
-            )
+            uploaded_images_to_save = []
+            in_memory_images = []
+            
+            for img in (payload.reference_images or []):
+                img_b64 = img.get("base64")
+                data_uri = img.get("data_uri")
+                if data_uri and "base64," in data_uri:
+                    img_b64 = data_uri.split("base64,")[1]
+                media_type = img.get("media_type") or "image/png"
+                
+                if img_b64:
+                    should_save = _is_generation_intent_with_image(prompt, img_b64, media_type)
+                    if should_save:
+                        uploaded_images_to_save.append(img)
+                    else:
+                        in_memory_images.append({
+                            "data_uri": f"data:{media_type};base64,{img_b64}",
+                            "name": img.get("name") or "in_memory.png",
+                            "image_ref": f"imgref_mem_{uuid.uuid4().hex[:8]}"
+                        })
+
+            uploaded_refs = []
+            if uploaded_images_to_save:
+                uploaded_refs = _save_reference_images(
+                    sm.user_id,
+                    sm.project_id,
+                    uploaded_images_to_save,
+                    prompt=prompt,
+                )
+
             image_attachments: List[Dict[str, Any]] = []
             if uploaded_refs:
                 await websocket.send_text(
@@ -1089,6 +1139,10 @@ async def chat_socket(websocket: WebSocket) -> None:
                     if ref.get("data_uri")
                 ]
                 prompt = _build_reference_image_prompt(prompt, uploaded_refs)
+
+            if in_memory_images:
+                image_attachments.extend(in_memory_images)
+                prompt += "\n\n[System note: An image was uploaded and is attached directly to the LLM message history context. You can see it natively. Analyze it to answer the user's prompt.]"
 
             if current_run_task is not None and not current_run_task.done():
                 await websocket.send_text(
@@ -1126,7 +1180,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                 ).model_dump_json()
             )
 
-            start_run(prompt, session_id, sm.user_id, sm.project_id, image_attachments=image_attachments)
+            start_run(prompt, session_id, sm.user_id, sm.project_id, image_attachments=image_attachments if image_attachments else None)
     except WebSocketDisconnect:
         stop_event.set()
         print(f"[ws] disconnected session={session_id}")
