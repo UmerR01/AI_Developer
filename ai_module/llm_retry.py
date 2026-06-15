@@ -42,6 +42,34 @@ RETRYABLE_EXCEPTION_NAMES = (
     "aborted",
 )
 
+CONTEXT_LIMIT_MARKERS = (
+    "context window",
+    "context_window",
+    "context length",
+    "context_length",
+    "token limit",
+    "token_limit",
+    "maximum context",
+    "input too long",
+    "prompt too long",
+    "exceeds the maximum",
+    "400",
+    "invalidargument",
+    "input_tokens_limit",
+    "tokens limit",
+)
+
+
+def is_context_limit_error(exc: BaseException) -> bool:
+    """Return True if *exc* looks like a context/token-window limit error."""
+    message = str(exc).lower()
+    if any(marker in message for marker in CONTEXT_LIMIT_MARKERS):
+        return True
+    cause = getattr(exc, "__cause__", None)
+    if cause is not None and cause is not exc:
+        return is_context_limit_error(cause)
+    return False
+
 
 def is_retryable_error(exc: BaseException) -> bool:
     message = str(exc).lower()
@@ -68,31 +96,50 @@ def invoke_with_retry(
     *,
     label: str = "llm",
     on_retry: Callable[[int, int, float, BaseException], None] | None = None,
+    on_context_error: Callable[[int, BaseException], bool] | None = None,
 ) -> T:
-    max_attempts, base_delay, max_delay = retry_settings()
-    last_exc: BaseException | None = None
+    """
+    Retry *fn* on transient/rate-limit errors indefinitely until success.
 
-    for attempt in range(1, max_attempts + 1):
+    Parameters
+    ----------
+    on_retry:
+        Called before each retry sleep with (attempt, max_attempts, wait_seconds, exc).
+    on_context_error:
+        Called when a context-limit error is detected with (attempt, exc).
+        Should return True if compaction was performed (triggers an immediate
+        retry without sleeping), or False to fall through to normal retry logic.
+    """
+    _, base_delay, max_delay = retry_settings()
+    last_exc: BaseException | None = None
+    attempt = 0
+
+    while True:
+        attempt += 1
         try:
             return fn()
         except Exception as exc:
             last_exc = exc
-            if attempt >= max_attempts or not is_retryable_error(exc):
+            # Context-limit errors: try compacting history, then retry immediately
+            if on_context_error is not None and is_context_limit_error(exc):
+                compacted = on_context_error(attempt, exc)
+                if compacted:
+                    logger.warning(
+                        "[%s] context-limit error attempt %s — history compacted, retrying now: %s",
+                        label, attempt, exc,
+                    )
+                    continue  # retry immediately, no sleep
+            if not is_retryable_error(exc):
                 raise
             wait = min(max_delay, base_delay * (2 ** (attempt - 1)))
             wait += random.uniform(0, min(1.0, wait * 0.25))
             logger.warning(
-                "[%s] retryable error attempt %s/%s: %s — sleeping %.1fs",
+                "[%s] retryable error attempt %s: %s — sleeping %.1fs",
                 label,
                 attempt,
-                max_attempts,
                 exc,
                 wait,
             )
             if on_retry is not None:
-                on_retry(attempt, max_attempts, wait, exc)
+                on_retry(attempt, 999999, wait, exc)
             time.sleep(wait)
-
-    if last_exc is not None:
-        raise last_exc
-    raise RuntimeError(f"{label} retry failed without exception")

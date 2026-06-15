@@ -25,8 +25,12 @@ def get_active_project_root() -> Path:
 
 def is_safe_path(path: str) -> bool:
     try:
-        resolved = Path(path).resolve()
         root = get_active_project_root()
+        p = Path(path)
+        if not p.is_absolute():
+            resolved = Path(root / p).resolve()
+        else:
+            resolved = p.resolve()
         resolved.relative_to(root)
         return True
     except (ValueError, OSError):

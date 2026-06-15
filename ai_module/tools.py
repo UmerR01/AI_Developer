@@ -92,6 +92,14 @@ def _remember_reference_image(payload: Dict[str, Any]) -> str:
     while len(REFERENCE_IMAGE_CACHE) > MAX_REFERENCE_IMAGE_CACHE:
         oldest = next(iter(REFERENCE_IMAGE_CACHE))
         REFERENCE_IMAGE_CACHE.pop(oldest, None)
+    
+    r = _get_redis()
+    if r:
+        try:
+            r.setex(f"imgcache:{image_ref}", 3600, json.dumps(payload))
+        except Exception:
+            pass
+            
     return image_ref
 
 
@@ -103,8 +111,19 @@ def _extract_data_uri_parts(data_uri: str) -> Optional[Dict[str, str]]:
 
 
 def _resolve_image_payload(image_json_or_ref: str) -> Dict[str, Any]:
-    if isinstance(image_json_or_ref, str) and image_json_or_ref in REFERENCE_IMAGE_CACHE:
-        return REFERENCE_IMAGE_CACHE[image_json_or_ref]
+    if isinstance(image_json_or_ref, str):
+        if image_json_or_ref in REFERENCE_IMAGE_CACHE:
+            return REFERENCE_IMAGE_CACHE[image_json_or_ref]
+        r = _get_redis()
+        if r:
+            cached = r.get(f"imgcache:{image_json_or_ref}")
+            if cached:
+                try:
+                    payload = json.loads(cached)
+                    REFERENCE_IMAGE_CACHE[image_json_or_ref] = payload
+                    return payload
+                except Exception:
+                    pass
 
     if isinstance(image_json_or_ref, str) and image_json_or_ref.startswith("data:image"):
         payload = {"data_uri": image_json_or_ref, "media_type": "image/png"}
@@ -129,8 +148,19 @@ def _resolve_image_payload(image_json_or_ref: str) -> Dict[str, Any]:
         return payload
 
     image_ref = data.get("image_ref")
-    if image_ref and image_ref in REFERENCE_IMAGE_CACHE:
-        return REFERENCE_IMAGE_CACHE[image_ref]
+    if image_ref:
+        if image_ref in REFERENCE_IMAGE_CACHE:
+            return REFERENCE_IMAGE_CACHE[image_ref]
+        r = _get_redis()
+        if r:
+            cached = r.get(f"imgcache:{image_ref}")
+            if cached:
+                try:
+                    payload = json.loads(cached)
+                    REFERENCE_IMAGE_CACHE[image_ref] = payload
+                    return payload
+                except Exception:
+                    pass
 
     raise ValueError("No data_uri found and image_ref was missing or expired")
 
@@ -528,7 +558,11 @@ def fetch_image(url: str, max_size_kb: int = 800) -> str:
     if r:
         cached = r.get(ck)
         if cached:
-            return f"[CACHED] {cached}"
+            if "base64" in cached and "image_ref" not in cached:
+                with suppress(Exception):
+                    r.delete(ck)
+            else:
+                return f"[CACHED] {cached}"
 
     try:
         headers = {
@@ -573,12 +607,21 @@ def fetch_image(url: str, max_size_kb: int = 800) -> str:
             image_bytes = resp.content
 
         b64 = base64.b64encode(image_bytes).decode("utf-8")
-        result = json.dumps({
-            "base64":     b64,
+        payload = {
+            "data_uri":   f"data:{media_type};base64,{b64}",
             "media_type": media_type,
             "width":      width,
             "height":     height,
             "size_kb":    round(len(image_bytes) / 1024, 1),
+            "url":        url,
+        }
+        image_ref = _remember_reference_image(payload)
+        result = json.dumps({
+            "status":     "success",
+            "message":    "Image cached. Pass image_ref to analyze_reference_image.",
+            "image_ref":  image_ref,
+            "media_type": media_type,
+            "size_kb":    payload["size_kb"],
             "url":        url,
         })
 
@@ -640,8 +683,18 @@ def fetch_image_to_file(url: str, save_dir: str = "reference_images", file_name:
             "saved_to": str(out_path),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
-        payload["image_ref"] = _remember_reference_image(payload)
-        return json.dumps(payload)
+        image_ref = _remember_reference_image(payload)
+        return json.dumps({
+            "status": "success",
+            "message": "Image downloaded and cached. Pass image_ref to analyze_reference_image.",
+            "image_ref": image_ref,
+            "media_type": media_type,
+            "url": url,
+            "file_path": str(out_path),
+            "size_kb": payload["size_kb"],
+            "saved_to": str(out_path),
+            "timestamp": payload["timestamp"]
+        })
     except Exception as e:
         return f"Error downloading image to file: {str(e)}"
 
@@ -674,8 +727,16 @@ def load_local_reference_image(file_path: str) -> str:
             "size_kb": round(len(raw) / 1024, 1),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
-        payload["image_ref"] = _remember_reference_image(payload)
-        return json.dumps(payload)
+        image_ref = _remember_reference_image(payload)
+        return json.dumps({
+            "status": "success",
+            "message": "Local image loaded and cached. Pass image_ref to analyze_reference_image.",
+            "image_ref": image_ref,
+            "media_type": media_type,
+            "file_path": file_path,
+            "size_kb": payload["size_kb"],
+            "timestamp": payload["timestamp"]
+        })
     except Exception as e:
         return f"Error loading local reference image: {str(e)}"
 
@@ -836,7 +897,11 @@ def playwright_screenshot(
     if r:
         cached = r.get(ck)
         if cached:
-            return f"[CACHED] {cached}"
+            if "base64" in cached and "image_ref" not in cached:
+                with suppress(Exception):
+                    r.delete(ck)
+            else:
+                return f"[CACHED] {cached}"
 
     # ── Try Playwright MCP HTTP API first ──────────────────────────────
     try:
@@ -861,12 +926,23 @@ def playwright_screenshot(
                         url,
                         base64.b64decode(b64),
                     )
-                result = json.dumps({
-                    "base64":     b64,
+                
+                payload = {
+                    "data_uri":   f"data:image/png;base64,{b64}",
                     "media_type": "image/png",
                     "url":        url,
                     "screenshot_path": screenshot_path,
                     "timestamp":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                }
+                image_ref = _remember_reference_image(payload)
+                result = json.dumps({
+                    "status": "success",
+                    "message": "Screenshot captured and cached. Pass image_ref to analyze_reference_image.",
+                    "image_ref": image_ref,
+                    "media_type": "image/png",
+                    "url": url,
+                    "screenshot_path": screenshot_path,
+                    "timestamp": payload["timestamp"]
                 })
                 if r:
                     try:
@@ -893,12 +969,23 @@ def playwright_screenshot(
 
             b64 = base64.b64encode(png_bytes).decode("utf-8")
             screenshot_path = _save_screenshot_file("webshot", url, png_bytes)
-            result = json.dumps({
-                "base64": b64,
+            
+            payload = {
+                "data_uri": f"data:image/png;base64,{b64}",
                 "media_type": "image/png",
                 "url": url,
                 "screenshot_path": screenshot_path,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+            image_ref = _remember_reference_image(payload)
+            result = json.dumps({
+                "status": "success",
+                "message": "Screenshot captured and cached. Pass image_ref to analyze_reference_image.",
+                "image_ref": image_ref,
+                "media_type": "image/png",
+                "url": url,
+                "screenshot_path": screenshot_path,
+                "timestamp": payload["timestamp"]
             })
             if r:
                 with suppress(Exception):
@@ -1098,12 +1185,22 @@ def playwright_render_and_check(
                         file_path,
                         base64.b64decode(b64),
                     )
-                return json.dumps({
-                    "base64":     b64,
+                payload = {
+                    "data_uri":   f"data:image/png;base64,{b64}",
                     "media_type": "image/png",
                     "file_path":  file_path,
                     "screenshot_path": screenshot_path,
                     "timestamp":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                }
+                image_ref = _remember_reference_image(payload)
+                return json.dumps({
+                    "status": "success",
+                    "message": "Screenshot captured and cached. Pass image_ref to analyze_reference_image.",
+                    "image_ref": image_ref,
+                    "media_type": "image/png",
+                    "file_path": file_path,
+                    "screenshot_path": screenshot_path,
+                    "timestamp": payload["timestamp"]
                 })
     except Exception:
         pass
@@ -1124,12 +1221,22 @@ def playwright_render_and_check(
 
             b64 = base64.b64encode(png_bytes).decode("utf-8")
             screenshot_path = _save_screenshot_file("render_check", file_path, png_bytes)
-            return json.dumps({
-                "base64": b64,
+            payload = {
+                "data_uri": f"data:image/png;base64,{b64}",
                 "media_type": "image/png",
                 "file_path": file_path,
                 "screenshot_path": screenshot_path,
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+            image_ref = _remember_reference_image(payload)
+            return json.dumps({
+                "status": "success",
+                "message": "Screenshot captured and cached. Pass image_ref to analyze_reference_image.",
+                "image_ref": image_ref,
+                "media_type": "image/png",
+                "file_path": file_path,
+                "screenshot_path": screenshot_path,
+                "timestamp": payload["timestamp"]
             })
 
         return _run_local_playwright(_render_check_local)
@@ -1424,19 +1531,26 @@ def rewrite_file(file_path: str, new_content: str) -> str:
     Creates a .bak backup of the original before writing.
     """
     try:
-        if not is_safe_path(file_path):
+        resolved_path = resolve_in_project(file_path)
+        if not is_safe_path(resolved_path):
             return "Access denied."
-        if not os.path.exists(file_path):
-            return "File does not exist."
+        if not os.path.exists(resolved_path):
+            # File doesn't exist yet — create it (same behaviour as create_file)
+            parent = os.path.dirname(resolved_path)
+            if parent and not os.path.exists(parent):
+                os.makedirs(parent, exist_ok=True)
+            with open(resolved_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+            return f"File created and written successfully at '{resolved_path}'."
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(resolved_path, "r", encoding="utf-8") as f:
             original = f.read()
-        with open(file_path + ".bak", "w", encoding="utf-8") as f:
+        with open(resolved_path + ".bak", "w", encoding="utf-8") as f:
             f.write(original)
-        with open(file_path, "w", encoding="utf-8") as f:
+        with open(resolved_path, "w", encoding="utf-8") as f:
             f.write(new_content)
 
-        return f"File rewritten successfully. Backup at {file_path}.bak"
+        return f"File rewritten successfully. Backup at {resolved_path}.bak"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -1874,27 +1988,28 @@ def create_file(file_path: str, content: str) -> str:
         - Any file that doesn't exist yet
     """
     try:
-        if not is_safe_path(file_path):
+        resolved_path = resolve_in_project(file_path)
+        if not is_safe_path(resolved_path):
             return "Access denied: path is outside working directory."
-        if os.path.exists(file_path):
+        if os.path.exists(resolved_path):
             return (
                 f"File '{file_path}' already exists. "
                 "Use rewrite_file to overwrite it, or choose a different name."
             )
 
         # Create parent directories if needed
-        parent = os.path.dirname(file_path)
+        parent = os.path.dirname(resolved_path)
         if parent and not os.path.exists(parent):
             os.makedirs(parent, exist_ok=True)
 
-        with open(file_path, "w", encoding="utf-8") as f:
+        with open(resolved_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         line_count = content.count("\n") + 1
         size_kb    = len(content.encode("utf-8")) / 1024
 
         return (
-            f"✅ Created '{file_path}' "
+            f"\u2705 Created '{resolved_path}' "
             f"({line_count} lines, {size_kb:.1f} KB)"
         )
     except Exception as e:
@@ -2799,12 +2914,12 @@ def check_file_consistency(
 
 
 @tool
-def build_and_publish_preview(project_directory: str = ".", force: bool = False) -> str:
+def build_and_publish_preview(project_directory: str = ".", force: bool = True) -> str:
     """
     Build the frontend (or validate static HTML) and publish the app preview URL.
     Call this as the FINAL step after all frontend files are written.
 
-    - React/Vite (package.json): reuses existing dist/ when fresh; otherwise npm install + npm run build
+    - React/Vite (package.json): rebuilds dist/ by default, so preview reflects recent edits
     - Static HTML: validates structure and serves the index.html folder
     - Sets preview_url for the live App Preview panel
 
@@ -2812,10 +2927,11 @@ def build_and_publish_preview(project_directory: str = ".", force: bool = False)
         project_directory: project root (use "." when cwd is the project folder)
         force: if True, rebuild even when dist/ already exists
     """
-    if not is_safe_path(project_directory):
+    resolved_directory = resolve_in_project(project_directory)
+    if not is_safe_path(resolved_directory):
         return "Access denied: path outside project workspace."
-    if not os.path.isdir(project_directory):
-        return f"Directory '{project_directory}' not found."
+    if not os.path.isdir(resolved_directory):
+        return f"Directory '{project_directory}' not found (resolved: '{resolved_directory}')."
 
     user_id = os.getenv("CODER_BUDDY_USER_ID", "default")
     project_id = os.getenv("CODER_BUDDY_PROJECT_ID", "")

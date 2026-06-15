@@ -378,6 +378,23 @@ class ProjectWorkspace:
         key = project_key(user_id, project_id)
         if key in self._external_dirs:
             return self._external_dirs[key]
+
+        cache_file = ROOT_DIR / ".bootstrap_sessions.json"
+        if cache_file.is_file():
+            try:
+                import json
+                data = json.loads(cache_file.read_text(encoding="utf-8"))
+                for session_id, boot in data.items():
+                    boot_user = sanitize_id(str(boot.get("user_id") or "default"), "default")
+                    boot_project = sanitize_id(str(boot.get("project_id") or session_id), "default")
+                    workdir = (boot.get("working_directory") or "").strip()
+                    if boot_user == sanitize_id(user_id) and boot_project == sanitize_id(project_id) and workdir:
+                        path = Path(workdir).resolve()
+                        self._external_dirs[key] = path
+                        return path
+            except Exception:
+                pass
+
         return get_project_dir(user_id, project_id)
 
     def rewrite_preview_url(
@@ -408,7 +425,7 @@ class ProjectWorkspace:
         return project_dir / CHAT_FILENAME
 
     def load_chat(self, user_id: str, project_id: str) -> List[Dict[str, Any]]:
-        chat_file = self.chat_path(get_project_dir(user_id, project_id))
+        chat_file = self.chat_path(self.project_dir_for(user_id, project_id))
         if not chat_file.is_file():
             return []
         try:
@@ -439,7 +456,7 @@ class ProjectWorkspace:
                 }
             )
 
-        project_dir = get_project_dir(user_id, project_id)
+        project_dir = self.project_dir_for(user_id, project_id)
         self.chat_path(project_dir).write_text(
             json.dumps({"messages": cleaned}, indent=2),
             encoding="utf-8",
@@ -744,7 +761,7 @@ class ProjectWorkspace:
         project_id: str,
     ) -> Tuple[bool, str, Optional[Path]]:
         """Capture a screenshot of the live preview or local index.html for debugging."""
-        project_dir = get_project_dir(user_id, project_id)
+        project_dir = self.project_dir_for(user_id, project_id)
         meta = self.load_meta(user_id, project_id)
         debug_dir = project_dir / "debug"
         debug_dir.mkdir(parents=True, exist_ok=True)

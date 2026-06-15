@@ -35,6 +35,10 @@ export function agentProjectKey(projectId: string): string {
   return raw.startsWith("project-") ? raw : `project-${raw}`;
 }
 
+export function agentProjectId(projectId: string): string {
+  return String(projectId).trim();
+}
+
 export function buildAgentWorkspaceUrl(input: {
   projectId: string;
   projectName: string;
@@ -60,7 +64,7 @@ export function buildAgentWorkspaceUrl(input: {
 
 export function buildAgentPreviewUrl(userId: string, projectId: string): string {
   const u = encodeURIComponent(userId);
-  const p = encodeURIComponent(agentProjectKey(projectId));
+  const p = encodeURIComponent(agentProjectId(projectId));
   return `${agentBaseUrl()}/preview/${u}/${p}/`;
 }
 
@@ -102,7 +106,7 @@ export async function fetchProjectPreview(
   projectId: string,
 ): Promise<AgentPreviewMeta | null> {
   const u = encodeURIComponent(userId);
-  const p = encodeURIComponent(agentProjectKey(projectId));
+  const p = encodeURIComponent(agentProjectId(projectId));
   const response = await fetch(`${agentBaseUrl()}/api/projects/${u}/${p}/preview`);
   if (!response.ok) {
     return null;
@@ -116,7 +120,7 @@ export async function rebuildProjectPreview(
   force = true,
 ): Promise<AgentPreviewMeta | null> {
   const u = encodeURIComponent(userId);
-  const p = encodeURIComponent(agentProjectKey(projectId));
+  const p = encodeURIComponent(agentProjectId(projectId));
   const response = await fetch(
     `${agentBaseUrl()}/api/projects/${u}/${p}/preview/rebuild?force=${force ? "true" : "false"}`,
     { method: "POST" },

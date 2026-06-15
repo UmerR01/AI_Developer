@@ -50,6 +50,8 @@ from project_workspace import (  # noqa: E402
     ROOT_DIR as WORKSPACE_ROOT,
     adopt_stray_repo_root_files,
     create_project_zip,
+    detect_project_type,
+    get_project_dir,
     infer_user_id_from_workdir,
     iso_now,
     resolve_project_dir,
@@ -443,7 +445,7 @@ async def _schedule_preview_build(
         })
         return
 
-    project_dir = get_project_dir(user_id, project_id)
+    project_dir = workspace.project_dir_for(user_id, project_id)
     if detect_project_type(project_dir) == "unknown" and not force:
         emit({
             "type": "preview_skipped",
@@ -470,7 +472,7 @@ async def _schedule_preview_build(
                 workspace.capture_preview_screenshot_sync, user_id, project_id
             )
             if ok and shot:
-                screenshot_path = shot.relative_to(get_project_dir(user_id, project_id)).as_posix()
+                screenshot_path = shot.relative_to(workspace.project_dir_for(user_id, project_id)).as_posix()
         emit({
             "type": "preview_ready" if meta.status == ProjectStatus.READY else "preview_failed",
             "session_id": session_id,
@@ -566,26 +568,48 @@ async def bootstrap_session(request: SessionBootstrapRequest) -> Dict[str, Any]:
     }
 
 
-@app.get("/api/session/{session_id}")
-async def get_bootstrapped_session(session_id: str) -> Dict[str, Any]:
-    data = bootstrapped_sessions.get(session_id)
-    if data is None:
-        raise HTTPException(status_code=404, detail="Session prompt not found")
-    return data
 
 
-@app.get("/api/session/{session_id}/bootstrap")
-async def get_bootstrapped_session_alias(session_id: str) -> Dict[str, Any]:
-    return await get_bootstrapped_session(session_id)
+
+
+
+# ---------------------------------------------------------------------------
+# Session ownership guard
+# ---------------------------------------------------------------------------
+
+def _assert_user_owns_session(session_id: str | None, path_user_id: str) -> None:
+    """Raise HTTP 403 if the bootstrapped session's user_id does not match path_user_id.
+
+    When no session_id is given (direct REST call without a WebSocket session),
+    we fall back to checking the bootstrapped_sessions cache by looking for any
+    session whose user_id matches path_user_id. If no bootstrap data exists at
+    all for this user+project combination the request is allowed through so
+    that legacy direct API calls still work. The strict check only fires when
+    there IS a known session bound to a different user.
+    """
+    if session_id is None:
+        return  # No session context — allow (bootstrap sets the true owner)
+    boot = bootstrapped_sessions.get(session_id)
+    if boot is None:
+        return  # Session not yet bootstrapped — allow
+    boot_uid = sanitize_id(str(boot.get("user_id") or ""), "default")
+    req_uid = sanitize_id(path_user_id, "default")
+    if boot_uid != req_uid:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: this project belongs to a different user.",
+        )
 
 
 @app.get("/api/projects/{user_id}/{project_id}/files/tree")
-async def api_file_tree(user_id: str, project_id: str) -> Dict[str, Any]:
+async def api_file_tree(user_id: str, project_id: str, session: str | None = None) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
     return workspace.get_file_tree(user_id, project_id)
 
 
 @app.get("/api/projects/{user_id}/{project_id}/chat")
-async def api_chat_history(user_id: str, project_id: str) -> Dict[str, Any]:
+async def api_chat_history(user_id: str, project_id: str, session: str | None = None) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
     return {
         "user_id": sanitize_id(user_id),
         "project_id": sanitize_id(project_id),
@@ -594,7 +618,8 @@ async def api_chat_history(user_id: str, project_id: str) -> Dict[str, Any]:
 
 
 @app.put("/api/projects/{user_id}/{project_id}/chat")
-async def api_save_chat(user_id: str, project_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+async def api_save_chat(user_id: str, project_id: str, payload: Dict[str, Any], session: str | None = None) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
     messages = payload.get("messages") if isinstance(payload, dict) else []
     if not isinstance(messages, list):
         raise HTTPException(status_code=400, detail="messages must be a list")
@@ -608,7 +633,8 @@ async def api_save_chat(user_id: str, project_id: str, payload: Dict[str, Any]) 
 
 
 @app.get("/api/projects/{user_id}/{project_id}/file")
-async def api_get_file(user_id: str, project_id: str, path: str) -> Dict[str, Any]:
+async def api_get_file(user_id: str, project_id: str, path: str, session: str | None = None) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
     try:
         return workspace.read_file(user_id, project_id, path)
     except FileNotFoundError:
@@ -618,7 +644,8 @@ async def api_get_file(user_id: str, project_id: str, path: str) -> Dict[str, An
 
 
 @app.get("/api/projects/{user_id}/{project_id}/preview")
-async def api_preview_status(user_id: str, project_id: str) -> Dict[str, Any]:
+async def api_preview_status(user_id: str, project_id: str, session: str | None = None) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
     meta = workspace.load_meta(user_id, project_id)
     payload = meta.to_dict()
     payload["preview_url"] = workspace.rewrite_preview_url(
@@ -634,7 +661,8 @@ async def api_preview_status(user_id: str, project_id: str) -> Dict[str, Any]:
 
 
 @app.post("/api/projects/{user_id}/{project_id}/preview/rebuild")
-async def api_rebuild_preview(user_id: str, project_id: str, force: bool = True) -> Dict[str, Any]:
+async def api_rebuild_preview(user_id: str, project_id: str, force: bool = True, session: str | None = None) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
     meta = await workspace.run_preview_build(user_id, project_id, force=force)
     payload = meta.to_dict()
     payload["preview_url"] = workspace.rewrite_preview_url(
@@ -644,7 +672,8 @@ async def api_rebuild_preview(user_id: str, project_id: str, force: bool = True)
 
 
 @app.get("/api/projects/{user_id}/{project_id}/download")
-async def api_download_project(user_id: str, project_id: str) -> Response:
+async def api_download_project(user_id: str, project_id: str, session: str | None = None) -> Response:
+    _assert_user_owns_session(session, user_id)
     project_dir = workspace.project_dir_for(user_id, project_id)
     if not any(project_dir.rglob("*")):
         raise HTTPException(status_code=404, detail="Project is empty")
@@ -695,7 +724,15 @@ async def serve_preview_file(user_id: str, project_id: str, file_path: str = "")
         ".woff2": "font/woff2",
     }
     media_type = media_types.get(target.suffix.lower(), "application/octet-stream")
-    return FileResponse(target, media_type=media_type)
+    return FileResponse(
+        target,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.websocket("/ws/chat")
@@ -708,6 +745,12 @@ async def chat_socket(websocket: WebSocket) -> None:
 
     boot = bootstrapped_sessions.get(session_id)
     if boot:
+        boot_uid = sanitize_id(str(boot.get("user_id") or ""), "default")
+        req_uid = sanitize_id(user_id, "default")
+        if boot_uid != "default" and req_uid != "default" and boot_uid != req_uid:
+            print(f"[ws] user_id mismatch: boot={boot_uid} query={req_uid} — closing 4003")
+            await websocket.close(code=4003, reason="user_id mismatch")
+            return
         user_id = boot.get("user_id") or user_id
         project_id = boot.get("project_id") or project_id
         _apply_bootstrap_to_workspace(boot)
@@ -790,7 +833,7 @@ async def chat_socket(websocket: WebSocket) -> None:
     ) -> None:
         nonlocal current_run_task, preview_task
         stop_event.clear()
-        project_dir = str(resolve_project_dir(user_id, project_id))
+        project_dir = str(resolve_project_dir(user_id, project_id, workdir))
         workspace.register_project_dir(user_id, project_id, project_dir)
         full_prompt = _project_context_prompt(user_id, project_id) + prompt
         history = session_store.get_history(run_session_id)
@@ -879,10 +922,7 @@ async def chat_socket(websocket: WebSocket) -> None:
             nonlocal preview_task
             with suppress(asyncio.CancelledError, Exception):
                 task.result()
-            meta = workspace.load_meta(user_id, project_id)
-            if meta.agent_preview_published and meta.status == ProjectStatus.READY:
-                return
-            project_dir = get_project_dir(user_id, project_id)
+            project_dir = workspace.project_dir_for(user_id, project_id)
             if detect_project_type(project_dir) == "unknown":
                 emit({
                     "type": "preview_skipped",
@@ -894,7 +934,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                 })
                 return
             preview_task = asyncio.create_task(
-                _schedule_preview_build(emit, user_id, project_id, run_session_id)
+                _schedule_preview_build(emit, user_id, project_id, run_session_id, force=True)
             )
 
         current_run_task.add_done_callback(

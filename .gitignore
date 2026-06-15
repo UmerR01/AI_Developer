@@ -49,4 +49,5 @@ cred.txt
 #ai module
 ai_module/generated_projects
 storage
-ai_module/screehnshots
+ai_module/screenshots
+ai_module/.bootstrap_sessions.json
