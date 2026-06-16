@@ -100,17 +100,21 @@ export function StorageAccessTable({ accountById }: StorageAccessTableProps) {
               <button
                 type="button"
                 style={{
-                  fontSize: "0.75rem",
-                  padding: "6px 14px",
+                  fontSize: "0.73rem",
+                  padding: "7px 16px",
                   borderRadius: "8px",
-                  background: "rgba(20, 60, 180, 0.12)",
-                  border: "1px solid rgba(50, 130, 255, 0.25)",
-                  color: "#a6caff",
+                  background: "linear-gradient(135deg, #1a4fff 0%, #3a6fff 100%)",
+                  border: "none",
+                  color: "#ffffff",
                   cursor: "pointer",
                   fontWeight: 600,
                   whiteSpace: "nowrap",
-                  fontFamily: "inherit"
+                  fontFamily: "inherit",
+                  boxShadow: "0 2px 12px rgba(30, 80, 255, 0.35)",
+                  transition: "opacity 0.15s ease"
                 }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
+                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
               >
                 Share access
               </button>

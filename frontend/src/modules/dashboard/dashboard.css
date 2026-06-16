@@ -64,6 +64,104 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   GRADIENT TEXT SCOPE FIXES
+   The global gradient text treatment must be explicitly reset for
+   sidebar/topbar elements which rely on currentColor for SVG icons.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Full reset for sidebar: every descendant gets solid colors ── */
+.dashboard-sidebar,
+.dashboard-sidebar *,
+.dashboard-sidebar *::before,
+.dashboard-sidebar *::after {
+  background-image: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+}
+
+/* Sidebar icon color chain */
+.sidebar-link {
+  color: rgba(120, 155, 210, 0.95) !important;
+}
+.sidebar-link:hover {
+  color: #ffffff !important;
+}
+.sidebar-link--active {
+  color: #ffffff !important;
+}
+.sidebar-link--muted {
+  color: rgba(55, 80, 120, 0.9) !important;
+}
+.sidebar-link-icon,
+.sidebar-link-icon svg {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Sidebar logo: keep its own gradient background but show white text/icon */
+.sidebar-logo {
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+}
+.sidebar-logo svg {
+  color: #ffffff !important;
+}
+
+/* ── Full reset for topbar ── */
+.dashboard-topbar,
+.dashboard-topbar *,
+.dashboard-topbar *::before,
+.dashboard-topbar *::after {
+  background-image: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+}
+
+/* Storage card large number: solid white */
+.storage-hero-card .storage-gb-number,
+.storage-hero-card [style*="font-size: 3"] {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Cyan/blue accent text stays vivid */
+[style*="color: #00c8ff"],
+[style*="color: \"#00c8ff\""],
+[style*="#22c55e"],
+[style*="color: #22c55e"] {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+/* Upload/progress percentages and size labels: keep readable */
+.upload-list *,
+.upload-card-head * {
+  background: var(--text-gradient-subtle);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Share access and action buttons: solid white on colored bg */
+button[style*="background: linear-gradient"],
+button[style*="background:linear-gradient"] {
+  background-clip: unset !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SIDEBAR – almost-black, 64 px, icon-only
    ═══════════════════════════════════════════════════════════════ */
 .dashboard-sidebar {
@@ -126,7 +224,11 @@
 .sidebar-logo-mark {
   font-weight: 800;
   font-size: 0.95rem;
-  color: rgba(140, 195, 255, 0.95);
+  color: rgba(140, 195, 255, 0.95) !important;
+  -webkit-text-fill-color: rgba(140, 195, 255, 0.95) !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
   line-height: 1;
   pointer-events: none;
 }
@@ -493,16 +595,16 @@
 .hero-copy p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 400;
 }
 
 .hero-copy h2 {
   margin: 4px 0 0;
   font-family: var(--font-outfit), sans-serif;
-  font-size: 2.6rem;
+  font-size: 3.2rem;
   font-weight: 300;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   background: linear-gradient(180deg, #ffffff 25%, #90a5c3 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -545,8 +647,45 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   3-COLUMN CONTENT GRID
+   UNIFIED DASHBOARD LAYOUT GRID
+   All rows in ONE grid so Team Structure spans header + content row:
+
+   col →        1fr          1fr        270px
+   row 1  [ greeting ]  [ filters ]  [  team  ]
+   row 2  [ storage  ]  [ spaces   ]  [  team  ]
+   row 3  [ upload   ]  [   access (spans 2+3)  ]
    ═══════════════════════════════════════════════════════════════ */
+.dash-unified-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 270px;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "greeting filters  team"
+    "storage  spaces   team"
+    "upload   access   access";
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* ── area assignments ── */
+.dash-area-greeting { grid-area: greeting; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 4px; }
+.dash-area-filters  { grid-area: filters;  display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; padding-bottom: 4px; }
+.dash-area-team     { grid-area: team;     display: flex; flex-direction: column; }
+.dash-area-storage  { grid-area: storage;  display: flex; flex-direction: column; }
+.dash-area-spaces   { grid-area: spaces;   display: flex; flex-direction: column; }
+.dash-area-upload   { grid-area: upload;   display: flex; flex-direction: column; }
+.dash-area-access   { grid-area: access;   display: flex; flex-direction: column; }
+
+/* Card children fill full grid-area height */
+.dash-area-team    > *,
+.dash-area-storage > *,
+.dash-area-spaces  > *,
+.dash-area-upload  > *,
+.dash-area-access  > * {
+  flex: 1;
+}
+
+/* Legacy header grid kept for any other usage */
 .dash-content-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 270px;
@@ -605,7 +744,11 @@
   font-size: 3.2rem;
   font-weight: 800;
   letter-spacing: -0.055em;
-  color: var(--text);
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
   line-height: 1;
   margin: 0 0 20px;
 }
@@ -613,9 +756,18 @@
 .storage-gb-number span {
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: rgba(180, 205, 240, 0.7) !important;
+  -webkit-text-fill-color: rgba(180, 205, 240, 0.7) !important;
   margin-left: 5px;
   vertical-align: middle;
+}
+
+/* Also override the large inline-style storage number */
+.storage-hero-card [style*="font-size: 3"] {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background-clip: unset !important;
 }
 
 .storage-stats-row {

@@ -39,6 +39,45 @@ const ICON_EMOJI: Record<string, string> = {
 
 /* ═══════════════════════════════════════════════════════════════ */
 
+function FileIcon({ ext }: { ext: string }) {
+  const id = ext.toLowerCase();
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="54" height="44" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <defs>
+        <linearGradient id={`${id}-docGradient`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#263d75" />
+          <stop offset="100%" stopColor="#152244" />
+        </linearGradient>
+        <linearGradient id={`${id}-badgeGradient`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#3c5691" />
+          <stop offset="100%" stopColor="#243965" />
+        </linearGradient>
+        <linearGradient id={`${id}-foldGradient`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4c6fa1" />
+          <stop offset="100%" stopColor="#2c4376" />
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" fill="transparent" rx="8" />
+      <g transform="translate(2, 0)">
+        <path d="M 40,20 L 72,20 L 85,33 L 85,85 L 40,85 Z" fill={`url(#${id}-docGradient)`} />
+        <polygon points="72,20 72,33 85,33" fill={`url(#${id}-foldGradient)`} />
+        <rect x="15" y="42" width="45" height="24" rx="5" fill={`url(#${id}-badgeGradient)`} />
+        <text
+          x="37.5" y="57"
+          fill="#e2e8f0"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          fontSize="7.5"
+          fontWeight="700"
+          letterSpacing="0.5"
+          textAnchor="middle"
+        >.{ext}</text>
+      </g>
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+
 export default function DashboardPage() {
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
@@ -129,58 +168,75 @@ export default function DashboardPage() {
         />
 
         <div className="dashboard-scroll-area">
-          {/* Greeting + Filters Row aligned with the columns below */}
-          <div className="dash-content-grid" style={{ alignItems: "flex-end", marginBottom: "20px" }}>
-            {/* Column 1: Greeting */}
-            <section className="hero-copy" style={{ margin: 0 }}>
+          {/* ── Unified layout grid — header + cards in ONE grid ── */}
+          <div className="dash-unified-grid">
+
+            {/* ── Area: greeting (row 1, col 1) ── */}
+            <section className="dash-area-greeting hero-copy">
               <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>Good Morning,</p>
               <h2 style={{ margin: "4px 0 0", whiteSpace: "nowrap" }}>Georg Johnson</h2>
             </section>
 
-            {/* Column 2: Filter Buttons */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px" }}>
-              {/* Last Week Dropdown */}
+            {/* ── Area: filters (row 1, col 2) ── */}
+            <div className="dash-area-filters">
+              {/* Statistic / Last Week dropdown — exact reference match */}
               <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <span style={{ position: "absolute", left: "10px", color: "var(--text-secondary)", display: "flex" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
+                {/* Analytics/chart icon — matches reference (monitor with trend line) */}
+                <span style={{ position: "absolute", left: "10px", color: "rgba(140, 170, 220, 0.75)", display: "flex", zIndex: 1 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <polyline points="8 21 12 17 16 21" />
+                    <line x1="7" y1="10" x2="9.5" y2="7.5" />
+                    <line x1="9.5" y1="7.5" x2="12.5" y2="10.5" />
+                    <line x1="12.5" y1="10.5" x2="16" y2="7" />
                   </svg>
                 </span>
-                <select
-                  style={{
-                    background: "rgba(6, 18, 55, 0.55)",
-                    border: "1px solid rgba(50, 120, 255, 0.2)",
-                    borderRadius: "8px",
-                    color: "#ddeeff",
-                    fontSize: "0.75rem",
-                    padding: "6px 24px 6px 28px",
-                    outline: "none",
-                    cursor: "pointer",
-                    appearance: "none",
-                    fontFamily: "inherit",
-                    fontWeight: 500
-                  }}
-                >
-                  <option>Last Week</option>
-                  <option>Last Month</option>
-                  <option>Last Year</option>
-                </select>
-                <span style={{ position: "absolute", right: "8px", color: "var(--text-secondary)", fontSize: "0.55rem", pointerEvents: "none" }}>▼</span>
+                {/* "Statistic" micro label + dropdown */}
+                <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
+                  <span style={{
+                    position: "absolute", top: "-13px", left: "30px",
+                    fontSize: "0.58rem", color: "rgba(140,170,220,0.55)",
+                    fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    background: "none", WebkitTextFillColor: "rgba(140,170,220,0.55)"
+                  }}></span>
+                  <select
+                    style={{
+                      background: "rgba(6, 16, 50, 0.65)",
+                      border: "1px solid rgba(50, 120, 255, 0.2)",
+                      borderRadius: "10px",
+                      color: "#ddeeff",
+                      WebkitTextFillColor: "#ddeeff",
+                      fontSize: "0.82rem",
+                      padding: "8px 32px 8px 32px",
+                      outline: "none",
+                      cursor: "pointer",
+                      appearance: "none",
+                      fontFamily: "inherit",
+                      fontWeight: 500,
+                      minWidth: "130px"
+                    }}
+                  >
+                    <option>Last Week</option>
+                    <option>Last Month</option>
+                    <option>Last Year</option>
+                  </select>
+                </div>
+                <span style={{ position: "absolute", right: "10px", color: "rgba(140,170,220,0.7)", fontSize: "0.52rem", pointerEvents: "none" }}>▼</span>
               </div>
 
-              {/* Personal / Team Selector */}
-              <div style={{ display: "flex", background: "rgba(6, 18, 55, 0.55)", border: "1px solid rgba(50, 120, 255, 0.2)", borderRadius: "8px", padding: "2px" }}>
+
+              {/* Personal / Team Selector — matching reference */}
+              <div style={{ display: "flex", background: "rgba(6, 16, 50, 0.65)", border: "1px solid rgba(50, 120, 255, 0.2)", borderRadius: "10px", padding: "3px", gap: "2px" }}>
                 <button
                   style={{
-                    background: "rgba(255, 255, 255, 0.08)",
-                    border: "none",
-                    borderRadius: "6px",
-                    color: "#fff",
-                    fontSize: "0.75rem",
-                    padding: "4px 12px",
+                    background: "rgba(255, 255, 255, 0.13)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: "7px",
+                    color: "#ffffff",
+                    WebkitTextFillColor: "#ffffff",
+                    fontSize: "0.8rem",
+                    padding: "5px 16px",
                     fontWeight: 600,
                     cursor: "pointer",
                     fontFamily: "inherit"
@@ -192,12 +248,14 @@ export default function DashboardPage() {
                   style={{
                     background: "none",
                     border: "none",
-                    color: "var(--text-secondary)",
-                    fontSize: "0.75rem",
-                    padding: "4px 12px",
+                    color: "rgba(140,170,220,0.7)",
+                    WebkitTextFillColor: "rgba(140,170,220,0.7)",
+                    fontSize: "0.8rem",
+                    padding: "5px 16px",
                     fontWeight: 500,
                     cursor: "pointer",
-                    fontFamily: "inherit"
+                    fontFamily: "inherit",
+                    borderRadius: "7px"
                   }}
                 >
                   Team
@@ -205,24 +263,25 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Column 3: Empty to leave space above Team Structure card */}
-            <div />
-          </div>
+            {/* ── Area: team (col 3, spans rows 1 + 2) ── */}
+            <div className="dash-area-team">
+              <TeamPanel />
+            </div>
 
-          {/* ── 3-column grid (matches reference) ── */}
-          <div className="dash-content-grid">
+            {/* ── Area: storage (row 2, col 1) ── */}
+            <div className="dash-area-storage">
+              <StorageWidget />
+            </div>
 
-            {/* ── Row 1: Top Widgets (stretched to equal heights) ── */}
-            <StorageWidget />
-            <DashboardOverviewStrip />
-            <TeamPanel />
+            {/* ── Area: spaces (row 2, col 2) ── */}
+            <div className="dash-area-spaces">
+              <DashboardOverviewStrip />
+            </div>
 
-            {/* ── Row 2: Bottom Widgets (aligned and width equalized) ── */}
-            {/* Uploading Files card */}
-            <article className="dashboard-card" style={{ padding: "20px" }}>
+            {/* ── Area: upload (row 3, col 1 — ~40%) ── */}
+            <article className="dash-area-upload dashboard-card" style={{ padding: "20px" }}>
               <div className="upload-card-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
                 <h2 className="upload-card-title" style={{ fontSize: "1rem", margin: 0 }}>Uploading Files</h2>
-                {/* Close Cross icon */}
                 <button style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", display: "grid", placeItems: "center" }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: "16px", height: "16px", color: "var(--text-secondary)" }}>
                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -232,33 +291,17 @@ export default function DashboardPage() {
               </div>
 
               <div className="upload-list" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                {/* File 1: Project estimate */}
+                {/* File 1 */}
                 <div className="upload-item" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "8px",
-                      background: "linear-gradient(135deg, rgba(20, 80, 220, 0.45), rgba(50, 130, 255, 0.22))",
-                      border: "1px solid rgba(60, 140, 255, 0.22)",
-                      display: "grid",
-                      placeItems: "center",
-                      color: "#fff"
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: "18px", height: "18px", color: "#60a5fa" }}>
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                  </div>
+                  <FileIcon ext="DOC" />
                   <div className="upload-info" style={{ flex: 1 }}>
                     <div className="upload-name" style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                       <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#fff" }}>Project estimate</span>
                       <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>12.3 Mb</span>
                     </div>
-                    <div className="upload-progress-row" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div className="upload-bar-wrap" style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(255, 255, 255, 0.06)", overflow: "hidden" }}>
-                        <div className="upload-bar-fill" style={{ height: "100%", width: "100%", background: "linear-gradient(90deg, #0050dd 0%, #00c8ff 100%)" }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: "100%", background: "linear-gradient(90deg,#0050dd,#00c8ff)" }} />
                       </div>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: "14px", height: "14px", color: "#22c55e" }}>
                         <polyline points="20 6 9 17 4 12" />
@@ -267,33 +310,17 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* File 2: Presentation for... */}
+                {/* File 2 */}
                 <div className="upload-item" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "8px",
-                      background: "linear-gradient(135deg, rgba(20, 80, 220, 0.45), rgba(50, 130, 255, 0.22))",
-                      border: "1px solid rgba(60, 140, 255, 0.22)",
-                      display: "grid",
-                      placeItems: "center",
-                      color: "#fff"
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: "18px", height: "18px", color: "#60a5fa" }}>
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                  </div>
+                  <FileIcon ext="PDF" />
                   <div className="upload-info" style={{ flex: 1 }}>
                     <div className="upload-name" style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                       <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#fff" }}>Presentation for...</span>
                       <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>36.7 Mb</span>
                     </div>
-                    <div className="upload-progress-row" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div className="upload-bar-wrap" style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(255, 255, 255, 0.06)", overflow: "hidden" }}>
-                        <div className="upload-bar-fill" style={{ height: "100%", width: "100%", background: "linear-gradient(90deg, #0050dd 0%, #00c8ff 100%)" }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: "100%", background: "linear-gradient(90deg,#0050dd,#00c8ff)" }} />
                       </div>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: "14px", height: "14px", color: "#22c55e" }}>
                         <polyline points="20 6 9 17 4 12" />
@@ -302,73 +329,46 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* File 3: Work invoicing */}
+                {/* File 3 */}
                 <div className="upload-item" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "8px",
-                      background: "linear-gradient(135deg, rgba(20, 80, 220, 0.45), rgba(50, 130, 255, 0.22))",
-                      border: "1px solid rgba(60, 140, 255, 0.22)",
-                      display: "grid",
-                      placeItems: "center",
-                      color: "#fff"
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: "18px", height: "18px", color: "#60a5fa" }}>
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                  </div>
+                  <FileIcon ext="XLS" />
                   <div className="upload-info" style={{ flex: 1 }}>
                     <div className="upload-name" style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
                       <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#fff" }}>Work invoicing</span>
                       <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>9.8 Mb</span>
                     </div>
-                    <div className="upload-progress-row" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div className="upload-bar-wrap" style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(255, 255, 255, 0.06)", overflow: "hidden" }}>
-                        <div className="upload-bar-fill" style={{ height: "100%", width: "23%", background: "linear-gradient(90deg, #0050dd 0%, #00c8ff 100%)" }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: "23%", background: "linear-gradient(90deg,#0050dd,#00c8ff)" }} />
                       </div>
                       <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", minWidth: "24px", textAlign: "right" }}>23%</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom cloud/upload status bar */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    background: "rgba(0, 160, 255, 0.08)",
-                    border: "1px solid rgba(0, 160, 255, 0.15)",
-                    borderRadius: "10px",
-                    padding: "8px 12px",
-                    marginTop: "4px"
-                  }}
-                >
+                {/* Upload status bar */}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(0,160,255,0.08)", border: "1px solid rgba(0,160,255,0.15)", borderRadius: "10px", padding: "8px 12px", marginTop: "4px" }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: "16px", height: "16px", color: "#00c8ff", flexShrink: 0 }}>
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                   <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "#00c8ff" }}>Uploading</span>
-                  <div style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(0, 160, 255, 0.15)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: "73%", background: "linear-gradient(90deg, #0050dd 0%, #00c8ff 100%)" }} />
+                  <div style={{ flex: 1, height: "4px", borderRadius: "999px", background: "rgba(0,160,255,0.15)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: "73%", background: "linear-gradient(90deg,#0050dd,#00c8ff)" }} />
                   </div>
                   <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#00c8ff" }}>73%</span>
                 </div>
               </div>
             </article>
 
-            <StorageAccessTable accountById={accountById} />
+            {/* ── Area: access (row 3, cols 2+3 — ~60%) ── */}
+            <div className="dash-area-access">
+              <StorageAccessTable accountById={accountById} />
+            </div>
 
-            {/* Row 2, Col 3 Spacer: Leave empty space under Team Structure card */}
-            <div />
-
-          </div>
-        </div>
+          </div>{/* end dash-unified-grid */}
+        </div>{/* end dashboard-scroll-area */}
       </section>
     </main>
   );
