@@ -39,60 +39,40 @@
   min-height: 100vh;
   display: flex;
   overflow: hidden;
+  --duration-fast: 160ms;
+
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
   color: var(--text);
-  background:
-    radial-gradient(ellipse 60% 50% at 8% 12%, rgba(45, 80, 220, 0.52) 0%, transparent 65%),
-    radial-gradient(ellipse 55% 45% at 5% 88%, rgba(30, 100, 255, 0.5) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 35% at 78% 8%, rgba(80, 60, 255, 0.42), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 60% 95%, rgba(45, 70, 240, 0.38), transparent 60%),
-    radial-gradient(ellipse 30% 25% at 92% 55%, rgba(60, 140, 255, 0.28), transparent 55%),
-    linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 52%, var(--bg-2) 100%);
   isolation: isolate;
+}
+
+.dashboard-shell::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  /* Removed the white orbs behind the sidebar, restoring the soft dark blue glow */
+  background:
+    radial-gradient(circle at 5% 20%, rgba(40, 100, 255, 0.18) 0%, rgba(40, 100, 255, 0.05) 30%, rgba(0, 0, 0, 0) 65%),
+    radial-gradient(circle at 5% 80%, rgba(40, 100, 255, 0.15) 0%, rgba(40, 100, 255, 0.04) 30%, rgba(0, 0, 0, 0) 60%),
+    radial-gradient(circle at 62% 45%, rgba(120, 170, 255, 0.08) 0%, rgba(0, 0, 0, 0) 50%),
+    url('/dashboard-bg.png') center center / cover no-repeat;
+  filter: blur(14px);
+  transform: scale(1.02) translateZ(0);
+  will-change: transform;
+  /* prevent white border artifacts from blur */
+  z-index: 0;
+  pointer-events: none;
 }
 
 .dashboard-shell,
 .dashboard-shell * {
   box-sizing: border-box;
-}
-
-.dashboard-shell::before,
-.dashboard-shell::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.dashboard-shell::before {
-  background-image:
-    linear-gradient(rgba(122, 170, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(122, 170, 255, 0.045) 1px, transparent 1px);
-  background-size: 78px 78px;
-  opacity: 0.78;
-  animation: dashboard-grid-drift 22s linear infinite;
-}
-
-.dashboard-shell::after {
-  inset: -18% -12%;
-  background:
-    linear-gradient(
-      108deg,
-      transparent 0 35%,
-      rgba(80, 96, 255, 0.1) 40%,
-      rgba(119, 130, 255, 0.24) 44%,
-      transparent 52% 100%
-    ),
-    linear-gradient(
-      73deg,
-      transparent 0 58%,
-      rgba(34, 126, 255, 0.15) 63%,
-      rgba(77, 232, 203, 0.1) 68%,
-      transparent 76% 100%
-    );
-  filter: blur(3px);
-  opacity: 0.78;
-  animation: dashboard-light-sweep 10s ease-in-out infinite alternate;
 }
 
 .dashboard-topbar,
@@ -158,23 +138,23 @@
 
 .dashboard-sidebar {
   position: fixed;
-  inset: 0 auto 0 0;
-  z-index: 30;
-  width: var(--sidebar-collapsed);
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 64px;
   display: flex;
   flex-direction: column;
+  /* Transparent/glassy background matching the crop to reflect the bg behind it */
+  background: rgba(4, 10, 30, 0.12);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  z-index: 30;
+  overflow: hidden;
   align-items: center;
   padding: 18px 0 22px;
-  overflow: hidden;
-  border-right: none;
-  /* True glass — low opacity lets the background gradient bleed through */
-  background: linear-gradient(180deg,
-    rgba(10, 20, 55, 0.2) 0%,
-    rgba(6, 14, 38, 0.26) 55%,
-    rgba(10, 18, 55, 0.22) 100%);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  box-shadow: 4px 0 40px rgba(0, 0, 0, 0.28);
 }
 
 /* Glossy left-edge shimmer for glass look */
@@ -471,18 +451,19 @@
 .dashboard-topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
-  min-height: var(--topbar-height);
+  z-index: 15;
+  padding: 0 24px;
+  height: 54px;
+  border-bottom: 1px solid rgba(30, 70, 200, 0.1);
+  /* Slight dark glass that lets the glow show through */
+  background: rgba(1, 6, 20, 0.75);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  transform: translateZ(0);
+  backface-visibility: hidden;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 0 24px;
-  border-bottom: 1px solid rgba(200, 220, 255, 0.1);
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  gap: 16px;
 }
 
 .topbar-left,
@@ -836,7 +817,19 @@
 
 /* Cards */
 
-.dashboard-card,
+.dashboard-card {
+  background: rgba(4, 11, 38, 0.48);
+  border: 1px solid rgba(40, 100, 230, 0.16);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
 .dash-storage-card {
   position: relative;
   overflow: hidden;
@@ -851,14 +844,9 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(255, 255, 255, 0.04),
     inset 1px 0 0 rgba(255, 255, 255, 0.05);
-}
-
-.dashboard-card,
-.dash-storage-card {
   padding: 20px;
 }
 
-.dashboard-card::before,
 .dash-storage-card::before {
   content: "";
   position: absolute;
@@ -872,10 +860,9 @@
     transparent 72%,
     rgba(100, 150, 255, 0.04) 100%
   );
-  opacity: 1;
+  opacity: 0.18;
 }
 
-.dashboard-card::after,
 .dash-storage-card::after {
   content: "";
   position: absolute;
@@ -901,8 +888,7 @@
   z-index: 1;
 }
 
-.dashboard-card:hover,
-.dash-storage-card:hover {
+.dashboard-card:hover {
   box-shadow:
     0 24px 70px rgba(0, 0, 0, 0.22),
     0 0 40px rgba(72, 125, 255, 0.1),
@@ -1052,15 +1038,6 @@
     #4de5a0 100%
   );
   box-shadow: 0 0 16px rgba(77, 229, 160, 0.28);
-}
-
-.dash-storage-card::before {
-  opacity: 0.18;
-}
-
-.dash-storage-card > * {
-  position: relative;
-  z-index: 2;
 }
 
 .dash-storage-head,

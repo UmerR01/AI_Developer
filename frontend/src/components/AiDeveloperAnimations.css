@@ -71,6 +71,7 @@
   z-index:8;
   pointer-events:none;
   transform-origin:4px 4px;
+  will-change: transform, opacity;
 }
 .aid-pointer svg{width:100%;height:100%;display:block}
 .aid-pointer path{
@@ -171,6 +172,7 @@
   opacity:0;
   transform:translateY(32px);
   animation:sentBubble 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 .aid-thinking{
   display:flex;
@@ -178,6 +180,7 @@
   margin-left:8px;
   opacity:0;
   animation:thinkingAppear 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 .aid-thinking span{
   width:8px;
@@ -211,9 +214,9 @@
 .aid-typing-wrap{
   display:inline-flex;
   align-items:center;
-  width:0ch;
   overflow:hidden;
   white-space:nowrap;
+  clip-path: inset(0 100% 0 0);
   animation:typeScene2 3.4s steps(29,end) infinite;
 }
 .aid-typing{
@@ -302,6 +305,7 @@
   gap:8px;
   opacity:0;
   transform:translateX(12px);
+  will-change: transform, opacity;
 }
 .aid-file-row::before{
   content:"";
@@ -341,6 +345,7 @@
   opacity:0;
   transform:scale(0);
   z-index:1;
+  will-change: transform, opacity;
 }
 .row-1{animation:rowIn 3.6s ease-in-out infinite .25s}
 .row-2{animation:rowIn 3.6s ease-in-out infinite .65s}
@@ -391,6 +396,7 @@
   transform:scaleX(0);
   background:linear-gradient(90deg, var(--green), #3d78ff);
   animation:fillBar 3.6s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* keyframes */
@@ -408,10 +414,10 @@
   100%{left:44%;top:66%;opacity:0}
 }
 @keyframes typeScene2{
-  0%,14%{width:0ch;opacity:1}
-  44%{width:29ch;opacity:1}
-  60%{width:29ch;opacity:1}
-  66%,100%{width:29ch;opacity:0}
+  0%,14%{clip-path: inset(0 100% 0 0);opacity:1}
+  44%{clip-path: inset(0 0% 0 0);opacity:1}
+  60%{clip-path: inset(0 0% 0 0);opacity:1}
+  66%,100%{clip-path: inset(0 0% 0 0);opacity:0}
 }
 @keyframes blink{
   0%,49%{opacity:1}
