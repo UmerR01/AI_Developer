@@ -710,7 +710,13 @@ def _run_agent_loop(
             else:
                 try:
                     result_str = str(tool_map[tool_name].invoke(tool_args))
+                    if stop_requested():
+                        _emit_event(event_sink, "stopped", reason="stop_requested_during_tool", iteration=iteration + 1)
+                        return "⏹ Generation stopped by user."
                 except Exception as e:
+                    if stop_requested():
+                        _emit_event(event_sink, "stopped", reason="stop_requested_during_tool", iteration=iteration + 1)
+                        return "⏹ Generation stopped by user."
                     result_str = f"Tool execution error: {str(e)}"
 
             preview = result_str[:250] + ("..." if len(result_str) > 250 else "")

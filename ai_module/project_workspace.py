@@ -363,6 +363,7 @@ class ProjectWorkspace:
         self._meta_cache: Dict[str, ProjectMeta] = {}
         self._locks: Dict[str, asyncio.Lock] = {}
         self._external_dirs: Dict[str, Path] = {}
+        self.active_stop_events: Dict[Tuple[str, str], Any] = {}
 
     def register_project_dir(
         self,
@@ -372,12 +373,15 @@ class ProjectWorkspace:
     ) -> Path:
         project_dir = resolve_project_dir(user_id, project_id, working_directory)
         self._external_dirs[project_key(user_id, project_id)] = project_dir
+        self.ensure_git_initialized(project_dir)
         return project_dir
 
     def project_dir_for(self, user_id: str, project_id: str) -> Path:
         key = project_key(user_id, project_id)
         if key in self._external_dirs:
-            return self._external_dirs[key]
+            path = self._external_dirs[key]
+            self.ensure_git_initialized(path)
+            return path
 
         cache_file = ROOT_DIR / ".bootstrap_sessions.json"
         if cache_file.is_file():
@@ -391,11 +395,14 @@ class ProjectWorkspace:
                     if boot_user == sanitize_id(user_id) and boot_project == sanitize_id(project_id) and workdir:
                         path = Path(workdir).resolve()
                         self._external_dirs[key] = path
+                        self.ensure_git_initialized(path)
                         return path
             except Exception:
                 pass
 
-        return get_project_dir(user_id, project_id)
+        path = get_project_dir(user_id, project_id)
+        self.ensure_git_initialized(path)
+        return path
 
     def rewrite_preview_url(
         self,
@@ -447,14 +454,15 @@ class ProjectWorkspace:
             meta = str(message.get("meta") or "")
             if role not in {"user", "agent"} or meta in {"payload", "raw"} or not content.strip():
                 continue
-            cleaned.append(
-                {
-                    "role": role,
-                    "content": content[:8000],
-                    "meta": meta,
-                    "timestamp": message.get("timestamp") or iso_now(),
-                }
-            )
+            item = {
+                "role": role,
+                "content": content[:8000],
+                "meta": meta,
+                "timestamp": message.get("timestamp") or iso_now(),
+            }
+            if "commit_hash" in message:
+                item["commit_hash"] = str(message["commit_hash"])
+            cleaned.append(item)
 
         project_dir = self.project_dir_for(user_id, project_id)
         self.chat_path(project_dir).write_text(
@@ -814,8 +822,61 @@ class ProjectWorkspace:
                 browser.close()
             out_path.write_bytes(png_bytes)
             return True, str(out_path), out_path
-        except Exception as exc:
-            return False, f"Screenshot capture failed: {exc}", None
+        except Exception as e:
+            return False, f"Playwright screenshot failed: {e}", None
+    def ensure_git_initialized(self, project_dir: Path) -> None:
+        """Ensure git repository is initialized with local AI user configuration."""
+        if not project_dir.exists():
+            project_dir.mkdir(parents=True, exist_ok=True)
+        git_dir = project_dir / ".git"
+        if not git_dir.is_dir():
+            try:
+                subprocess.run(["git", "init"], cwd=str(project_dir), capture_output=True, check=True)
+                subprocess.run(["git", "config", "user.name", "AI Assistant"], cwd=str(project_dir), capture_output=True, check=True)
+                subprocess.run(["git", "config", "user.email", "agent@ai-developer.local"], cwd=str(project_dir), capture_output=True, check=True)
+                
+                # Setup basic .gitignore
+                gitignore = project_dir / ".gitignore"
+                if not gitignore.is_file():
+                    gitignore.write_text("node_modules/\n.next/\ndist/\nbuild/\n.ai-coder-meta.json\n.bootstrap_sessions.json\n", encoding="utf-8")
+                
+                subprocess.run(["git", "add", ".gitignore"], cwd=str(project_dir), capture_output=True, check=True)
+                subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=str(project_dir), capture_output=True, check=True)
+            except Exception as e:
+                print(f"[git-init] warning: failed to initialize git repository: {e}")
+
+    def create_git_commit(self, project_dir: Path, message: str) -> Optional[str]:
+        """Commit current workspace changes (or empty if no changes) and return the commit hash."""
+        self.ensure_git_initialized(project_dir)
+        try:
+            # Check for changes
+            status = subprocess.run(["git", "status", "--porcelain"], cwd=str(project_dir), capture_output=True, text=True, check=True)
+            commit_msg = message.replace('"', '\\"').replace("'", "\\'")
+            if not status.stdout.strip():
+                # Allow empty commit so we always have a commit hash per chat message
+                subprocess.run(["git", "commit", "--allow-empty", "-m", commit_msg], cwd=str(project_dir), capture_output=True, check=True)
+            else:
+                # Stage and commit
+                subprocess.run(["git", "add", "."], cwd=str(project_dir), capture_output=True, check=True)
+                subprocess.run(["git", "commit", "-m", commit_msg], cwd=str(project_dir), capture_output=True, check=True)
+            
+            # Get commit hash
+            rev = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(project_dir), capture_output=True, text=True, check=True)
+            return rev.stdout.strip()
+        except Exception as e:
+            print(f"[git-commit] warning: failed to commit changes: {e}")
+            return None
+
+    def revert_to_commit(self, project_dir: Path, commit_hash: str) -> bool:
+        """Reset the workspace to the specified commit hash and clean untracked files."""
+        self.ensure_git_initialized(project_dir)
+        try:
+            subprocess.run(["git", "reset", "--hard", commit_hash], cwd=str(project_dir), capture_output=True, check=True)
+            subprocess.run(["git", "clean", "-fd"], cwd=str(project_dir), capture_output=True, check=True)
+            return True
+        except Exception as e:
+            print(f"[git-revert] error: failed to revert to commit {commit_hash}: {e}")
+            return False
 
 
 workspace = ProjectWorkspace()

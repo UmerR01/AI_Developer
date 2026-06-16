@@ -129,6 +129,12 @@ class ResetRequest(BaseModel):
     project_id: Optional[str] = None
 
 
+class RevertRequest(BaseModel):
+    commit_hash: str
+    message_index: int
+    session_id: Optional[str] = None
+
+
 class SessionBootstrapRequest(BaseModel):
     session_id: str
     prompt: Optional[str] = None
@@ -192,6 +198,19 @@ class SessionStore:
 
             self._histories[session_id] = [SystemMessage(content=SYSTEM_PROMPT)]
         return self._histories[session_id]
+
+    def rebuild_history_from_json(self, session_id: str, user_id: str, project_id: str) -> None:
+        from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
+        self._histories[session_id] = [SystemMessage(content=SYSTEM_PROMPT)]
+        chat_messages = workspace.load_chat(user_id, project_id)
+        for msg in chat_messages:
+            role = msg.get("role")
+            content = msg.get("content") or ""
+            if role == "user":
+                self._histories[session_id].append(HumanMessage(content=content))
+            elif role in ("agent", "assistant"):
+                self._histories[session_id].append(AIMessage(content=content))
 
     def reset(self, session_id: str) -> None:
         self._histories.pop(session_id, None)
@@ -761,6 +780,82 @@ async def serve_preview_file(user_id: str, project_id: str, file_path: str = "")
     )
 
 
+@app.post("/api/projects/{user_id}/{project_id}/revert")
+async def api_revert_project(
+    user_id: str,
+    project_id: str,
+    payload: RevertRequest,
+    session: str | None = None,
+) -> Dict[str, Any]:
+    _assert_user_owns_session(session, user_id)
+    project_dir = workspace.project_dir_for(user_id, project_id)
+    
+    # 1. Revert project files to target commit
+    ok = workspace.revert_to_commit(project_dir, payload.commit_hash)
+    if not ok:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to revert project to commit hash: {payload.commit_hash}",
+        )
+    
+    # 2. Truncate conversation logs
+    chat_messages = workspace.load_chat(user_id, project_id)
+    
+    # Locate message containing the target commit hash in the database
+    target_idx = -1
+    for idx, msg in enumerate(chat_messages):
+        if msg.get("commit_hash") == payload.commit_hash:
+            target_idx = idx
+            break
+            
+    # Check ancestor commits if exact match fails
+    if target_idx == -1:
+        import subprocess
+        try:
+            res = subprocess.run(
+                ["git", "log", "--format=%H", payload.commit_hash],
+                cwd=str(project_dir),
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            ancestors = {line.strip() for line in res.stdout.splitlines() if line.strip()}
+        except Exception as e:
+            print(f"[revert-ancestors] warning: {e}")
+            ancestors = {payload.commit_hash}
+            
+        for idx, msg in enumerate(chat_messages):
+            msg_hash = msg.get("commit_hash")
+            if msg_hash and msg_hash in ancestors:
+                target_idx = idx
+                
+    # Fallback to message_index (capped to range) if still not found
+    if target_idx == -1:
+        if chat_messages:
+            target_idx = max(0, min(payload.message_index, len(chat_messages) - 1))
+        else:
+            target_idx = -1
+            
+    if target_idx != -1:
+        # Slice messages up to target_idx (inclusive)
+        truncated = chat_messages[: target_idx + 1]
+        workspace.save_chat(user_id, project_id, truncated)
+        
+        # 3. Synchronize in-memory session history
+        if payload.session_id:
+            session_store.rebuild_history_from_json(payload.session_id, user_id, project_id)
+        
+    # 4. Trigger preview rebuild for live-reload updates
+    await workspace.run_preview_build(user_id, project_id, force=True)
+    
+    return {
+        "success": True,
+        "message": f"Reverted to commit {payload.commit_hash[:7]}",
+        "chat_history": workspace.load_chat(user_id, project_id),
+        "file_tree": workspace.get_file_tree(user_id, project_id),
+    }
+
+
 @app.websocket("/ws/chat")
 async def chat_socket(websocket: WebSocket) -> None:
     await websocket.accept()
@@ -859,6 +954,7 @@ async def chat_socket(websocket: WebSocket) -> None:
     ) -> None:
         nonlocal current_run_task, preview_task
         stop_event.clear()
+        workspace.active_stop_events[(user_id, project_id)] = stop_event
         project_dir = str(resolve_project_dir(user_id, project_id, workdir))
         workspace.register_project_dir(user_id, project_id, project_dir)
         full_prompt = _project_context_prompt(user_id, project_id) + prompt
@@ -893,6 +989,18 @@ async def chat_socket(websocket: WebSocket) -> None:
                         "session_id": run_session_id,
                         "timestamp": iso_now(),
                     })
+                
+                # Commit workspace changes and get commit hash
+                commit_msg = f"User: {prompt}"
+                commit_hash = workspace.create_git_commit(Path(project_dir), commit_msg)
+                if commit_hash:
+                    emit({
+                        "type": "agent_log",
+                        "message": f"Created git commit: {commit_hash[:7]}",
+                        "session_id": run_session_id,
+                        "timestamp": iso_now(),
+                    })
+
                 tree = workspace.get_file_tree(user_id, project_id)
                 emit({
                     "type": "file_tree",
@@ -911,6 +1019,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                         "project_id": project_id,
                         "prompt": prompt,
                         "output": output,
+                        "commit_hash": commit_hash or "",
                         "timestamp": iso_now(),
                     }
                 )
@@ -932,6 +1041,7 @@ async def chat_socket(websocket: WebSocket) -> None:
                     else:
                         os.environ[key] = value
                 workspace.end_generation(user_id, project_id)
+                workspace.active_stop_events.pop((user_id, project_id), None)
                 emit(
                     {
                         "type": "run_complete",

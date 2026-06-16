@@ -2440,39 +2440,73 @@ def run_shell_command(
             if b in cmd_lower:
                 return f"EXIT CODE: -1\nBlocked: destructive command detected."
 
-        result = subprocess.run(
+        from project_workspace import workspace, ProjectStatus
+
+        p = subprocess.Popen(
             command,
             shell=True,
             cwd=cwd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
         )
 
-        output = f"EXIT CODE: {result.returncode}\n"
+        start_time = time.time()
+        while p.poll() is None:
+            # Check if project generation was stopped
+            uid = os.environ.get("CODER_BUDDY_USER_ID")
+            pid = os.environ.get("CODER_BUDDY_PROJECT_ID")
+            is_stopped = False
+            if uid and pid:
+                meta = workspace.load_meta(uid, pid)
+                if meta.status != ProjectStatus.GENERATING:
+                    is_stopped = True
+                
+                # Check active stop event registry
+                stop_ev = getattr(workspace, "active_stop_events", {}).get((uid, pid))
+                if stop_ev and stop_ev.is_set():
+                    is_stopped = True
+
+            if is_stopped:
+                p.terminate()
+                try:
+                    p.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                return "EXIT CODE: -1\nError: command aborted because generation was stopped by the user."
+
+            # Check timeout
+            if time.time() - start_time > timeout:
+                p.terminate()
+                try:
+                    p.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                return f"EXIT CODE: -1\nError: command timed out after {timeout}s.\nTip: increase timeout for slow commands like 'npm install'."
+
+            time.sleep(0.5)
+
+        stdout, stderr = p.communicate()
+
+        output = f"EXIT CODE: {p.returncode}\n"
         output += f"COMMAND: {command}\n"
         output += f"DIRECTORY: {cwd}\n"
 
-        if result.stdout:
+        if stdout:
             # Trim very long output (npm install is chatty)
-            stdout = result.stdout
             if len(stdout) > 3000:
                 stdout = stdout[:1500] + "\n...[truncated]...\n" + stdout[-1000:]
             output += f"\nSTDOUT:\n{stdout}"
 
-        if result.stderr:
-            stderr = result.stderr
+        if stderr:
             if len(stderr) > 2000:
                 stderr = stderr[:1000] + "\n...[truncated]...\n" + stderr[-800:]
             output += f"\nSTDERR:\n{stderr}"
 
-        if result.returncode == 0 and not result.stdout and not result.stderr:
+        if p.returncode == 0 and not stdout and not stderr:
             output += "\nSTATUS: Command completed successfully with no output."
 
         return output
-
-    except subprocess.TimeoutExpired:
-        return f"EXIT CODE: -1\nError: command timed out after {timeout}s.\nTip: increase timeout for slow commands like 'npm install'."
     except Exception as e:
         return f"EXIT CODE: -1\nError: {str(e)}"
 
@@ -2582,15 +2616,57 @@ def validate_frontend_project(project_directory: str) -> str:
     all_passed = True
 
     def run_check(label: str, command: str, cwd: str, timeout: int = 120) -> bool:
-        result = subprocess.run(
-            command, shell=True, cwd=cwd,
-            capture_output=True, text=True, timeout=timeout
+        from project_workspace import workspace, ProjectStatus
+        p = subprocess.Popen(
+            command,
+            shell=True,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
-        passed = result.returncode == 0
+
+        start_time = time.time()
+        while p.poll() is None:
+            uid = os.environ.get("CODER_BUDDY_USER_ID")
+            pid = os.environ.get("CODER_BUDDY_PROJECT_ID")
+            is_stopped = False
+            if uid and pid:
+                meta = workspace.load_meta(uid, pid)
+                if meta.status != ProjectStatus.GENERATING:
+                    is_stopped = True
+                
+                # Check active stop event registry
+                stop_ev = getattr(workspace, "active_stop_events", {}).get((uid, pid))
+                if stop_ev and stop_ev.is_set():
+                    is_stopped = True
+
+            if is_stopped:
+                p.terminate()
+                try:
+                    p.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                report.append(f"❌ {label} (Aborted by user)")
+                return False
+
+            if time.time() - start_time > timeout:
+                p.terminate()
+                try:
+                    p.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                report.append(f"❌ {label} (Timed out)")
+                return False
+
+            time.sleep(0.5)
+
+        stdout, stderr = p.communicate()
+        passed = p.returncode == 0
         icon   = "✅" if passed else "❌"
         report.append(f"{icon} {label}")
         if not passed:
-            err = (result.stderr or result.stdout or "no output")[:600]
+            err = (stderr or stdout or "no output")[:600]
             report.append(f"   Error:\n{err}")
             # Common fix suggestions
             if "Cannot find module" in err or "Module not found" in err:

@@ -237,6 +237,48 @@
       min-width: 0;
     }
 
+    .revert-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      margin-right: 8px;
+      font-family: Montserrat, sans-serif;
+    }
+    .revert-btn:hover {
+      background: rgba(232, 112, 112, 0.2);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: min(450px, 90vw);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      font-family: Montserrat, sans-serif;
+    }
+
     .message.user {
       margin-left: auto;
       max-width: 88%;
@@ -1013,6 +1055,21 @@
     </main>
   </div>
 
+  <!-- Revert Confirmation Modal -->
+  <div id="revertModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h3 style="margin-top: 0; color: var(--danger);">Revert Workspace</h3>
+      <p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary);">
+        Warning: Reverting will restore all project files to this point and delete all subsequent chat messages. 
+        This action cannot be undone. Are you sure you want to proceed?
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button class="ghost" id="cancelRevertBtn" style="padding: 8px 16px;">Cancel</button>
+        <button class="danger" id="confirmRevertBtn" style="padding: 8px 16px;">Revert</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const launchProjectId = urlParams.get('projectId') || '';
@@ -1293,7 +1350,11 @@
       if (text.length > 8000) {
         content = text.slice(0, 8000) + '\n… (truncated)';
       }
-      state.messages.push({ role, content, meta, timestamp: Date.now() });
+      const msg = { role, content, meta, timestamp: Date.now() };
+      if (options.commit_hash) {
+        msg.commit_hash = options.commit_hash;
+      }
+      state.messages.push(msg);
       if (state.messages.length > 200) {
         state.messages = state.messages.slice(-200);
       }
@@ -1397,17 +1458,30 @@
     }
 
     function renderMessages() {
-      const chatHtml = state.messages.map((message) => {
+      const chatHtml = state.messages.map((message, messageIndex) => {
         const roleLabel = message.role === 'user' ? 'You' : 'Agent';
         const metaLabel = message.meta === 'you' ? '' : (message.meta || timeLabel());
         const bodyHtml = message.role === 'agent'
           ? renderMarkdown(message.content)
           : escapeHtml(message.content);
+        
+        let revertButton = '';
+        if (message.commit_hash) {
+          revertButton = `
+            <button class="revert-btn" onclick="confirmRevert('${message.commit_hash}', ${messageIndex})">
+              ↩ Revert to here
+            </button>
+          `;
+        }
+
         return `
           <article class="message ${message.role}">
             <div class="message-meta">
               <span>${roleLabel}</span>
-              <span>${escapeHtml(metaLabel)}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                ${revertButton}
+                <span>${escapeHtml(metaLabel)}</span>
+              </div>
             </div>
             <div class="message-body ${message.role === 'agent' ? 'md' : ''}">${bodyHtml}</div>
           </article>
@@ -1874,7 +1948,7 @@
         }
 
         if (payload.type === 'stopping') {
-          addMessage('agent', 'Stop requested. The agent will halt as soon as it reaches a safe checkpoint.', 'stop');
+          addMessage('agent', 'Stop requested. Stopping generation immediately...', 'stop');
           return;
         }
 
@@ -1883,10 +1957,11 @@
           if (lastMsg && lastMsg.role === 'agent' && lastMsg.meta === 'streaming') {
             lastMsg.content = payload.output || '';
             lastMsg.meta = payload.session_id || 'response';
+            lastMsg.commit_hash = payload.commit_hash || '';
             renderMessages();
             scheduleChatSave();
           } else {
-            addMessage('agent', payload.output || '', payload.session_id || 'response');
+            addMessage('agent', payload.output || '', payload.session_id || 'response', { commit_hash: payload.commit_hash });
           }
           setRawOutput(payload.output || '');
           const maybeJson = tryParseStructuredFiles(payload.output || '');
@@ -2158,6 +2233,83 @@
         }
       } catch (_) {}
     }
+
+    let pendingRevertCommit = null;
+    let pendingRevertIndex = null;
+
+    window.confirmRevert = function(commitHash, messageIndex) {
+      pendingRevertCommit = commitHash;
+      pendingRevertIndex = messageIndex;
+      document.getElementById('revertModal').style.display = 'flex';
+    };
+
+    function closeRevertModal() {
+      pendingRevertCommit = null;
+      pendingRevertIndex = null;
+      document.getElementById('revertModal').style.display = 'none';
+    }
+
+    async function executeRevert() {
+      if (!pendingRevertCommit || pendingRevertIndex === null) return;
+      const commitHash = pendingRevertCommit;
+      const messageIndex = pendingRevertIndex;
+      closeRevertModal();
+
+      setGenerating(true);
+      setProjectStatus('reverting');
+      addWorkingUpdate('Reverting workspace', `Restoring code to commit ${commitHash.slice(0, 7)}…`, 'revert');
+
+      try {
+        const base = resolveApiBaseUrl();
+        const userId = encodeURIComponent(getUserId());
+        const projectId = encodeURIComponent(getProjectId());
+        const resp = await fetch(`${base}/api/projects/${userId}/${projectId}/revert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            commit_hash: commitHash,
+            message_index: messageIndex,
+            session_id: state.sessionId,
+          }),
+        });
+
+        if (!resp.ok) {
+          const errData = await resp.json();
+          throw new Error(errData.detail || 'Revert failed');
+        }
+
+        const data = await resp.json();
+        
+        if (data.chat_history && Array.isArray(data.chat_history.messages)) {
+          state.messages = data.chat_history.messages
+            .filter((message) => !['payload', 'raw'].includes(message.meta))
+            .slice(-200);
+        } else if (Array.isArray(data.chat_history)) {
+          state.messages = data.chat_history
+            .filter((message) => !['payload', 'raw'].includes(message.meta))
+            .slice(-200);
+        } else {
+          state.messages = state.messages.slice(0, messageIndex + 1);
+        }
+        
+        if (data.file_tree) {
+          applyFileTreePayload(data.file_tree);
+        }
+
+        renderMessages();
+        refreshPreviewStatus();
+        addMessage('agent', `Successfully reverted workspace to commit ${commitHash.slice(0, 7)}.`, 'system', { persist: false });
+      } catch (error) {
+        console.error('[agent-ui] revert failed', error);
+        addMessage('agent', `Failed to revert workspace: ${error.message}`, 'error', { persist: false });
+      } finally {
+        setGenerating(false);
+        clearWorkingUpdates();
+      }
+    }
+
+    document.getElementById('cancelRevertBtn').addEventListener('click', closeRevertModal);
+    document.getElementById('confirmRevertBtn').addEventListener('click', executeRevert);
 
     if (!state.projectId) state.projectId = state.sessionId;
     saveWorkspaceIds(state.sessionId, state.userId, state.projectId);
