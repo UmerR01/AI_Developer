@@ -15,28 +15,6 @@ import { DASHBOARD_DATA } from "../../src/modules/dashboard/data/mockDashboardDa
 import type { Account } from "../../src/modules/dashboard/types";
 import { fetchCurrentUser, fetchStorageStats } from "../../src/modules/platform/api";
 
-/* ── Uploading files mock data ─────────────────────────────── */
-const UPLOAD_FILES = [
-  { id: "f1", name: "Project deliverables", type: "doc", pct: 72 },
-  { id: "f2", name: "Presentation.key", type: "key", pct: 48 },
-  { id: "f3", name: "Modules.fig", type: "fig", pct: 91 },
-  { id: "f4", name: "Assets_v2.zip", type: "zip", pct: 35 },
-];
-
-const ICON_CLASS: Record<string, string> = {
-  fig: "upload-icon-fig",
-  key: "upload-icon-key",
-  doc: "upload-icon-doc",
-  zip: "upload-icon-zip",
-};
-
-const ICON_EMOJI: Record<string, string> = {
-  fig: "🎨",
-  key: "📊",
-  doc: "📄",
-  zip: "📦",
-};
-
 /* ═══════════════════════════════════════════════════════════════ */
 
 function FileIcon({ ext }: { ext: string }) {
@@ -82,7 +60,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
   const [activeUsername, setActiveUsername] = useState<string>("ibrahim");
-  const [storageSnapshot, setStorageSnapshot] = useState({ usedSpace: 0, totalQuota: 0 });
+  const [_storageSnapshot, setStorageSnapshot] = useState({ usedSpace: 0, totalQuota: 0 });
 
   useEffect(() => {
     let mounted = true;
@@ -137,8 +115,8 @@ export default function DashboardPage() {
     [activeAccount.role]
   );
 
-  const teamOwner = accountById[DASHBOARD_DATA.team.ownerAccountId] ?? activeAccount;
-  const teamMembers = DASHBOARD_DATA.team.memberAccountIds
+  const _teamOwner = accountById[DASHBOARD_DATA.team.ownerAccountId] ?? activeAccount;
+  const _teamMembers = DASHBOARD_DATA.team.memberAccountIds
     .map((id) => accountById[id])
     .filter(Boolean);
 

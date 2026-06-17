@@ -11,7 +11,7 @@ interface DashboardTopBarProps {
 }
 
 export function DashboardTopBar({
-  activeAccount,
+  activeAccount: _activeAccount,
   title = "Dashboard",
   notifications,
 }: DashboardTopBarProps) {
@@ -258,12 +258,13 @@ export function DashboardTopBar({
         >
           {/* Default user avatar matching the reference */}
           <div style={{ position: "relative", width: "32px", height: "32px" }}>
-            <img
+            <Image
               src="https://api.dicebear.com/8.x/adventurer/svg?seed=Alfred"
               alt="Alfred Williamson"
+              width={32}
+              height={32}
+              unoptimized
               style={{
-                width: "100%",
-                height: "100%",
                 borderRadius: "50%",
                 background: "rgba(10, 25, 75, 0.9)",
                 border: "1.5px solid rgba(255, 255, 255, 0.15)",
