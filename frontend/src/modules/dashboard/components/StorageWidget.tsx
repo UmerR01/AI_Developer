@@ -7,7 +7,7 @@ interface StorageWidgetProps {
   totalBytes?: number;
 }
 
-export function StorageWidget({ usedBytes: _usedBytes, totalBytes: _totalBytes }: StorageWidgetProps) {
+export function StorageWidget({ usedBytes, totalBytes }: StorageWidgetProps) {
   const [month, setMonth] = useState("September");
 
   return (
