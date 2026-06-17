@@ -512,22 +512,21 @@ def _run_agent_loop(
             full_text = ""
             chunks = []
             for chunk in llm_with_tools.stream(message_history):
+                # Check stop at each network chunk boundary (fast, no per-char sleep)
                 if stop_requested():
                     raise UserInterruptError(full_text)
                 chunk_text = extract_text(chunk.content)
                 if chunk_text:
                     full_text += chunk_text
-                    import time
-                    for char in chunk_text:
-                        if stop_requested():
-                            raise UserInterruptError(full_text)
-                        _emit_event(event_sink, "text_chunk", content=char, iteration=iteration + 1)
-                        time.sleep(0.015)
+                    # Emit the whole chunk at once — no per-character sleep.
+                    # This means stop is checked at network-chunk frequency (every
+                    # ~50-300ms depending on the model) instead of per character.
+                    _emit_event(event_sink, "text_chunk", content=chunk_text, iteration=iteration + 1)
                 chunks.append(chunk)
-            
+
             if not chunks:
                 return AIMessage(content="")
-            
+
             response = chunks[0]
             for c in chunks[1:]:
                 response += c
@@ -708,16 +707,43 @@ def _run_agent_loop(
             if tool_name not in tool_map:
                 result_str = f"Error: tool '{tool_name}' not found."
             else:
-                try:
-                    result_str = str(tool_map[tool_name].invoke(tool_args))
+                import threading as _threading
+                import time as _time
+                # Run the tool in a background thread so we can poll stop_requested()
+                # every 50 ms instead of waiting for the entire (possibly slow) tool
+                # to finish before checking. This makes stop nearly instantaneous even
+                # during blocking tools like write_file, run_shell_command, etc.
+                _tool_result: list = []
+                _tool_exc:    list = []
+
+                def _run_tool():
+                    try:
+                        _tool_result.append(str(tool_map[tool_name].invoke(tool_args)))
+                    except Exception as _e:
+                        _tool_exc.append(_e)
+
+                _t = _threading.Thread(target=_run_tool, daemon=True)
+                _t.start()
+                while _t.is_alive():
                     if stop_requested():
-                        _emit_event(event_sink, "stopped", reason="stop_requested_during_tool", iteration=iteration + 1)
+                        # Tool is still running in background — mark stopped and
+                        # return immediately without waiting for it to finish.
+                        _emit_event(event_sink, "stopped",
+                                    reason="stop_requested_during_tool",
+                                    iteration=iteration + 1)
                         return "⏹ Generation stopped by user."
-                except Exception as e:
-                    if stop_requested():
-                        _emit_event(event_sink, "stopped", reason="stop_requested_during_tool", iteration=iteration + 1)
-                        return "⏹ Generation stopped by user."
-                    result_str = f"Tool execution error: {str(e)}"
+                    _time.sleep(0.05)  # poll every 50 ms
+
+                if stop_requested():
+                    _emit_event(event_sink, "stopped",
+                                reason="stop_requested_during_tool",
+                                iteration=iteration + 1)
+                    return "⏹ Generation stopped by user."
+
+                if _tool_exc:
+                    result_str = f"Tool execution error: {_tool_exc[0]}"
+                else:
+                    result_str = _tool_result[0] if _tool_result else "(no result)"
 
             preview = result_str[:250] + ("..." if len(result_str) > 250 else "")
             print(f"     Result: {preview}")

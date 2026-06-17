@@ -1083,12 +1083,18 @@
     const agentBasePath = window.location.pathname.split('/').filter(Boolean)[0] === 'agent' ? '/agent' : '';
     const defaultWsUrl = launchWsUrl || `${wsProtocol}//${window.location.host}${agentBasePath}/ws/chat`;
 
+    // If no session is in the URL, start a new session (don't resume from localStorage).
+    // Only resume a previous session if one is explicitly passed via ?session= URL param.
+    const isDirectWorkspaceLoad = !launchSession && !launchProjectId;
+    const savedSessionId = isDirectWorkspaceLoad ? null : localStorage.getItem('aiCoderSessionId');
+    const savedProjectId = isDirectWorkspaceLoad ? null : localStorage.getItem('aiCoderProjectId');
+
     const state = {
       socket: null,
       connected: false,
-      sessionId: launchSession || localStorage.getItem('aiCoderSessionId') || `session-${Date.now()}`,
+      sessionId: launchSession || savedSessionId || `session-${Date.now()}`,
       userId: launchUserId,
-      projectId: launchProjectId || localStorage.getItem('aiCoderProjectId') || launchSession || '',
+      projectId: launchProjectId || savedProjectId || launchSession || '',
       messages: [],
       workingItems: [],
       workingOpen: false,
@@ -1158,10 +1164,19 @@
       els.projectText.textContent = label;
     }
 
+    let previewStatusPollTimer = null;
+
     function setProjectStatus(status, projectType) {
       state.projectStatus = status || state.projectStatus;
       if (projectType) state.projectType = projectType;
       els.projectStatus.textContent = state.projectStatus;
+
+      clearTimeout(previewStatusPollTimer);
+      if (state.projectStatus === 'building') {
+        previewStatusPollTimer = setTimeout(() => {
+          refreshPreviewStatus();
+        }, 2000);
+      }
     }
 
     function normalizePreviewUrl(url) {
@@ -1185,7 +1200,7 @@
         els.appPreviewFrame.src = state.previewUrl;
         els.previewStatusText.textContent = `Live preview: ${state.previewUrl}`;
       } else {
-        els.appPreviewFrame.removeAttribute('src');
+        els.appPreviewFrame.src = 'about:blank';
         els.previewStatusText.textContent = 'Preview not ready yet.';
       }
     }
@@ -1466,10 +1481,19 @@
           : escapeHtml(message.content);
         
         let revertButton = '';
-        if (message.commit_hash) {
+        if (message.role === 'user') {
+          let prevCommitHash = 'initial';
+          let prevMsgIndex = -1;
+          for (let i = messageIndex - 1; i >= 0; i--) {
+            if (state.messages[i].role === 'agent' && state.messages[i].commit_hash) {
+              prevCommitHash = state.messages[i].commit_hash;
+              prevMsgIndex = i;
+              break;
+            }
+          }
           revertButton = `
-            <button class="revert-btn" onclick="confirmRevert('${message.commit_hash}', ${messageIndex})">
-              ↩ Revert to here
+            <button class="revert-btn" onclick="confirmRevert('${prevCommitHash}', ${prevMsgIndex}, ${messageIndex})">
+              ↩ Revert
             </button>
           `;
         }
@@ -1507,9 +1531,12 @@
           </div>
         `
         : '';
+      const oldScrollTop = els.chatLog.scrollTop;
       els.chatLog.innerHTML = chatHtml + workingHtml;
       if (!state.workingOpen) {
         scrollChatToBottom();
+      } else {
+        els.chatLog.scrollTop = oldScrollTop;
       }
     }
 
@@ -1575,11 +1602,15 @@
     function applyFileTreePayload(payload) {
       if (Array.isArray(payload.tree)) state.fileTree = payload.tree;
       if (Array.isArray(payload.files)) indexFiles(payload.files);
-      if (payload.preview_url) setPreviewUrl(payload.preview_url);
+      setPreviewUrl(payload.preview_url || '');
       if (payload.status) setProjectStatus(payload.status, payload.project_type);
       renderFileTree();
       if (!state.selectedPath && state.files.length) {
         showSelectedFile(state.files[0].path);
+      } else if (state.files.length === 0) {
+        state.selectedPath = '';
+        els.codePreview.textContent = '';
+        els.previewLabel.textContent = '';
       }
     }
 
@@ -1717,13 +1748,14 @@
         setProjectStatus(data.status || 'idle', data.project_type);
         if (data.status === 'ready' && data.preview_url) {
           setPreviewUrl(data.preview_url);
-          activateTab('app-preview');
         } else if (data.can_preview && data.preview_url) {
           setPreviewUrl(data.preview_url);
-          activateTab('app-preview');
-        } else if (data.status === 'failed') {
+        } else {
+          setPreviewUrl('');
+        }
+        if (data.status === 'failed') {
           els.previewStatusText.textContent = data.preview_error || 'Preview failed. Click Rebuild Preview.';
-        } else if (data.can_preview) {
+        } else if (data.can_preview && data.status !== 'ready') {
           els.previewStatusText.textContent = 'Project has files. Click Rebuild Preview to show the app.';
         }
       } catch (e) {
@@ -1750,7 +1782,6 @@
         setProjectStatus(data.status || 'idle', data.project_type);
         if (data.status === 'ready' && data.preview_url) {
           setPreviewUrl(data.preview_url);
-          activateTab('app-preview');
         } else if (data.preview_error) {
           els.previewStatusText.textContent = data.preview_error;
         }
@@ -1841,7 +1872,6 @@
           setProjectStatus(payload.status || 'idle', payload.project_type);
           if (payload.preview_url) {
             setPreviewUrl(payload.preview_url);
-            if (payload.status === 'ready') activateTab('app-preview');
           }
           return;
         }
@@ -1913,18 +1943,19 @@
           setProjectStatus('ready', payload.project_type);
           setPreviewUrl(payload.preview_url || '');
           addMessage('agent', `App preview ready (${payload.project_type || 'app'}).`, 'preview');
-          activateTab('app-preview');
           return;
         }
 
         if (payload.type === 'preview_failed') {
           setProjectStatus('failed', payload.project_type);
           els.previewStatusText.textContent = payload.error || 'Preview build failed.';
+          setPreviewUrl('');
           addMessage('agent', payload.error || 'Preview failed.', 'error');
           return;
         }
 
         if (payload.type === 'preview_skipped') {
+          setPreviewUrl('');
           addMessage('agent', payload.reason || 'Preview skipped — no frontend files yet.', 'system');
           return;
         }
@@ -1963,7 +1994,6 @@
           } else {
             addMessage('agent', payload.output || '', payload.session_id || 'response', { commit_hash: payload.commit_hash });
           }
-          setRawOutput(payload.output || '');
           const maybeJson = tryParseStructuredFiles(payload.output || '');
           if (maybeJson) pushStructuredFiles(maybeJson);
           requestFileManifest();
@@ -2236,16 +2266,19 @@
 
     let pendingRevertCommit = null;
     let pendingRevertIndex = null;
+    let pendingRevertText = '';
 
-    window.confirmRevert = function(commitHash, messageIndex) {
+    window.confirmRevert = function(commitHash, messageIndex, userMsgIndex) {
       pendingRevertCommit = commitHash;
       pendingRevertIndex = messageIndex;
+      pendingRevertText = (userMsgIndex !== undefined && state.messages[userMsgIndex]) ? state.messages[userMsgIndex].content : '';
       document.getElementById('revertModal').style.display = 'flex';
     };
 
     function closeRevertModal() {
       pendingRevertCommit = null;
       pendingRevertIndex = null;
+      pendingRevertText = '';
       document.getElementById('revertModal').style.display = 'none';
     }
 
@@ -2253,6 +2286,7 @@
       if (!pendingRevertCommit || pendingRevertIndex === null) return;
       const commitHash = pendingRevertCommit;
       const messageIndex = pendingRevertIndex;
+      const promptToRestore = pendingRevertText;
       closeRevertModal();
 
       setGenerating(true);
@@ -2298,6 +2332,12 @@
 
         renderMessages();
         refreshPreviewStatus();
+
+        if (promptToRestore) {
+          els.promptInput.value = promptToRestore;
+          els.promptInput.focus();
+        }
+
         addMessage('agent', `Successfully reverted workspace to commit ${commitHash.slice(0, 7)}.`, 'system', { persist: false });
       } catch (error) {
         console.error('[agent-ui] revert failed', error);

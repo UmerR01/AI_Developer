@@ -838,7 +838,7 @@ class ProjectWorkspace:
                 # Setup basic .gitignore
                 gitignore = project_dir / ".gitignore"
                 if not gitignore.is_file():
-                    gitignore.write_text("node_modules/\n.next/\ndist/\nbuild/\n.ai-coder-meta.json\n.bootstrap_sessions.json\n", encoding="utf-8")
+                    gitignore.write_text("node_modules/\n.next/\ndist/\nbuild/\n.ai-coder-meta.json\n.ai-coder-chat.json\n.bootstrap_sessions.json\n", encoding="utf-8")
                 
                 subprocess.run(["git", "add", ".gitignore"], cwd=str(project_dir), capture_output=True, check=True)
                 subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=str(project_dir), capture_output=True, check=True)

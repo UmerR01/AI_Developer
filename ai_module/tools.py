@@ -1703,7 +1703,16 @@ def search_in_codebase(
         matches_by_file: Dict[str, List[str]] = {}
         total_matches = 0
 
+        from project_workspace import workspace, ProjectStatus
         for fpath in files:
+            # Check stop condition
+            uid = os.environ.get("CODER_BUDDY_USER_ID")
+            pid = os.environ.get("CODER_BUDDY_PROJECT_ID")
+            if uid and pid:
+                stop_ev = getattr(workspace, "active_stop_events", {}).get((uid, pid))
+                if (stop_ev and stop_ev.is_set()) or (workspace.load_meta(uid, pid).status != ProjectStatus.GENERATING):
+                    return "Error: command aborted because generation was stopped by the user."
+
             try:
                 with open(fpath, "r", encoding="utf-8", errors="replace") as f:
                     file_lines = f.readlines()
@@ -2484,7 +2493,7 @@ def run_shell_command(
                     p.kill()
                 return f"EXIT CODE: -1\nError: command timed out after {timeout}s.\nTip: increase timeout for slow commands like 'npm install'."
 
-            time.sleep(0.5)
+            time.sleep(0.1)
 
         stdout, stderr = p.communicate()
 
@@ -2659,7 +2668,7 @@ def validate_frontend_project(project_directory: str) -> str:
                 report.append(f"❌ {label} (Timed out)")
                 return False
 
-            time.sleep(0.5)
+            time.sleep(0.1)
 
         stdout, stderr = p.communicate()
         passed = p.returncode == 0

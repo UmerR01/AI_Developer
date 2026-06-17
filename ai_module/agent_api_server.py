@@ -790,63 +790,91 @@ async def api_revert_project(
     _assert_user_owns_session(session, user_id)
     project_dir = workspace.project_dir_for(user_id, project_id)
     
-    # 1. Revert project files to target commit
+    # 1. Load conversation logs BEFORE git revert
+    chat_messages = workspace.load_chat(user_id, project_id)
+    
+    # 2. Locate message containing the target commit hash in the database
+    target_idx = -1
+    
+    # Support reverting to "initial" commit or message_index = -1
+    if payload.commit_hash == "initial" or payload.message_index == -1:
+        import subprocess
+        try:
+            res = subprocess.run(
+                ["git", "rev-list", "--max-parents=0", "HEAD"],
+                cwd=str(project_dir),
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            initial_hash = res.stdout.strip().splitlines()[0]
+            payload.commit_hash = initial_hash
+            target_idx = -1
+        except Exception as e:
+            print(f"[revert-initial] warning: {e}")
+    else:
+        for idx, msg in enumerate(chat_messages):
+            if msg.get("commit_hash") == payload.commit_hash:
+                target_idx = idx
+                break
+                
+        # Check ancestor commits if exact match fails
+        if target_idx == -1:
+            import subprocess
+            try:
+                res = subprocess.run(
+                    ["git", "log", "--format=%H", payload.commit_hash],
+                    cwd=str(project_dir),
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                ancestors = {line.strip() for line in res.stdout.splitlines() if line.strip()}
+            except Exception as e:
+                print(f"[revert-ancestors] warning: {e}")
+                ancestors = {payload.commit_hash}
+                
+            for idx, msg in enumerate(chat_messages):
+                msg_hash = msg.get("commit_hash")
+                if msg_hash and msg_hash in ancestors:
+                    target_idx = idx
+                    break
+                    
+        # Fallback to message_index (capped to range) if still not found
+        if target_idx == -1:
+            if chat_messages:
+                target_idx = max(0, min(payload.message_index, len(chat_messages) - 1))
+            else:
+                target_idx = -1
+            
+    # 3. Revert project files to target commit
     ok = workspace.revert_to_commit(project_dir, payload.commit_hash)
     if not ok:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to revert project to commit hash: {payload.commit_hash}",
         )
-    
-    # 2. Truncate conversation logs
-    chat_messages = workspace.load_chat(user_id, project_id)
-    
-    # Locate message containing the target commit hash in the database
-    target_idx = -1
-    for idx, msg in enumerate(chat_messages):
-        if msg.get("commit_hash") == payload.commit_hash:
-            target_idx = idx
-            break
-            
-    # Check ancestor commits if exact match fails
-    if target_idx == -1:
-        import subprocess
-        try:
-            res = subprocess.run(
-                ["git", "log", "--format=%H", payload.commit_hash],
-                cwd=str(project_dir),
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            ancestors = {line.strip() for line in res.stdout.splitlines() if line.strip()}
-        except Exception as e:
-            print(f"[revert-ancestors] warning: {e}")
-            ancestors = {payload.commit_hash}
-            
-        for idx, msg in enumerate(chat_messages):
-            msg_hash = msg.get("commit_hash")
-            if msg_hash and msg_hash in ancestors:
-                target_idx = idx
-                
-    # Fallback to message_index (capped to range) if still not found
-    if target_idx == -1:
-        if chat_messages:
-            target_idx = max(0, min(payload.message_index, len(chat_messages) - 1))
-        else:
-            target_idx = -1
-            
+        
+    # 4. Save the truncated conversation logs (overwrites any git reset output)
     if target_idx != -1:
-        # Slice messages up to target_idx (inclusive)
         truncated = chat_messages[: target_idx + 1]
-        workspace.save_chat(user_id, project_id, truncated)
+    else:
+        truncated = []
+    workspace.save_chat(user_id, project_id, truncated)
         
-        # 3. Synchronize in-memory session history
-        if payload.session_id:
-            session_store.rebuild_history_from_json(payload.session_id, user_id, project_id)
-        
-    # 4. Trigger preview rebuild for live-reload updates
-    await workspace.run_preview_build(user_id, project_id, force=True)
+    # 5. Synchronize in-memory session history
+    if payload.session_id:
+        session_store.rebuild_history_from_json(payload.session_id, user_id, project_id)
+            
+    # 6. Pre-set metadata to building state synchronously
+    meta = workspace.load_meta(user_id, project_id)
+    meta.status = ProjectStatus.BUILDING
+    meta.preview_url = ""
+    meta.preview_error = ""
+    workspace.save_meta(meta)
+
+    # 7. Trigger preview rebuild in the background for live-reload updates
+    asyncio.create_task(workspace.run_preview_build(user_id, project_id, force=True))
     
     return {
         "success": True,
