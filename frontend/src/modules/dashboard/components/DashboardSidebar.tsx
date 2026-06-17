@@ -2,154 +2,127 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-
 import { clearStoredSession } from "../../auth/session";
-import type { Role } from "../types";
 
-interface SidebarItem {
-  key: string;
-  label: string;
-  icon: ReactNode;
-  path: string;
-  roles: Role[];
-}
+/* ── Custom SVG Icons replicating reference crop exactly ── */
 
 function IconLogo() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <rect x="1.5" y="1.5" width="7.5" height="7.5" rx="2.2" fill="currentColor" />
-      <rect x="11" y="1.5" width="7.5" height="7.5" rx="2.2" fill="currentColor" />
-      <rect x="1.5" y="11" width="7.5" height="7.5" rx="2.2" fill="currentColor" />
-      <rect x="11" y="11" width="7.5" height="7.5" rx="2.2" fill="currentColor" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="url(#sidebarIconGrad)">
+      {/* Checkerboard square wave pattern */}
+      <rect x="4" y="13" width="3.5" height="3.5" rx="0.7" />
+      <rect x="8.5" y="7.5" width="3.5" height="3.5" rx="0.7" />
+      <rect x="13" y="13" width="3.5" height="3.5" rx="0.7" />
+      <rect x="17.5" y="7.5" width="3.5" height="3.5" rx="0.7" />
     </svg>
   );
 }
 
-function IconHome() {
+function IconHomePentagon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3 Q12 3 19.5 8.5 Q21 9.5 20.5 11 L17.8 20 Q17.3 21.5 15.8 21.5 L8.2 21.5 Q6.7 21.5 6.2 20 L3.5 11 Q3 9.5 4.5 8.5 Z" />
-      <line x1="9.5" y1="15" x2="14.5" y2="15" strokeWidth="1.8" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2 L22 9 L18 21 L6 21 L2 9 Z" />
+      <circle cx="12" cy="13" r="1.8" fill="url(#sidebarIconGrad)" />
     </svg>
   );
 }
 
-function IconNexterse() {
-  // Regular hexagon: R=9, center(12,12), flat top/bottom, all sides = 9 units
-  // Vertices: top-right(16.5,4.2) top-left(7.5,4.2) left(3,12)
-  //           bottom-left(7.5,19.8) bottom-right(16.5,19.8) right(21,12)
-  // Corner trim = 1.3 along each edge
+function IconAnalyticsCircle() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15.2 4.2 Q16.5 4.2 17.15 5.33 L20.35 10.87 Q21 12 20.35 13.13 L17.15 18.67 Q16.5 19.8 15.2 19.8 L8.8 19.8 Q7.5 19.8 6.85 18.67 L3.65 13.13 Q3 12 3.65 10.87 L6.85 5.33 Q7.5 4.2 8.8 4.2 Z" />
-      {/* N-wave pulled inward — stays ≥2 units from every hexagon edge */}
-      <path d="M8 16 C8 11.5 10 9.5 11.5 10.5 C13 11.5 13 15.5 14.5 15.5 C16 15.5 17 11 16.5 9" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M7 14 l3.5-3.5 2.5 2.5 4.5-4.5" />
     </svg>
   );
 }
 
-function IconMembers() {
+function IconPeopleGroup() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <defs>
-        <clipPath id="members-back-clip">
-          <rect x="13" y="0" width="11" height="24" />
-        </clipPath>
-      </defs>
-      {/* Back person — left side clipped so it doesn't show behind the front person */}
-      <g clipPath="url(#members-back-clip)">
-        <circle cx="16" cy="8.5" r="3" />
-        <path d="M22 20.5a6 6 0 0 0-12 0" />
-      </g>
-      {/* Front person */}
-      <circle cx="9" cy="8.5" r="3.5" />
-      <path d="M1.5 20.5a7.5 7.5 0 0 1 15 0" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {/* Group outline */}
+      <path d="M17 21v-2a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v2" />
+      <circle cx="9.5" cy="7" r="3.5" />
+      <path d="M22 21v-1.8a3 3 0 0 0-2.2-2.9" />
+      <circle cx="17.5" cy="7" r="2.5" />
     </svg>
   );
 }
 
-function IconCalendar() {
+function IconCalendarGrid() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4.5" width="18" height="16.5" rx="3.5" />
-      <path d="M16 2.5v4M8 2.5v4M3 9.5h18" />
-      <path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01M16 17h.01" strokeWidth="2.2" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="5" />
+      <line x1="8" y1="2" x2="8" y2="5" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <rect x="7" y="13" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
+      <rect x="11" y="13" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
+      <rect x="15" y="13" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
+      <rect x="7" y="17" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
+      <rect x="11" y="17" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
+      <rect x="15" y="17" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
     </svg>
   );
 }
 
-function IconConnections() {
+function IconBranchMerge() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="18" cy="5.5" r="2.8" />
-      <circle cx="6" cy="5.5" r="2.8" />
-      <circle cx="6" cy="18.5" r="2.8" />
-      <line x1="6" y1="8.3" x2="6" y2="15.7" />
-      <path d="M18 8.3a9 9 0 0 1-9 9.7H6" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="18" r="2.5" />
+      <circle cx="6" cy="6" r="2.5" />
+      <circle cx="18" cy="6" r="2.5" />
+      <path d="M6 9v7a3 3 0 0 0 3 3h6" />
+      <path d="M18 9v6" />
     </svg>
   );
 }
 
-function IconSupport() {
-  // Hexagon (r=9, center 12,12) — only corner brackets, no full edges
+function IconHexMesh() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19.8 9.7 L19.8 7.5 L17.9 6.4" />
-      <path d="M13.9 4.1 L12 3 L10.1 4.1" />
-      <path d="M6.1 6.4 L4.2 7.5 L4.2 9.7" />
-      <path d="M4.2 14.3 L4.2 16.5 L6.1 17.6" />
-      <path d="M10.1 19.9 L12 21 L13.9 19.9" />
-      <path d="M17.9 17.6 L19.8 16.5 L19.8 14.3" />
-      {/* Y: two arms from upper-left/upper-right converging at center, stem goes down */}
-      <path d="M8.5 8 L12 12 L15.5 8 M12 12 L12 16.5" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
+      <circle cx="12" cy="12" r="3.5" />
+      <line x1="12" y1="2" x2="12" y2="8.5" />
+      <line x1="2" y1="8.5" x2="12" y2="12" />
+      <line x1="22" y1="8.5" x2="12" y2="12" />
+      <line x1="12" y1="22" x2="12" y2="15.5" />
+      <line x1="2" y1="15.5" x2="12" y2="12" />
+      <line x1="22" y1="15.5" x2="12" y2="12" />
     </svg>
   );
 }
 
-function IconSettings() {
+function IconHollowGear() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }
 
 function IconLogout() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#icon-sg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 12h11M17 9l3 3-3 3" />
-      <path d="M14 5.5A8.5 8.5 0 1 0 14 18.5" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }
 
-const NAV_ITEMS: SidebarItem[] = [
-  { key: "dashboard", label: "Dashboard", icon: <IconHome />,        path: "/dashboard",  roles: ["admin", "developer", "qa", "support"] },
-  { key: "projects",  label: "Projects",  icon: <IconNexterse />,    path: "/projects",   roles: ["admin", "developer", "qa"] },
-  { key: "member",    label: "Members",   icon: <IconMembers />,     path: "/member",     roles: ["admin", "developer", "qa"] },
-  { key: "tasks",     label: "Tasks",     icon: <IconCalendar />,    path: "/tasks",      roles: ["admin", "developer", "qa"] },
-  { key: "agents",    label: "AI Agents", icon: <IconConnections />, path: "/agents",     roles: ["admin", "developer", "qa"] },
-  { key: "support",   label: "Support",   icon: <IconSupport />,     path: "/support",    roles: ["admin", "developer", "qa", "support"] },
-  { key: "settings",  label: "Settings",  icon: <IconSettings />,    path: "/settings",   roles: ["admin", "developer", "qa", "support"] },
-];
+/* ═══════════════════════════════════════════════════════════════ */
 
-interface DashboardSidebarProps {
-  activeRole: Role;
-}
-
-function isPathActive(pathname: string, itemPath: string): boolean {
-  if (pathname === itemPath) return true;
-  if (itemPath === "/settings") return false;
-  return itemPath !== "/" && pathname.startsWith(`${itemPath}/`);
-}
-
-export function DashboardSidebar({ activeRole }: DashboardSidebarProps) {
+export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unknown } = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(activeRole));
+  // Helper to determine path active state
+  const isActive = (itemPath: string) => {
+    if (pathname === itemPath) return true;
+    if (itemPath === "/settings") return false;
+    return itemPath !== "/" && pathname.startsWith(`${itemPath}/`);
+  };
 
   const handleLogout = () => {
     clearStoredSession();
@@ -157,54 +130,125 @@ export function DashboardSidebar({ activeRole }: DashboardSidebarProps) {
   };
 
   return (
-    <aside className="dashboard-sidebar sidebar--collapsed">
-      {/* Gradient definition shared by all icon strokes */}
-      <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }} aria-hidden="true">
+    <aside className="dashboard-sidebar sidebar--collapsed" aria-label="Sidebar navigation">
+      {/* Shared SVG Gradient Definition */}
+      <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden="true">
         <defs>
-          <linearGradient id="icon-sg" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-            <stop offset="0%"   stopColor="#2e3948" />
-            <stop offset="33%"  stopColor="#9da7b6" />
-            <stop offset="67%"  stopColor="#858f9e" />
-            <stop offset="100%" stopColor="#636a79" />
+          <linearGradient id="sidebarIconGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="25%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#90a5c3" />
           </linearGradient>
         </defs>
       </svg>
 
-      <div className="sidebar-header">
-        <div className="sidebar-logo-btn" aria-label="AI Developer">
-          <span className="sidebar-logo-mark" aria-hidden="true">
-            <IconLogo />
-          </span>
-        </div>
+      {/* Logo Wrapper */}
+      <div className="sidebar-header" style={{ padding: "18px 0 12px" }}>
+        <Link
+          href="/dashboard"
+          className="sidebar-logo"
+          aria-label="Go to dashboard"
+          style={{
+            background: "linear-gradient(135deg, #4d7cff 0%, #0040e6 100%)",
+            borderRadius: "10px",
+            width: "38px",
+            height: "38px",
+            display: "grid",
+            placeItems: "center",
+            boxShadow: "0 4px 12px rgba(0, 60, 220, 0.35)",
+            border: "none",
+            color: "#fff"
+          }}
+        >
+          <IconLogo />
+        </Link>
       </div>
 
-      <nav className="sidebar-nav" aria-label="Primary navigation">
-        {visibleItems.map((item) => {
-          const active = isPathActive(pathname, item.path);
-          const hasDividerAfter = item.key === "tasks" || item.key === "support";
-          return (
-            <div key={item.key} className="sidebar-nav-item-wrap">
-              <Link
-                href={item.path}
-                className={`sidebar-link${active ? " sidebar-link--active" : ""}`}
-                title={item.label}
-                aria-label={item.label}
-              >
-                <span className="sidebar-link-icon">{item.icon}</span>
-              </Link>
-              {hasDividerAfter && <div className="sidebar-nav-divider" />}
-            </div>
-          );
-        })}
+      {/* Nav Link List */}
+      <nav className="sidebar-nav" aria-label="Primary navigation" style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+        
+        {/* Section 1 */}
+        <Link
+          href="/dashboard"
+          className={`sidebar-link ${isActive("/dashboard") ? "sidebar-link--active" : ""}`}
+          title="Dashboard"
+          aria-label="Dashboard"
+        >
+          <span className="sidebar-link-icon"><IconHomePentagon /></span>
+        </Link>
+
+        <Link
+          href="/projects"
+          className={`sidebar-link ${isActive("/projects") ? "sidebar-link--active" : ""}`}
+          title="Projects"
+          aria-label="Projects"
+        >
+          <span className="sidebar-link-icon"><IconAnalyticsCircle /></span>
+        </Link>
+
+        <Link
+          href="/member"
+          className={`sidebar-link ${isActive("/member") ? "sidebar-link--active" : ""}`}
+          title="Members"
+          aria-label="Members"
+        >
+          <span className="sidebar-link-icon"><IconPeopleGroup /></span>
+        </Link>
+
+        <Link
+          href="/tasks"
+          className={`sidebar-link ${isActive("/tasks") ? "sidebar-link--active" : ""}`}
+          title="Tasks"
+          aria-label="Tasks"
+        >
+          <span className="sidebar-link-icon"><IconCalendarGrid /></span>
+        </Link>
+
+        {/* Separator line */}
+        <div style={{ height: "1px", background: "rgba(255, 255, 255, 0.08)", margin: "4px 8px" }} />
+
+        {/* Section 2 */}
+        <Link
+          href="/support"
+          className={`sidebar-link ${isActive("/support") ? "sidebar-link--active" : ""}`}
+          title="Support"
+          aria-label="Support"
+        >
+          <span className="sidebar-link-icon"><IconBranchMerge /></span>
+        </Link>
+
+        <Link
+          href="/agents"
+          className={`sidebar-link ${isActive("/agents") ? "sidebar-link--active" : ""}`}
+          title="AI Agents"
+          aria-label="AI Agents"
+        >
+          <span className="sidebar-link-icon"><IconHexMesh /></span>
+        </Link>
+
+        {/* Separator line */}
+        <div style={{ height: "1px", background: "rgba(255, 255, 255, 0.08)", margin: "4px 8px" }} />
+
+        {/* Section 3 */}
+        <Link
+          href="/settings"
+          className={`sidebar-link ${isActive("/settings") ? "sidebar-link--active" : ""}`}
+          title="Settings"
+          aria-label="Settings"
+        >
+          <span className="sidebar-link-icon"><IconHollowGear /></span>
+        </Link>
+
       </nav>
 
-      <div className="sidebar-footer">
+      {/* Logout */}
+      <div className="sidebar-footer" style={{ borderTop: "none", padding: "10px 10px 20px" }}>
         <button
           type="button"
           className="sidebar-link sidebar-link--muted"
           title="Logout"
           aria-label="Logout"
           onClick={handleLogout}
+          style={{ width: "44px", height: "44px" }}
         >
           <span className="sidebar-link-icon"><IconLogout /></span>
         </button>
