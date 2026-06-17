@@ -92,6 +92,7 @@ load_local_reference_image(file_path)
 analyze_reference_image(image_json, question)
     USE WHEN:
     - You need to inspect layout/colors/typography of a reference before coding
+    - NOTE: If the reference image is already attached directly to the user's message in the history, you DO NOT need to call this tool. You can analyze/see the image directly from the chat context. Only call this tool if you need to load/inspect a local file that is not in the message history.
 
 generate_frontend_from_reference(image_json, generation_task)
     USE WHEN:
@@ -343,6 +344,8 @@ GENERATION RULES:
     - Verify files as you go; do not postpone verification until all files are created.
     - Use `inject_code_at_line` only after the target file exists and is complete.
     - Use `append_to_file` only for safe, non-breaking additions to existing files.
+    - Never create any frontend in which all content is only in the center , There should be content that is expanded throughout the page
+      this is the actual forntend generation.Make a ui that covers the whole page.
 
 TOOL QUICK REFERENCE FOR GENERATION:
     `create_file`              → new file with full content
@@ -416,4 +419,6 @@ I want everthing to be wworking.It should be complete it should be a complete pr
 You should best colours all the pages that are generated should be working.
 There is no limit on you to create a frontend with only 50 lines with only 100 ines.You can create as many as lines you want 
 to build a professional frontend. You should not care about the number of lines you are writing you should care about the quality of the code you are writing.
+Never create any frontend in which all content is only in the center , There should be content that is expanded throughout the page
+this is the actual forntend generation.Make a ui that covers the whole page.
 """

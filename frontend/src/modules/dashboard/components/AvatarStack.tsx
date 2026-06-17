@@ -12,9 +12,8 @@ export function AvatarStack({ members, maxVisible = 3 }: AvatarStackProps) {
     return <span className="avatar-empty">No members</span>;
   }
 
-  const showCountBubble = members.length > maxVisible;
-  const visibleMembers = showCountBubble ? members.slice(0, 2) : members.slice(0, maxVisible);
-  const hiddenCount = members.length - visibleMembers.length;
+  const visibleMembers = members.slice(0, maxVisible);
+  const hiddenCount = Math.max(0, members.length - visibleMembers.length);
 
   return (
     <div className="avatar-stack" aria-label="project members">
@@ -30,7 +29,7 @@ export function AvatarStack({ members, maxVisible = 3 }: AvatarStackProps) {
           unoptimized
         />
       ))}
-      {showCountBubble ? <span className="avatar-count">+{hiddenCount}</span> : null}
+      {hiddenCount > 0 ? <span className="avatar-count">+{hiddenCount}</span> : null}
     </div>
   );
 }

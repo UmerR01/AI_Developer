@@ -1778,6 +1778,18 @@
           state.workingItems = [];
           state.workingOpen = false;
           addWorkingUpdate('Request received', String(payload.prompt || '').slice(0, 240), 'ack');
+          addMessage('agent', '', 'streaming', { persist: false });
+          return;
+        }
+
+        if (payload.type === 'text_chunk') {
+          let lastMsg = state.messages[state.messages.length - 1];
+          if (!lastMsg || lastMsg.role !== 'agent' || lastMsg.meta !== 'streaming') {
+            addMessage('agent', '', 'streaming', { persist: false });
+            lastMsg = state.messages[state.messages.length - 1];
+          }
+          lastMsg.content += payload.content || '';
+          renderMessages();
           return;
         }
 
@@ -1867,7 +1879,15 @@
         }
 
         if (payload.type === 'response') {
-          addMessage('agent', payload.output || '', payload.session_id || 'response');
+          const lastMsg = state.messages[state.messages.length - 1];
+          if (lastMsg && lastMsg.role === 'agent' && lastMsg.meta === 'streaming') {
+            lastMsg.content = payload.output || '';
+            lastMsg.meta = payload.session_id || 'response';
+            renderMessages();
+            scheduleChatSave();
+          } else {
+            addMessage('agent', payload.output || '', payload.session_id || 'response');
+          }
           setRawOutput(payload.output || '');
           const maybeJson = tryParseStructuredFiles(payload.output || '');
           if (maybeJson) pushStructuredFiles(maybeJson);
@@ -1906,8 +1926,24 @@
           setGenerating(false);
           clearWorkingUpdates();
           if (payload.type === 'stopped') {
-            addMessage('agent', 'Generation stopped.', 'stop');
+            const lastMsg = state.messages[state.messages.length - 1];
+            if (lastMsg && lastMsg.role === 'agent' && lastMsg.meta === 'streaming') {
+              lastMsg.meta = 'stop';
+              if (!lastMsg.content) {
+                lastMsg.content = 'Generation stopped.';
+              }
+              renderMessages();
+              scheduleChatSave();
+            } else {
+              addMessage('agent', 'Generation stopped.', 'stop');
+            }
           } else {
+            const lastMsg = state.messages[state.messages.length - 1];
+            if (lastMsg && lastMsg.role === 'agent' && lastMsg.meta === 'streaming') {
+              lastMsg.meta = 'response';
+              renderMessages();
+              scheduleChatSave();
+            }
             addActivity('Agent run finished.', 'system');
             requestFileManifest();
             refreshPreviewStatus();
