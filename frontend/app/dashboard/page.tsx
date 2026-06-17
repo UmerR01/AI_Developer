@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import "../../src/modules/dashboard/dashboard.css";
 
-import { getStoredAccessToken, getStoredUser, getStoredUsername } from "../../src/modules/auth/session";
+import { getStoredAccessToken, getStoredUsername } from "../../src/modules/auth/session";
+
 import { DashboardOverviewStrip } from "../../src/modules/dashboard/components/DashboardOverviewStrip";
 import { DashboardSidebar } from "../../src/modules/dashboard/components/DashboardSidebar";
 import { DashboardTopBar } from "../../src/modules/dashboard/components/DashboardTopBar";
