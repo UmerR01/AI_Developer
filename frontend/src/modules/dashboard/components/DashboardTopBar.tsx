@@ -33,22 +33,33 @@ export function DashboardTopBar({
 
   return (
     <header className="dashboard-topbar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: "64px", padding: "0 24px" }}>
+
+      {/* Hidden SVG gradient definition for topbar icons */}
+      <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden="true">
+        <defs>
+          <linearGradient id="topbarIconGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="25%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#90a5c3" />
+          </linearGradient>
+        </defs>
+      </svg>
+
       {/* ── Left: Page title ── */}
       <div className="topbar-left" style={{ display: "flex", alignItems: "center" }}>
-        <h1 className="topbar-title" style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", margin: 0 }}>
+        <h1 className="topbar-title">
           {title}
         </h1>
       </div>
 
       {/* ── Center: Search ── */}
       <div className="topbar-search" style={{ flex: "1", maxWidth: "340px", position: "relative", marginLeft: "24px" }}>
-        <span className="topbar-search-icon" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)", display: "flex" }}>
+        <span className="topbar-search-icon" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", display: "flex" }}>
           <svg
             width="14"
             height="14"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
+            stroke="url(#topbarIconGrad)"
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -121,7 +132,7 @@ export function DashboardTopBar({
             height="16"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
+            stroke="url(#topbarIconGrad)"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -160,7 +171,7 @@ export function DashboardTopBar({
               height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="currentColor"
+              stroke="url(#topbarIconGrad)"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"

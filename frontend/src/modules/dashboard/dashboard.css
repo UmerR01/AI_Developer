@@ -111,16 +111,55 @@
   color: #ffffff !important;
 }
 
-/* ── Full reset for topbar ── */
+/* ── Full reset for topbar (exclude title + SVG gradient elements) ── */
 .dashboard-topbar,
-.dashboard-topbar *,
-.dashboard-topbar *::before,
-.dashboard-topbar *::after {
+.dashboard-topbar *:not(.topbar-title):not(.topbar-icon-gradient),
+.dashboard-topbar *:not(.topbar-title):not(.topbar-icon-gradient)::before,
+.dashboard-topbar *:not(.topbar-title):not(.topbar-icon-gradient)::after {
   background-image: none !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
   -webkit-text-fill-color: currentColor !important;
   color: inherit;
+}
+
+/* ── Topbar title: Outfit gradient text ── */
+.topbar-title {
+  font-family: var(--font-outfit), 'Outfit', sans-serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.02em !important;
+  background: linear-gradient(180deg, #ffffff 25%, #90a5c3 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  width: fit-content;
+  margin: 0;
+}
+
+/* ── Topbar icon buttons: gradient stroke color ── */
+.topbar-icon-btn svg {
+  color: rgba(144, 165, 195, 0.85);
+}
+.topbar-icon-btn:hover svg {
+  color: #ffffff;
+}
+
+/* ── Topbar search: gradient border glow ── */
+.topbar-search-input {
+  border: 1px solid rgba(90, 106, 150, 0.45) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+.topbar-search-input:focus {
+  border-color: rgba(144, 165, 195, 0.7) !important;
+  box-shadow: 0 0 0 1px rgba(144, 165, 195, 0.2) !important;
+}
+
+/* ── Topbar filter/dropdown: gradient border ── */
+.dash-area-filters select,
+.dash-area-filters div[style*="border"] {
+  border-color: rgba(90, 106, 150, 0.45) !important;
 }
 
 /* Storage card large number: solid white */
@@ -617,18 +656,43 @@ button[style*="background:linear-gradient"] {
    CARD BASE – dark navy glass, NOT too transparent
    ═══════════════════════════════════════════════════════════════ */
 .dashboard-card {
+  position: relative;
   background: rgba(4, 11, 38, 0.48);
-  border: 1px solid rgba(40, 100, 230, 0.16);
   border-radius: var(--radius-xl);
   padding: 20px;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  /* Gradient border via outline layer */
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  --card-border-gradient: linear-gradient(160deg, #5a6a96 0%, #2a3454 35%, #1c2440 55%, #4a5680 75%, #6a7aa8 100%);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 0 1px rgba(90, 106, 150, 0.35);
 }
 
-.dashboard-card:hover {
-  border-color: rgba(40, 100, 230, 0.22);
+/* Gradient border pseudo-element overlay */
+.dashboard-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  padding: 1px;
+  background: linear-gradient(160deg, #5a6a96 0%, #2a3454 35%, #1c2440 55%, #4a5680 75%, #6a7aa8 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dashboard-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-card:hover::before {
+  background: linear-gradient(160deg, #7a8ab6 0%, #3a4464 35%, #2c3450 55%, #5a6690 75%, #8a9ac8 100%);
 }
 
 .card-head {
@@ -703,18 +767,40 @@ button[style*="background:linear-gradient"] {
    STORAGE HERO CARD
    ═══════════════════════════════════════════════════════════════ */
 .storage-hero-card {
-  background: rgba(4, 11, 38, 0.55);
-  border: 1px solid rgba(40, 100, 230, 0.18);
+  position: relative;
+  background: #0d1530;
   border-radius: var(--radius-xl);
   padding: 22px;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  transition: box-shadow var(--duration-fast) ease;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  overflow: hidden;
+  border: 1px solid transparent;
 }
 
-.storage-hero-card:hover {
-  border-color: rgba(40, 100, 230, 0.26);
+/* Gradient border pseudo-element for storage card */
+.storage-hero-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  padding: 1.5px;
+  background: linear-gradient(160deg, #5a6a96 0%, #2a3454 35%, #1c2440 55%, #4a5680 75%, #6a7aa8 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.storage-hero-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.storage-hero-card:hover::before {
+  background: linear-gradient(160deg, #7a8ab6 0%, #3a4464 35%, #2c3450 55%, #5a6690 75%, #8a9ac8 100%);
 }
 
 .storage-plan-badge {

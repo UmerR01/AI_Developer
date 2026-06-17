@@ -23,11 +23,11 @@ export function StorageWidget({ usedBytes, totalBytes }: StorageWidgetProps) {
             onChange={(e) => setMonth(e.target.value)}
             style={{
               background: "rgba(10, 25, 70, 0.55)",
-              border: "1px solid rgba(50, 120, 255, 0.22)",
-              borderRadius: "8px",
+              border: "1.5px solid #3a4a78",
+              borderRadius: "20px",
               color: "var(--text)",
               fontSize: "0.72rem",
-              padding: "4px 26px 4px 10px",
+              padding: "6px 26px 6px 14px",
               outline: "none",
               cursor: "pointer",
               appearance: "none",
@@ -39,56 +39,73 @@ export function StorageWidget({ usedBytes, totalBytes }: StorageWidgetProps) {
             <option value="October">October</option>
             <option value="November">November</option>
           </select>
-          <span style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)", fontSize: "0.5rem", pointerEvents: "none" }}>▼</span>
+          <span style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)", fontSize: "0.5rem", pointerEvents: "none" }}>▼</span>
         </div>
       </div>
 
-      {/* Large Storage Number — plain white, NOT gradient (reference shows solid heavy text) */}
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontSize: "3.6rem",
-          fontWeight: 800,
-          letterSpacing: "-0.05em",
-          lineHeight: 1,
-          color: "#ffffff",
-          display: "flex",
-          alignItems: "baseline",
-          gap: "6px",
-          marginBottom: "18px"
-        }}>
-          <span style={{ WebkitTextFillColor: "#ffffff", backgroundImage: "none", background: "none", WebkitBackgroundClip: "unset" }}>650</span>
-          <span style={{ fontSize: "1.5rem", fontWeight: 600, color: "rgba(180,205,240,0.7)", WebkitTextFillColor: "rgba(180,205,240,0.7)" }}>GB</span>
-        </div>
+      {/* Large Storage Number — gradient text matching reference exactly */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "10px" }}>
+        <span style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: "2.6rem",
+          fontWeight: 300,
+          letterSpacing: "-0.02em",
+          background: "linear-gradient(180deg, #ffffff 25%, #90a5c3 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+          color: "transparent"
+        }}>650</span>
+        <span style={{
+          fontFamily: "'Outfit', sans-serif",
+          fontSize: "1.4rem",
+          fontWeight: 700,
+          color: "#90a5c3",
+          WebkitTextFillColor: "#90a5c3"
+        }}>GB</span>
       </div>
 
-      {/* Rainbow Progress Bar */}
-      <div style={{
-        position: "relative",
-        width: "100%",
-        height: "7px",
-        borderRadius: "999px",
-        background: "rgba(255, 255, 255, 0.06)",
-        marginBottom: "10px"
-      }}>
+      {/* Rainbow Progress Bar with coloured glow reflection — exact reference */}
+      <div style={{ position: "relative", height: "25px" }}>
+        {/* Glow blur layer beneath the bar */}
         <div style={{
           position: "absolute",
           left: 0,
-          top: 0,
-          height: "100%",
-          width: "65%",
-          borderRadius: "999px",
-          background: "linear-gradient(90deg, #ff4d2e 0%, #ffb300 25%, #00dd88 50%, #00aaff 75%, #0044ee 100%)",
-          boxShadow: "0 0 10px rgba(0, 160, 255, 0.35)"
+          bottom: 0,
+          width: "64%",
+          height: "16px",
+          background: "linear-gradient(90deg, #ff4d2e 0%, #ffb02e 33%, #2ecc71 66%, #2e6cff 100%)",
+          opacity: 0.6,
+          filter: "blur(14px)",
+          pointerEvents: "none"
         }} />
+        {/* Actual progress bar track + fill */}
+        <div style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "6px",
+          borderRadius: "6px",
+          background: "#1c2748",
+          overflow: "hidden"
+        }}>
+          <div style={{
+            width: "64%",
+            height: "100%",
+            borderRadius: "6px",
+            background: "linear-gradient(90deg, #ff4d2e 0%, #ffb02e 33%, #2ecc71 66%, #2e6cff 100%)"
+          }} />
+        </div>
       </div>
 
       {/* Footer labels */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
         <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", fontWeight: 500 }}>
           Your Storage
         </span>
         <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)", fontWeight: 500 }}>
-          103.38 pm
+          103.38 GB left
         </span>
       </div>
     </article>
