@@ -14,6 +14,11 @@ from skills import read_frontend_skill
 from llm_retry import invoke_with_retry, is_context_limit_error
 from prompt import agent_prompt
 
+class UserInterruptError(Exception):
+    def __init__(self, partial_content: str):
+        self.partial_content = partial_content
+        super().__init__("Generation interrupted by user")
+
 logger_agent = logging.getLogger("agent")
 
 from tools import (
@@ -501,21 +506,55 @@ def _run_agent_loop(
             _emit_event(event_sink, "stopped", reason="stop_requested_during_loop", iteration=iteration + 1)
             return "⏹ Generation stopped by user."
 
-        response = invoke_with_retry(
-            lambda: llm_with_tools.invoke(message_history),
-            label="agent-llm",
-            on_retry=lambda attempt, max_a, wait, exc: (
-                _emit_event(
-                    event_sink,
-                    "agent_log",
-                    message=f"⚠️ LLM error (attempt {attempt}/{max_a}), retrying in {wait:.1f}s: {exc}",
-                    iteration=iteration + 1,
-                )
-            ),
-            on_context_error=lambda attempt, exc: _compact_history_on_429(
-                message_history, event_sink, session_id=None, attempt=attempt, exc=exc
-            ),
-        )
+        full_text = ""
+        def get_streamed_response():
+            nonlocal full_text
+            full_text = ""
+            chunks = []
+            for chunk in llm_with_tools.stream(message_history):
+                if stop_requested():
+                    raise UserInterruptError(full_text)
+                chunk_text = extract_text(chunk.content)
+                if chunk_text:
+                    full_text += chunk_text
+                    import time
+                    for char in chunk_text:
+                        if stop_requested():
+                            raise UserInterruptError(full_text)
+                        _emit_event(event_sink, "text_chunk", content=char, iteration=iteration + 1)
+                        time.sleep(0.015)
+                chunks.append(chunk)
+            
+            if not chunks:
+                return AIMessage(content="")
+            
+            response = chunks[0]
+            for c in chunks[1:]:
+                response += c
+            return response
+
+        try:
+            response = invoke_with_retry(
+                get_streamed_response,
+                label="agent-llm",
+                on_retry=lambda attempt, max_a, wait, exc: (
+                    _emit_event(
+                        event_sink,
+                        "agent_log",
+                        message=f"⚠️ LLM error (attempt {attempt}/{max_a}), retrying in {wait:.1f}s: {exc}",
+                        iteration=iteration + 1,
+                    )
+                ),
+                on_context_error=lambda attempt, exc: _compact_history_on_429(
+                    message_history, event_sink, session_id=None, attempt=attempt, exc=exc
+                ),
+            )
+        except UserInterruptError as interrupt:
+            # Save the partial response generated so far to history
+            partial_msg = AIMessage(content=interrupt.partial_content)
+            message_history.append(partial_msg)
+            _emit_event(event_sink, "assistant_message", content=interrupt.partial_content, final=True)
+            return "⏹ Generation stopped by user."
 
         # ── Show Gemini thinking ───────────────────────────────────────────
         thinking = _extract_thinking(response)
