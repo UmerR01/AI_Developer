@@ -113,7 +113,7 @@ function IconLogout() {
 
 /* ═══════════════════════════════════════════════════════════════ */
 
-export function DashboardSidebar({ activeRole }: { activeRole?: any } = {}) {
+export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unknown } = {}) {
   const pathname = usePathname();
   const router = useRouter();
 
