@@ -151,7 +151,7 @@ function IconLogout() {
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-export function DashboardSidebar({ activeRole }: { activeRole?: string } = {}) {
+export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: string } = {}) {
   const pathname = usePathname();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -168,8 +168,6 @@ export function DashboardSidebar({ activeRole }: { activeRole?: string } = {}) {
     setIsExpanded(nextState);
     localStorage.setItem("sidebar-expanded", String(nextState));
   };
-
-  const isSupport = activeRole === "support";
 
   // Helper to determine path active state
   const isActive = (itemPath: string) => {

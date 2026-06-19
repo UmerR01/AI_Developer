@@ -473,7 +473,6 @@ export function IntegrationsWorkspace({ initialSlug }: IntegrationsWorkspaceProp
 
             <div className="integration-grid">
               {filteredIntegrations.map((item) => {
-                const meta = statusState(item);
                 return (
                   <article key={item.id} className={integrationCardClass(item)}>
                     <div className="integration-card-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
