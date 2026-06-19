@@ -1334,14 +1334,14 @@ export function ProjectsWorkspace({ selectedProjectId }: ProjectsWorkspaceProps)
                 </button>
                 <button
                   type="button"
-                  className="action-btn-ghost"
+                  className="action-btn-primary"
                   onClick={() => selectedProject && openAgentWorkspace(selectedProject, false)}
                 >
                   Open Agent Workspace
                 </button>
                 <button
                   type="button"
-                  className="action-btn-ghost"
+                  className="action-btn-primary"
                   onClick={() => selectedProject && openProjectPreview(selectedProject, true)}
                   disabled={previewLoading}
                 >

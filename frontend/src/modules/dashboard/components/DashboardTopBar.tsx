@@ -110,16 +110,16 @@ export function DashboardTopBar({
       {/* ── Right: Actions + Profile ── */}
       <div className="topbar-right" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         
-        {/* Help icon button (custom circle) */}
+        {/* Help icon button */}
         <button
           type="button"
           className="topbar-icon-btn"
           aria-label="Help"
           style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "50%",
-            border: "1px solid rgba(40, 90, 200, 0.15)",
+            width: "48px",
+            height: "48px",
+            borderRadius: "10px",
+            border: "1px solid rgba(90, 106, 150, 0.45)",
             background: "rgba(6, 18, 55, 0.45)",
             color: "var(--text-secondary)",
             display: "grid",
@@ -128,12 +128,12 @@ export function DashboardTopBar({
           }}
         >
           <svg
-            width="16"
-            height="16"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="url(#topbarIconGrad)"
-            strokeWidth="2"
+            strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"
           >
@@ -154,10 +154,10 @@ export function DashboardTopBar({
             aria-haspopup="dialog"
             onClick={() => setIsOpen((v) => !v)}
             style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              border: "1px solid rgba(40, 90, 200, 0.15)",
+              width: "48px",
+              height: "48px",
+              borderRadius: "10px",
+              border: "1px solid rgba(90, 106, 150, 0.45)",
               background: "rgba(6, 18, 55, 0.45)",
               color: "var(--text-secondary)",
               display: "grid",
@@ -167,12 +167,12 @@ export function DashboardTopBar({
             }}
           >
             <svg
-              width="16"
-              height="16"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="url(#topbarIconGrad)"
-              strokeWidth="2"
+              strokeWidth="1.8"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -256,19 +256,32 @@ export function DashboardTopBar({
             padding: 0
           }}
         >
-          {/* Default user avatar matching the reference */}
-          <div style={{ position: "relative", width: "32px", height: "32px" }}>
+          {/* Avatar styled as a button matching Help & Bell icons */}
+          <div
+            className="topbar-icon-btn"
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "10px",
+              border: "1px solid rgba(90, 106, 150, 0.45)",
+              background: "rgba(6, 18, 55, 0.45)",
+              display: "grid",
+              placeItems: "center",
+              cursor: "pointer",
+              overflow: "hidden",
+              flexShrink: 0
+            }}
+          >
             <Image
               src="https://api.dicebear.com/8.x/adventurer/svg?seed=Alfred"
               alt="Alfred Williamson"
-              width={32}
-              height={32}
+              width={48}
+              height={48}
               unoptimized
               style={{
-                borderRadius: "50%",
-                background: "rgba(10, 25, 75, 0.9)",
-                border: "1.5px solid rgba(255, 255, 255, 0.15)",
-                objectFit: "cover"
+                borderRadius: "10px",
+                objectFit: "cover",
+                display: "block"
               }}
             />
           </div>

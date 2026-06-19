@@ -1859,3 +1859,149 @@
   .projects-modal { padding: 14px; }
   .modal-actions { flex-direction: column; }
 }
+
+/* ── Upgraded Projects Page Glassmorphism Cards & Button Styles ── */
+
+.projects-kpi-card,
+.recent-card,
+.project-folder-card,
+.detail-storage-card,
+.overview-main-card,
+.overview-meta-card {
+  position: relative !important;
+  background: rgba(5, 9, 21, 0.2) !important;
+  border-radius: var(--radius-xl) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(187, 220, 253, 0.07) !important;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease !important;
+}
+
+/* Remove colored top borders on KPI cards to let the premium border take visual focus */
+.projects-kpi-card.kpi-open,
+.projects-kpi-card.kpi-review,
+.projects-kpi-card.kpi-prog,
+.projects-kpi-card.kpi-res {
+  border-top: 1px solid transparent !important;
+}
+
+/* Render contents over the absolute gradient borders */
+.projects-kpi-card > *,
+.recent-card > *,
+.project-folder-card > *,
+.detail-storage-card > *,
+.overview-main-card > *,
+.overview-meta-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Metallic gradient border */
+.projects-kpi-card::before,
+.recent-card::before,
+.project-folder-card::before,
+.detail-storage-card::before,
+.overview-main-card::before,
+.overview-meta-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  padding: 1px;
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.35) 0%,
+      rgba(147, 197, 253, 0.12) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.10) 75%,
+      rgba(187, 220, 253, 0.28) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+/* Hover border highlight */
+.projects-kpi-card:hover::before,
+.recent-card:hover::before,
+.project-folder-card:hover::before,
+.detail-storage-card:hover::before,
+.overview-main-card:hover::before,
+.overview-meta-card:hover::before {
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.55) 0%,
+      rgba(147, 197, 253, 0.22) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.18) 75%,
+      rgba(187, 220, 253, 0.45) 100%) !important;
+}
+
+/* Buttons style overrides matching the "Share Access" aesthetic */
+.action-btn-primary,
+.detail-access-btn,
+.project-restore-btn {
+  background: #bbdcfd !important;
+  color: #050a1e !important;
+  -webkit-text-fill-color: #050a1e !important;
+  font-weight: 500 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(187, 220, 253, 0.25) !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease !important;
+}
+
+.action-btn-primary:hover,
+.detail-access-btn:hover,
+.project-restore-btn:hover {
+  background: #e0f2fe !important;
+  box-shadow: 0 4px 20px rgba(187, 220, 253, 0.45) !important;
+}
+
+.action-btn-primary:active,
+.detail-access-btn:active,
+.project-restore-btn:active {
+  transform: scale(0.97) !important;
+}
+
+.action-btn-primary:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+/* ── Text Visibility Overrides for Glassmorphic Cards (Chrome backdrop-filter bug fix) ── */
+
+.projects-kpi-card p, .projects-kpi-card span, .projects-kpi-card label, .projects-kpi-card time, .projects-kpi-card strong, .projects-kpi-card small, .projects-kpi-card h1, .projects-kpi-card h2, .projects-kpi-card h3, .projects-kpi-card h4, .projects-kpi-card h5, .projects-kpi-card h6,
+.recent-card p, .recent-card span, .recent-card label, .recent-card time, .recent-card strong, .recent-card small, .recent-card h1, .recent-card h2, .recent-card h3, .recent-card h4, .recent-card h5, .recent-card h6,
+.project-folder-card p, .project-folder-card span, .project-folder-card label, .project-folder-card time, .project-folder-card strong, .project-folder-card small, .project-folder-card h1, .project-folder-card h2, .project-folder-card h3, .project-folder-card h4, .project-folder-card h5, .project-folder-card h6,
+.detail-storage-card p, .detail-storage-card span, .detail-storage-card label, .detail-storage-card time, .detail-storage-card strong, .detail-storage-card small, .detail-storage-card h1, .detail-storage-card h2, .detail-storage-card h3, .detail-storage-card h4, .detail-storage-card h5, .detail-storage-card h6,
+.overview-main-card p, .overview-main-card span, .overview-main-card label, .overview-main-card time, .overview-main-card strong, .overview-main-card small, .overview-main-card h1, .overview-main-card h2, .overview-main-card h3, .overview-main-card h4, .overview-main-card h5, .overview-meta-card h6,
+.overview-meta-card p, .overview-meta-card span, .overview-meta-card label, .overview-meta-card time, .overview-meta-card strong, .overview-meta-card small, .overview-meta-card h1, .overview-meta-card h2, .overview-meta-card h3, .overview-meta-card h4, .overview-meta-card h5, .overview-meta-card h6 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+}
+
+/* Specific text color configurations to override color: inherit */
+.recent-card .recent-card-logo { color: #8ab4e0 !important; background: rgba(255, 255, 255, 0.06) !important; }
+.recent-card .recent-card-status { color: #8ab4e0 !important; background: rgba(255, 255, 255, 0.06) !important; }
+.recent-card .recent-card-status.state-completed { color: #6ee7b7 !important; }
+.recent-card .recent-card-status.state-draft { color: #888 !important; }
+.recent-card .recent-card-status.state-review { color: #c9a84c !important; }
+.recent-card .recent-card-desc { color: #6a7a94 !important; }
+.recent-card .recent-card-time { color: #4a6080 !important; }
+.recent-card .recent-card-stat { color: #7a8ca8 !important; }
+.recent-card .recent-card-body h3 { color: #ffffff !important; }
+
+.projects-kpi-card .projects-kpi-label { color: var(--text-secondary) !important; }
+.projects-kpi-card .projects-kpi-num { color: var(--text) !important; }
+
+.project-folder-card .project-folder-name { color: var(--text) !important; }
+

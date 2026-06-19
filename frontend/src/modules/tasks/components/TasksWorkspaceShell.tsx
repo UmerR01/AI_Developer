@@ -565,7 +565,7 @@ export function TasksWorkspaceShell() {
             return (
               <article
                 key={status}
-                className="admin-task-column"
+                className={`admin-task-column column-${status}`}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => handleDrop(status)}
               >
@@ -586,16 +586,37 @@ export function TasksWorkspaceShell() {
                       onDragStart={() => setDragTaskId(task.id)}
                       onDragEnd={() => setDragTaskId(null)}
                     >
+                      {/* Project name label */}
+                      <span className="task-card-project">{task.projectName}</span>
+
                       <div className="task-chip-row">
                         <span className={`task-chip priority-${task.priority}`}>{task.priority}</span>
                         <span className={`task-chip type-${task.type}`}>{taskTypeLabel(task.type)}</span>
                       </div>
+
                       <h4>{task.name}</h4>
                       <p>{task.description}</p>
+
                       <footer>
-                        <span>{task.createdAt}</span>
-                        <span className="small-badge">C {task.commentsCount}</span>
-                        <span className="small-badge">@ {task.mentionsCount}</span>
+                        <div className="task-card-footer-left">
+                          <span className={`task-chip status-${task.status}`}>{taskStatusLabel(task.status)}</span>
+                          {task.assigneeUsernames.length > 0 && (
+                            <span className="task-card-assignee-count">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                              {task.assigneeUsernames.length}
+                            </span>
+                          )}
+                        </div>
+                        <div className="task-card-footer-right">
+                          <span className="small-badge">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            {task.commentsCount}
+                          </span>
+                          <span className="small-badge">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.61 4.93 2 2 0 0 1 3.58 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16"/></svg>
+                            {task.mentionsCount}
+                          </span>
+                        </div>
                       </footer>
                     </article>
                   ))}

@@ -244,9 +244,78 @@ const AGENTS: MarketAgent[] = [
   },
 ];
 
+function getCategoryIcon(category: string, size = 16) {
+  switch (category) {
+    case "development":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      );
+    case "qa":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+    case "design":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="7" r="1" fill="currentColor" />
+          <circle cx="7" cy="11" r="1" fill="currentColor" />
+          <circle cx="17" cy="11" r="1" fill="currentColor" />
+          <circle cx="12" cy="16" r="1" fill="currentColor" />
+        </svg>
+      );
+    case "data":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      );
+    case "security":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      );
+    case "devops":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          <path d="m13 11 5 5M18 11l-5 5" />
+        </svg>
+      );
+    case "docs":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      );
+    default:
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2" />
+          <polyline points="2 17 12 22 22 17" />
+          <polyline points="2 12 12 17 22 12" />
+        </svg>
+      );
+  }
+}
+
 const CATEGORY_META: Record<
   Exclude<Category, "all">,
-  { label: string; color: string; bg: string; border: string; gradient: string; icon: string }
+  { label: string; color: string; bg: string; border: string; gradient: string }
 > = {
   development: {
     label: "Development",
@@ -254,7 +323,6 @@ const CATEGORY_META: Record<
     bg: "rgba(95,133,255,0.10)",
     border: "rgba(95,133,255,0.25)",
     gradient: "linear-gradient(135deg,#143177,#5f85ff)",
-    icon: "💻",
   },
   qa: {
     label: "QA & Testing",
@@ -262,7 +330,6 @@ const CATEGORY_META: Record<
     bg: "rgba(240,160,90,0.10)",
     border: "rgba(240,160,90,0.25)",
     gradient: "linear-gradient(135deg,#2d1a00,#f0a05a)",
-    icon: "🔍",
   },
   design: {
     label: "Design",
@@ -270,7 +337,6 @@ const CATEGORY_META: Record<
     bg: "rgba(180,95,255,0.10)",
     border: "rgba(180,95,255,0.25)",
     gradient: "linear-gradient(135deg,#1a0d2e,#b45fff)",
-    icon: "🎨",
   },
   data: {
     label: "Data & Analytics",
@@ -278,7 +344,6 @@ const CATEGORY_META: Record<
     bg: "rgba(79,212,181,0.10)",
     border: "rgba(79,212,181,0.25)",
     gradient: "linear-gradient(135deg,#001a1a,#4fd4b5)",
-    icon: "📊",
   },
   security: {
     label: "Security & Audit",
@@ -286,7 +351,6 @@ const CATEGORY_META: Record<
     bg: "rgba(255,114,114,0.10)",
     border: "rgba(255,114,114,0.25)",
     gradient: "linear-gradient(135deg,#1a0000,#ff7272)",
-    icon: "🔐",
   },
   devops: {
     label: "DevOps",
@@ -294,7 +358,6 @@ const CATEGORY_META: Record<
     bg: "rgba(115,149,255,0.10)",
     border: "rgba(115,149,255,0.25)",
     gradient: "linear-gradient(135deg,#001427,#7395ff)",
-    icon: "🚀",
   },
   docs: {
     label: "Documentation",
@@ -302,19 +365,18 @@ const CATEGORY_META: Record<
     bg: "rgba(107,219,107,0.10)",
     border: "rgba(107,219,107,0.25)",
     gradient: "linear-gradient(135deg,#0d1a00,#6bdb6b)",
-    icon: "📝",
   },
 };
 
-const CATEGORY_FILTER_ITEMS: { key: Category; label: string; icon: string }[] = [
-  { key: "all", label: "All Agents", icon: "◈" },
-  { key: "development", label: "Development", icon: "💻" },
-  { key: "qa", label: "QA & Testing", icon: "🔍" },
-  { key: "design", label: "Design", icon: "🎨" },
-  { key: "data", label: "Data & Analytics", icon: "📊" },
-  { key: "security", label: "Security & Audit", icon: "🔐" },
-  { key: "devops", label: "DevOps & Deployment", icon: "🚀" },
-  { key: "docs", label: "Documentation", icon: "📝" },
+const CATEGORY_FILTER_ITEMS: { key: Category; label: string }[] = [
+  { key: "all", label: "All Agents" },
+  { key: "development", label: "Development" },
+  { key: "qa", label: "QA & Testing" },
+  { key: "design", label: "Design" },
+  { key: "data", label: "Data & Analytics" },
+  { key: "security", label: "Security & Audit" },
+  { key: "devops", label: "DevOps & Deployment" },
+  { key: "docs", label: "Documentation" },
 ];
 
 const ALL_SKILLS = [
@@ -323,7 +385,25 @@ const ALL_SKILLS = [
 
 const SORT_OPTIONS = ["Featured", "Newest", "Price: Low to High", "Price: High to Low", "Most Popular"];
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+function IconRobotSolid({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Head */}
+      <rect x="5" y="9" width="14" height="10" rx="3" />
+      {/* Antenna */}
+      <line x1="12" y1="9" x2="12" y2="5" />
+      <circle cx="12" cy="3.5" r="1.5" fill="currentColor" stroke="none" />
+      {/* Ears */}
+      <rect x="3" y="12" width="2" height="4" rx="1" fill="currentColor" stroke="none" />
+      <rect x="19" y="12" width="2" height="4" rx="1" fill="currentColor" stroke="none" />
+      {/* Eyes */}
+      <circle cx="9" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
+      {/* Smile */}
+      <path d="M9.5 16.2c1 1.2 4 1.2 5 0" />
+    </svg>
+  );
+}
 
 function AgentAvatar({ agent, size = 44 }: { agent: MarketAgent; size?: number }) {
   const meta = CATEGORY_META[agent.category];
@@ -331,10 +411,12 @@ function AgentAvatar({ agent, size = 44 }: { agent: MarketAgent; size?: number }
   return (
     <div
       className="am-avatar"
-      style={{ width: size, height: size, background: meta.gradient, flexShrink: 0 }}
+      style={{ width: size, height: size, background: meta.gradient, flexShrink: 0, display: "grid", placeItems: "center" }}
       aria-hidden="true"
     >
-      <span style={{ fontSize: iconSize }}>{meta.icon}</span>
+      <span style={{ width: iconSize, height: iconSize, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+        {getCategoryIcon(agent.category, iconSize)}
+      </span>
     </div>
   );
 }
@@ -405,17 +487,6 @@ function AgentCard({
       role="button"
       aria-label={`View ${agent.name}`}
     >
-      {/* Badges */}
-      {agent.isNew && !owned && <span className="am-badge am-badge--new">New</span>}
-      {owned && (
-        <span className="am-badge am-badge--owned">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          Owned
-        </span>
-      )}
-
       {/* Top row */}
       <div className="am-card-top">
         <AgentAvatar agent={agent} size={44} />
@@ -447,17 +518,25 @@ function AgentCard({
 
       <div className="am-card-divider" />
 
-      {/* Footer */}
+      {/* Footer — owned chip on left, action button on right */}
       <div className="am-card-footer" onClick={(e) => e.stopPropagation()}>
-        <PriceLabel price={agent.price} />
         {owned ? (
-          <button type="button" className="am-btn am-btn--owned-action">
-            Assign to Project ↓
-          </button>
+          <>
+            <span className="am-owned-inline">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+              Owned
+            </span>
+            <button type="button" className="am-btn am-btn--owned-action">
+              Assign to Project ↗
+            </button>
+          </>
         ) : (
-          <button type="button" className="am-btn am-btn--primary" onClick={onBuy}>
-            Add to Workspace
-          </button>
+          <>
+            <PriceLabel price={agent.price} />
+            <button type="button" className="am-btn am-btn--primary" onClick={onBuy}>
+              Add to Workspace
+            </button>
+          </>
         )}
       </div>
     </article>
@@ -478,7 +557,6 @@ function FeaturedCard({
 }) {
   return (
     <article className="am-featured-card" onClick={onView} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onView()}>
-      <span className="am-featured-badge">Featured</span>
 
       <div className="am-featured-top">
         <AgentAvatar agent={agent} size={56} />
@@ -503,11 +581,17 @@ function FeaturedCard({
 
       <div className="am-featured-footer" onClick={(e) => e.stopPropagation()}>
         <PriceLabel price={agent.price} bold />
-        {owned ? (
-          <button type="button" className="am-btn am-btn--owned-action" style={{ fontSize: "0.8rem" }}>Assigned ✓</button>
-        ) : (
-          <button type="button" className="am-btn am-btn--view" onClick={onBuy}>View Agent</button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span className="am-featured-inline">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f0a05a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Featured
+          </span>
+          {owned ? (
+            <button type="button" className="am-btn am-btn--owned-action" style={{ fontSize: "0.8rem" }}>Assigned ✓</button>
+          ) : (
+            <button type="button" className="am-btn am-btn--view" onClick={onBuy}>View Agent</button>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -834,15 +918,15 @@ function AgentDetail({
             <div className="am-purchase-divider" />
 
             {owned ? (
-              <>
-                <button type="button" className="am-btn am-btn--owned-full" disabled>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button type="button" className="am-btn am-btn--owned-full" disabled style={{ flex: "0 0 auto", fontSize: "0.78rem", padding: "9px 14px" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                   Owned
                 </button>
-                <button type="button" className="am-btn am-btn--confirm" style={{ marginTop: 8 }}>
+                <button type="button" className="am-btn am-btn--confirm" style={{ flex: "1" }}>
                   Assign to a Project →
                 </button>
-              </>
+              </div>
             ) : (
               <>
                 <button type="button" className="am-btn am-btn--confirm" onClick={onBuy}>
@@ -855,10 +939,19 @@ function AgentDetail({
               </>
             )}
 
-            <div className="am-trust-row">
-              {["🔒 Secure", "↩ Cancel anytime", "💬 Support"].map((t) => (
-                <span key={t} className="am-trust-chip">{t}</span>
-              ))}
+            <div className="am-trust-row" style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
+              <span className="am-trust-chip" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                Secure
+              </span>
+              <span className="am-trust-chip" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></svg>
+                Cancel anytime
+              </span>
+              <span className="am-trust-chip" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                Support
+              </span>
             </div>
 
             <div className="am-purchase-divider" />
@@ -981,7 +1074,12 @@ export function AiAgentsWorkspace() {
                   className={`am-filter-item${category === item.key ? " am-filter-item--active" : ""}`}
                   onClick={() => setCategory(item.key)}
                 >
-                  <span>{item.icon} {item.label}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ display: "inline-flex", width: 14, height: 14, color: category === item.key ? "#fff" : "var(--text-secondary)" }}>
+                      {getCategoryIcon(item.key, 14)}
+                    </span>
+                    {item.label}
+                  </span>
                   <span className="am-filter-count">{count}</span>
                 </button>
               );
@@ -1078,15 +1176,26 @@ export function AiAgentsWorkspace() {
               type="button"
               className={`am-tab${activeTab === "browse" ? " am-tab--active" : ""}`}
               onClick={() => setActiveTab("browse")}
+              style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
             >
-              🛒 Browse
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+              Browse
             </button>
             <button
               type="button"
               className={`am-tab${activeTab === "my-agents" ? " am-tab--active" : ""}`}
               onClick={() => setActiveTab("my-agents")}
+              style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
             >
-              🤖 My Agents
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              My Agents
               {myAgents.length > 0 && <span className="am-tab-badge">{myAgents.length}</span>}
             </button>
           </div>
@@ -1097,7 +1206,12 @@ export function AiAgentsWorkspace() {
               {/* Featured row */}
               {category === "all" && !search && (
                 <section className="am-featured-section">
-                  <h2 className="am-section-head">⭐ Featured Agents</h2>
+                  <h2 className="am-section-head" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0a05a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    Featured Agents
+                  </h2>
                   <div className="am-featured-row">
                     {featuredAgents.map((agent) => (
                       <FeaturedCard
@@ -1123,7 +1237,15 @@ export function AiAgentsWorkspace() {
 
                 {filteredAgents.length === 0 ? (
                   <div className="am-empty">
-                    <span className="am-empty-icon" aria-hidden="true">🤖</span>
+                    <span className="am-empty-icon" aria-hidden="true" style={{ display: "inline-flex", justifyContent: "center", alignItems: "center", width: 44, height: 44 }}>
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="10" rx="2" />
+                        <circle cx="12" cy="5" r="2" />
+                        <path d="M12 7v4" />
+                        <line x1="8" y1="16" x2="8" y2="16.01" />
+                        <line x1="16" y1="16" x2="16" y2="16.01" />
+                      </svg>
+                    </span>
                     <p className="am-empty-title">No agents found</p>
                     <p className="am-empty-sub">Try adjusting your filters or search query.</p>
                   </div>
@@ -1156,7 +1278,15 @@ export function AiAgentsWorkspace() {
 
               {myAgents.length === 0 ? (
                 <div className="am-empty">
-                  <span className="am-empty-icon am-empty-icon--teal" aria-hidden="true">🤖</span>
+                  <span className="am-empty-icon am-empty-icon--teal" aria-hidden="true" style={{ display: "inline-flex", justifyContent: "center", alignItems: "center", width: 44, height: 44 }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="10" rx="2" />
+                      <circle cx="12" cy="5" r="2" />
+                      <path d="M12 7v4" />
+                      <line x1="8" y1="16" x2="8" y2="16.01" />
+                      <line x1="16" y1="16" x2="16" y2="16.01" />
+                    </svg>
+                  </span>
                   <p className="am-empty-title">No agents yet</p>
                   <p className="am-empty-sub">Browse the marketplace to hire your first AI agent.</p>
                   <button type="button" className="am-btn am-btn--primary" style={{ marginTop: 14 }} onClick={() => setActiveTab("browse")}>

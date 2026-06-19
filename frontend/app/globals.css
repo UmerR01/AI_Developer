@@ -6,45 +6,63 @@
 :root {
   color-scheme: dark;
 
-  /* ── Background ──────────────────────────────────── */
-  --bg: #010913;
-  --bg-soft: #050f20;
-  --surface: rgba(8, 20, 58, 0.72);
-  --surface-hover: rgba(10, 26, 70, 0.80);
-  --surface-raised: rgba(12, 32, 82, 0.88);
-  --panel: rgba(5, 12, 38, 0.92);
-  --panel-strong: rgba(3, 8, 26, 0.98);
+  /* ── Background ──────────────────────────── */
+  --bg: #010412;
+  --bg-soft: #020820;
+  --surface: rgba(3, 7, 18, 0.55);
+  --surface-hover: rgba(5, 12, 36, 0.85);
+  --surface-raised: rgba(6, 13, 51, 0.92);
+  --panel: rgba(4, 8, 23, 0.92);
+  --panel-strong: rgba(3, 7, 18, 0.98);
 
-  /* ── Borders ─────────────────────────────────────── */
-  --line: rgba(50, 120, 255, 0.1);
-  --line-hover: rgba(50, 120, 255, 0.22);
-  --line-strong: rgba(50, 120, 255, 0.38);
+  /* ── Glassmorphism ────────────────────── */
+  --glass-bg:           rgba(5, 9, 21, 0.55);
+  --glass-bg-hover:     rgba(15, 23, 54, 0.75);
+  --glass-border:       rgba(187, 220, 253, 0.12);
+  --glass-border-hover: rgba(187, 220, 253, 0.25);
+  --glass-blur:         blur(16px);
 
-  /* ── Text ────────────────────────────────────────── */
+  /* ── Borders ─────────────────────────── */
+  --line: rgba(187, 220, 253, 0.12);
+  --line-hover: rgba(187, 220, 253, 0.25);
+  --line-strong: rgba(187, 220, 253, 0.35);
+
+  /* ── Text ───────────────────────────── */
   --text: #ddeeff;
-  --text-secondary: #6080b0;
-  --muted: #304060;
+  --text-secondary: rgba(187, 220, 253, 0.60);
+  --muted: rgba(187, 220, 253, 0.35);
 
-  /* ── Text gradient (used site-wide) ─────────────── */
+  /* ── Text gradient (kept as-is) ──────────── */
   --text-gradient: linear-gradient(180deg, #ffffff 25%, #90a5c3 100%);
   --text-gradient-subtle: linear-gradient(180deg, #ddeeff 0%, #8aa8cc 100%);
 
-  /* ── Cyan Accent ─────────────────────────────────── */
-  --primary: #00c8ff;
-  --primary-hover: #30d5ff;
-  --primary-muted: rgba(0, 200, 255, 0.1);
-  --primary-glow: rgba(0, 200, 255, 0.3);
-  --blue: #1a5cff;
-  --blue-hover: #3d79ff;
-  --blue-muted: rgba(26, 92, 255, 0.15);
-  --accent: #00dfa8;
-  --accent-muted: rgba(0, 223, 168, 0.12);
-  --danger: #ff3d5a;
-  --danger-muted: rgba(255, 61, 90, 0.12);
-  --warning: #ffaa00;
-  --warning-muted: rgba(255, 170, 0, 0.12);
+  /* ── Brand (DevAI spec) ───────────────── */
+  --brand:            #bbdcfd;
+  --brand-hover:      #e0f2fe;
+  --brand-text:       #050a1e;
+  --brand-5:          rgba(187, 220, 253, 0.05);
+  --brand-10:         rgba(187, 220, 253, 0.10);
+  --brand-20:         rgba(187, 220, 253, 0.20);
+  --brand-35:         rgba(187, 220, 253, 0.35);
+  --brand-glow:       rgba(187, 220, 253, 0.25);
+  --brand-glow-hover: rgba(187, 220, 253, 0.45);
 
-  /* ── Radius ──────────────────────────────────────── */
+  /* ── Electric / accent (legacy kept for sidebar) ── */
+  --primary: #bbdcfd;
+  --primary-hover: #e0f2fe;
+  --primary-muted: rgba(187, 220, 253, 0.10);
+  --primary-glow: rgba(187, 220, 253, 0.25);
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --blue-muted: rgba(37, 99, 235, 0.15);
+  --accent: #38bdf8;
+  --accent-muted: rgba(56, 189, 248, 0.12);
+  --danger: #f43f5e;
+  --danger-muted: rgba(244, 63, 94, 0.12);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.12);
+
+  /* ── Radius ─────────────────────────── */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -52,7 +70,7 @@
   --radius-2xl: 24px;
   --radius-full: 999px;
 
-  /* ── Transitions ─────────────────────────────────── */
+  /* ── Transitions ────────────────────── */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 150ms;
   --duration-base: 250ms;
@@ -188,6 +206,17 @@ button {
   color: var(--text);
 }
 
+/* Brand buttons — dark navy text on pale blue background */
+.btn-cyan,
+button.btn-cyan,
+a.btn-cyan {
+  -webkit-text-fill-color: #050a1e !important;
+  color: #050a1e !important;
+  background-image: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
 /* ── Secondary / muted text — keep dim but still use gradient hint */
 .text-secondary,
 [class*="secondary"],
@@ -278,7 +307,211 @@ small {
   scrollbar-color: rgba(0, 150, 255, 0.18) transparent;
 }
 
-/* ── Links ────────────────────────────────────────── */
 a {
   text-decoration: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL — Restore gradient text inside glassmorphic cards
+   Problem:  Chrome's backdrop-filter compositing causes children
+             with background-clip:text to render invisible.
+   Solution: Our module fix-blocks were stripping gradients entirely.
+             Instead we restore them and add transform:translateZ(0)
+             to promote text nodes into their own GPU layer, which
+             prevents the parent's backdrop-filter from interfering.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── All glassmorphic card/panel containers across every module ── */
+.dashboard-card,
+/* Projects */
+.projects-kpi-card, .recent-card, .project-folder-card,
+.detail-storage-card, .overview-main-card, .overview-meta-card,
+/* Tasks */
+.admin-task-column, .admin-task-card, .split-task-card,
+.task-split-left, .task-split-right, .collapsible-block,
+.comment-thread-wrap, .approval-drawer, .approval-drawer li,
+.qa-review-banner,
+/* Members */
+.member-panel-left, .member-mini-stat, .member-card-v2,
+.member-list-wrap, .member-drawer, .member-invite-drawer,
+/* Integrations */
+.integration-card, .integration-detail-main,
+.integration-detail-side, .integration-panel, .integration-modal,
+/* Agents */
+.am-card, .am-featured-card, .am-my-row,
+/* Support */
+.sp-kpi-card, .sp-toolbar, .sp-table-wrap, .td-topbar,
+.td-convo, .td-card, .td-assigned-card, .td-attachment-item,
+.td-linked-project, .modal-drawer,
+/* Settings */
+.st-form-card, .st-cluster-card, .st-stat-card,
+.st-project-dist, .st-mount-card, .st-active-plan-banner,
+.st-plan-card, .st-team-card {
+  isolation: isolate;
+}
+
+/* ── Headings inside every glassmorphic card: strong white→steel gradient ── */
+.dashboard-card h1, .dashboard-card h2, .dashboard-card h3, .dashboard-card h4, .dashboard-card h5, .dashboard-card h6,
+.projects-kpi-card h1, .projects-kpi-card h2, .projects-kpi-card h3, .projects-kpi-card h4, .projects-kpi-card h5, .projects-kpi-card h6,
+.recent-card h1, .recent-card h2, .recent-card h3, .recent-card h4, .recent-card h5, .recent-card h6,
+.project-folder-card h1, .project-folder-card h2, .project-folder-card h3, .project-folder-card h4, .project-folder-card h5, .project-folder-card h6,
+.detail-storage-card h1, .detail-storage-card h2, .detail-storage-card h3, .detail-storage-card h4, .detail-storage-card h5, .detail-storage-card h6,
+.overview-main-card h1, .overview-main-card h2, .overview-main-card h3, .overview-main-card h4, .overview-main-card h5, .overview-main-card h6,
+.overview-meta-card h1, .overview-meta-card h2, .overview-meta-card h3, .overview-meta-card h4, .overview-meta-card h5, .overview-meta-card h6,
+.admin-task-column h1, .admin-task-column h2, .admin-task-column h3, .admin-task-column h4, .admin-task-column h5, .admin-task-column h6,
+.admin-task-card h1, .admin-task-card h2, .admin-task-card h3, .admin-task-card h4, .admin-task-card h5, .admin-task-card h6,
+.split-task-card h1, .split-task-card h2, .split-task-card h3, .split-task-card h4, .split-task-card h5, .split-task-card h6,
+.task-split-left h1, .task-split-left h2, .task-split-left h3, .task-split-left h4, .task-split-left h5, .task-split-left h6,
+.task-split-right h1, .task-split-right h2, .task-split-right h3, .task-split-right h4, .task-split-right h5, .task-split-right h6,
+.collapsible-block h1, .collapsible-block h2, .collapsible-block h3, .collapsible-block h4, .collapsible-block h5, .collapsible-block h6,
+.comment-thread-wrap h1, .comment-thread-wrap h2, .comment-thread-wrap h3, .comment-thread-wrap h4, .comment-thread-wrap h5, .comment-thread-wrap h6,
+.approval-drawer h1, .approval-drawer h2, .approval-drawer h3, .approval-drawer h4, .approval-drawer h5, .approval-drawer h6,
+.qa-review-banner h1, .qa-review-banner h2, .qa-review-banner h3, .qa-review-banner h4, .qa-review-banner h5, .qa-review-banner h6,
+.member-panel-left h1, .member-panel-left h2, .member-panel-left h3, .member-panel-left h4, .member-panel-left h5, .member-panel-left h6,
+.member-card-v2 h1, .member-card-v2 h2, .member-card-v2 h3, .member-card-v2 h4, .member-card-v2 h5, .member-card-v2 h6,
+.member-list-wrap h1, .member-list-wrap h2, .member-list-wrap h3, .member-list-wrap h4, .member-list-wrap h5, .member-list-wrap h6,
+.member-drawer h1, .member-drawer h2, .member-drawer h3, .member-drawer h4, .member-drawer h5, .member-drawer h6,
+.member-invite-drawer h1, .member-invite-drawer h2, .member-invite-drawer h3, .member-invite-drawer h4, .member-invite-drawer h5, .member-invite-drawer h6,
+.integration-card h1, .integration-card h2, .integration-card h3, .integration-card h4, .integration-card h5, .integration-card h6,
+.integration-detail-main h1, .integration-detail-main h2, .integration-detail-main h3, .integration-detail-main h4, .integration-detail-main h5, .integration-detail-main h6,
+.integration-detail-side h1, .integration-detail-side h2, .integration-detail-side h3, .integration-detail-side h4, .integration-detail-side h5, .integration-detail-side h6,
+.integration-panel h1, .integration-panel h2, .integration-panel h3, .integration-panel h4, .integration-panel h5, .integration-panel h6,
+.integration-modal h1, .integration-modal h2, .integration-modal h3, .integration-modal h4, .integration-modal h5, .integration-modal h6,
+.am-card h1, .am-card h2, .am-card h3, .am-card h4, .am-card h5, .am-card h6,
+.am-featured-card h1, .am-featured-card h2, .am-featured-card h3, .am-featured-card h4, .am-featured-card h5, .am-featured-card h6,
+.am-my-row h1, .am-my-row h2, .am-my-row h3, .am-my-row h4, .am-my-row h5, .am-my-row h6,
+.sp-kpi-card h1, .sp-kpi-card h2, .sp-kpi-card h3, .sp-kpi-card h4, .sp-kpi-card h5, .sp-kpi-card h6,
+.td-card h1, .td-card h2, .td-card h3, .td-card h4, .td-card h5, .td-card h6,
+.td-convo h1, .td-convo h2, .td-convo h3, .td-convo h4, .td-convo h5, .td-convo h6,
+.modal-drawer h1, .modal-drawer h2, .modal-drawer h3, .modal-drawer h4, .modal-drawer h5, .modal-drawer h6,
+.st-form-card h1, .st-form-card h2, .st-form-card h3, .st-form-card h4, .st-form-card h5, .st-form-card h6,
+.st-cluster-card h1, .st-cluster-card h2, .st-cluster-card h3, .st-cluster-card h4, .st-cluster-card h5, .st-cluster-card h6,
+.st-plan-card h1, .st-plan-card h2, .st-plan-card h3, .st-plan-card h4, .st-plan-card h5, .st-plan-card h6,
+.st-team-card h1, .st-team-card h2, .st-team-card h3, .st-team-card h4, .st-team-card h5, .st-team-card h6,
+.st-active-plan-banner h1, .st-active-plan-banner h2, .st-active-plan-banner h3, .st-active-plan-banner h4, .st-active-plan-banner h5, .st-active-plan-banner h6 {
+  background: var(--text-gradient) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  width: fit-content;
+}
+
+/* ── Inline text inside every glassmorphic card: subtle ice-blue gradient ── */
+.dashboard-card p, .dashboard-card span, .dashboard-card strong, .dashboard-card small, .dashboard-card label, .dashboard-card time, .dashboard-card em,
+.projects-kpi-card p, .projects-kpi-card span, .projects-kpi-card strong, .projects-kpi-card small, .projects-kpi-card label, .projects-kpi-card time,
+.recent-card p, .recent-card span, .recent-card strong, .recent-card small, .recent-card label, .recent-card time,
+.project-folder-card p, .project-folder-card span, .project-folder-card strong, .project-folder-card small, .project-folder-card label, .project-folder-card time,
+.detail-storage-card p, .detail-storage-card span, .detail-storage-card strong, .detail-storage-card small,
+.overview-main-card p, .overview-main-card span, .overview-main-card strong, .overview-main-card small,
+.overview-meta-card p, .overview-meta-card span, .overview-meta-card strong, .overview-meta-card small,
+.admin-task-column p, .admin-task-column span, .admin-task-column strong, .admin-task-column small, .admin-task-column label, .admin-task-column time,
+.admin-task-card p, .admin-task-card span, .admin-task-card strong, .admin-task-card small, .admin-task-card label, .admin-task-card time,
+.split-task-card p, .split-task-card span, .split-task-card strong, .split-task-card small,
+.task-split-left p, .task-split-left span, .task-split-left strong, .task-split-left small, .task-split-left label, .task-split-left time,
+.task-split-right p, .task-split-right span, .task-split-right strong, .task-split-right small, .task-split-right label,
+.collapsible-block p, .collapsible-block span, .collapsible-block strong, .collapsible-block small,
+.comment-thread-wrap p, .comment-thread-wrap span, .comment-thread-wrap strong, .comment-thread-wrap small, .comment-thread-wrap time,
+.approval-drawer p, .approval-drawer span, .approval-drawer strong, .approval-drawer small, .approval-drawer time,
+.qa-review-banner p, .qa-review-banner span, .qa-review-banner strong, .qa-review-banner small,
+.member-panel-left p, .member-panel-left span, .member-panel-left strong, .member-panel-left small, .member-panel-left label, .member-panel-left time,
+.member-mini-stat p, .member-mini-stat span, .member-mini-stat strong, .member-mini-stat small,
+.member-card-v2 p, .member-card-v2 span, .member-card-v2 strong, .member-card-v2 small, .member-card-v2 label,
+.member-list-wrap p, .member-list-wrap span, .member-list-wrap strong, .member-list-wrap small, .member-list-wrap label,
+.member-drawer p, .member-drawer span, .member-drawer strong, .member-drawer small,
+.member-invite-drawer p, .member-invite-drawer span, .member-invite-drawer strong, .member-invite-drawer small, .member-invite-drawer label,
+.integration-card p, .integration-card span, .integration-card strong, .integration-card small,
+.integration-detail-main p, .integration-detail-main span, .integration-detail-main strong, .integration-detail-main small,
+.integration-detail-side p, .integration-detail-side span, .integration-detail-side strong, .integration-detail-side small,
+.integration-panel p, .integration-panel span, .integration-panel strong, .integration-panel small,
+.integration-modal p, .integration-modal span, .integration-modal strong, .integration-modal small,
+.am-card p, .am-card span, .am-card strong, .am-card small, .am-card label,
+.am-featured-card p, .am-featured-card span, .am-featured-card strong, .am-featured-card small,
+.am-my-row p, .am-my-row span, .am-my-row strong, .am-my-row small,
+.sp-kpi-card p, .sp-kpi-card span, .sp-kpi-card strong, .sp-kpi-card small, .sp-kpi-card label,
+.sp-toolbar p, .sp-toolbar span, .sp-toolbar strong,
+.sp-table-wrap p, .sp-table-wrap span, .sp-table-wrap strong,
+.td-topbar p, .td-topbar span, .td-topbar strong,
+.td-convo p, .td-convo span, .td-convo strong, .td-convo time,
+.td-card p, .td-card span, .td-card strong, .td-card small,
+.modal-drawer p, .modal-drawer span, .modal-drawer strong, .modal-drawer small, .modal-drawer label,
+.st-form-card p, .st-form-card span, .st-form-card strong, .st-form-card small, .st-form-card label,
+.st-cluster-card p, .st-cluster-card span, .st-cluster-card strong, .st-cluster-card small,
+.st-stat-card p, .st-stat-card span, .st-stat-card strong, .st-stat-card small,
+.st-plan-card p, .st-plan-card span, .st-plan-card strong, .st-plan-card small,
+.st-team-card p, .st-team-card span, .st-team-card strong, .st-team-card small,
+.st-active-plan-banner p, .st-active-plan-banner span, .st-active-plan-banner strong {
+  background: var(--text-gradient-subtle) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* ── Module-specific color chips & badges: keep vivid solid colours ── */
+/* These must override the gradient above to stay legible */
+
+/* Status / priority chips in Tasks */
+.priority-high, [class*="priority-high"] { -webkit-text-fill-color: #e87070 !important; background: none !important; transform: none; }
+.priority-medium, [class*="priority-medium"] { -webkit-text-fill-color: #c49a5a !important; background: none !important; transform: none; }
+.priority-low, [class*="priority-low"] { -webkit-text-fill-color: #6aaa82 !important; background: none !important; transform: none; }
+.status-in_progress { -webkit-text-fill-color: #5a8abf !important; background: none !important; transform: none; }
+.status-in_review { -webkit-text-fill-color: #c49a5a !important; background: none !important; transform: none; }
+.status-done { -webkit-text-fill-color: #6aaa82 !important; background: none !important; transform: none; }
+.status-todo { -webkit-text-fill-color: var(--muted) !important; background: none !important; transform: none; }
+
+/* Member role chips */
+.role-admin, .member-role-chip.role-admin { -webkit-text-fill-color: #9078c8 !important; background: none !important; transform: none; }
+.role-developer, .member-role-chip.role-developer { -webkit-text-fill-color: #5a8abf !important; background: none !important; transform: none; }
+.role-qa, .member-role-chip.role-qa { -webkit-text-fill-color: #c49a5a !important; background: none !important; transform: none; }
+.role-support, .member-role-chip.role-support { -webkit-text-fill-color: #6aaa82 !important; background: none !important; transform: none; }
+
+/* QA push chip states */
+.qa-push-chip.state-awaiting { -webkit-text-fill-color: #c49a5a !important; background: none !important; transform: none; }
+.qa-push-chip.state-approved { -webkit-text-fill-color: #6aaa82 !important; background: none !important; transform: none; }
+.qa-push-chip.state-rejected { -webkit-text-fill-color: #e87070 !important; background: none !important; transform: none; }
+
+/* Integration status chips */
+.integration-status--active, .integration-mini-status.is-active { -webkit-text-fill-color: #c6f7d2 !important; background: none !important; transform: none; }
+.integration-status--configured, .integration-mini-status.is-configured { -webkit-text-fill-color: #b9cbff !important; background: none !important; transform: none; }
+
+/* Support ticket status chips */
+.sc-open { -webkit-text-fill-color: #5a8abf !important; background: none !important; transform: none; }
+.sc-review { -webkit-text-fill-color: #c49a5a !important; background: none !important; transform: none; }
+.sc-progress { -webkit-text-fill-color: #9078c8 !important; background: none !important; transform: none; }
+.sc-resolved { -webkit-text-fill-color: #6aaa82 !important; background: none !important; transform: none; }
+.sc-high { -webkit-text-fill-color: #e87070 !important; background: none !important; transform: none; }
+
+/* Inputs, selects, textareas inside cards: always solid readable colour */
+.dashboard-card input, .dashboard-card textarea, .dashboard-card select,
+.projects-kpi-card input, .projects-kpi-card textarea, .projects-kpi-card select,
+.recent-card input, .recent-card textarea,
+.admin-task-card input, .admin-task-card textarea,
+.task-split-left input, .task-split-left textarea,
+.task-split-right input, .task-split-right textarea,
+.collapsible-block input, .collapsible-block textarea,
+.comment-thread-wrap input, .comment-thread-wrap textarea,
+.approval-drawer input, .approval-drawer textarea,
+.member-card-v2 input, .member-card-v2 textarea,
+.member-drawer input, .member-drawer textarea, .member-drawer select,
+.member-invite-drawer input, .member-invite-drawer textarea, .member-invite-drawer select,
+.integration-card input, .integration-card textarea,
+.integration-detail-main input, .integration-detail-main textarea, .integration-detail-main select,
+.integration-panel input, .integration-panel textarea, .integration-panel select,
+.integration-modal input, .integration-modal textarea,
+.am-card input, .am-card textarea,
+.td-card input, .td-card textarea, .td-card select,
+.td-convo textarea,
+.modal-drawer input, .modal-drawer textarea, .modal-drawer select,
+.st-form-card input, .st-form-card textarea, .st-form-card select,
+.st-team-card input, .st-team-card textarea {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  color: var(--text) !important;
+  transform: none !important;
+}

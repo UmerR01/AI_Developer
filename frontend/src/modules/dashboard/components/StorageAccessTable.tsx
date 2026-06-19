@@ -100,21 +100,30 @@ export function StorageAccessTable({ accountById }: StorageAccessTableProps) {
               <button
                 type="button"
                 style={{
-                  fontSize: "0.73rem",
-                  padding: "7px 16px",
-                  borderRadius: "8px",
-                  background: "linear-gradient(135deg, #1a4fff 0%, #3a6fff 100%)",
+                  fontSize: "0.78rem",
+                  padding: "8px 18px",
+                  borderRadius: "10px",
+                  background: "#bbdcfd",
                   border: "none",
-                  color: "#ffffff",
+                  color: "#050a1e",
+                  WebkitTextFillColor: "#050a1e",
                   cursor: "pointer",
-                  fontWeight: 600,
+                  fontWeight: 500,
                   whiteSpace: "nowrap",
                   fontFamily: "inherit",
-                  boxShadow: "0 2px 12px rgba(30, 80, 255, 0.35)",
-                  transition: "opacity 0.15s ease"
+                  boxShadow: "0 4px 16px rgba(187, 220, 253, 0.25)",
+                  transition: "background 0.2s, box-shadow 0.2s, transform 0.1s"
                 }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = "0.85")}
-                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "#e0f2fe";
+                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(187, 220, 253, 0.45)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "#bbdcfd";
+                  e.currentTarget.style.boxShadow = "0 4px 16px rgba(187, 220, 253, 0.25)";
+                }}
+                onMouseDown={e => (e.currentTarget.style.transform = "scale(0.97)")}
+                onMouseUp={e => (e.currentTarget.style.transform = "scale(1)")}
               >
                 Share access
               </button>
