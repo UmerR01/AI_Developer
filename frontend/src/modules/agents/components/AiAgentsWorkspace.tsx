@@ -385,26 +385,6 @@ const ALL_SKILLS = [
 
 const SORT_OPTIONS = ["Featured", "Newest", "Price: Low to High", "Price: High to Low", "Most Popular"];
 
-function IconRobotSolid({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      {/* Head */}
-      <rect x="5" y="9" width="14" height="10" rx="3" />
-      {/* Antenna */}
-      <line x1="12" y1="9" x2="12" y2="5" />
-      <circle cx="12" cy="3.5" r="1.5" fill="currentColor" stroke="none" />
-      {/* Ears */}
-      <rect x="3" y="12" width="2" height="4" rx="1" fill="currentColor" stroke="none" />
-      <rect x="19" y="12" width="2" height="4" rx="1" fill="currentColor" stroke="none" />
-      {/* Eyes */}
-      <circle cx="9" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
-      <circle cx="15" cy="13.5" r="1.5" fill="currentColor" stroke="none" />
-      {/* Smile */}
-      <path d="M9.5 16.2c1 1.2 4 1.2 5 0" />
-    </svg>
-  );
-}
-
 function AgentAvatar({ agent, size = 44 }: { agent: MarketAgent; size?: number }) {
   const meta = CATEGORY_META[agent.category];
   const iconSize = size >= 56 ? 28 : size >= 44 ? 20 : 16;
