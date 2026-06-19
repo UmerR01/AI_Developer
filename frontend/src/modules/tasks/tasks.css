@@ -260,9 +260,9 @@
 .type-audit { color: #c49a5a; }
 .type-db { color: #7cb87c; }
 
-.status-todo { color: var(--muted); }
-.status-in_progress { color: #5a8abf; }
-.status-in_review { color: #c49a5a; }
+.status-todo { color: #5a8abf; }
+.status-in_progress { color: #c49a5a; }
+.status-in_review { color: #e87070; }
 .status-done { color: #6aaa82; }
 
 .admin-task-card h4 {
@@ -286,6 +286,20 @@
   overflow: hidden;
 }
 
+/* Project label inside task card */
+.task-card-project {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
 .admin-task-card footer {
   display: flex;
   align-items: center;
@@ -293,6 +307,32 @@
   gap: 6px;
   padding-top: 6px;
   border-top: 1px solid var(--line);
+}
+
+.task-card-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.task-card-assignee-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.62rem;
+  color: var(--muted);
+  background: var(--surface);
+  border-radius: var(--radius-full);
+  padding: 2px 6px;
 }
 
 .admin-task-card footer span {
@@ -306,6 +346,9 @@
   padding: 2px 6px;
   font-size: 0.64rem;
   color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .small-badge.unread {
@@ -685,14 +728,19 @@
 
 .collapsible-block pre {
   margin: 10px 0 0;
-  padding: 10px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  color: #6aaa82;
+  background: rgba(4, 18, 10, 0.85) !important;
+  border: 1px solid rgba(106, 170, 130, 0.25);
+  color: #6aaa82 !important;
+  -webkit-text-fill-color: #6aaa82 !important;
+  background-clip: unset !important;
+  -webkit-background-clip: unset !important;
   font-size: 0.72rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   white-space: pre-wrap;
-  line-height: 1.5;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
 }
 
 .comment-thread-wrap h3 {
@@ -958,3 +1006,348 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   UPGRADED TASKS PAGE — Glassmorphism, Metallic Borders & Buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Glassmorphic base for main card/column containers ── */
+.admin-task-column,
+.admin-task-card,
+.task-split-wrap,
+.task-split-left,
+.collapsible-block,
+.comment-thread-wrap,
+.approval-drawer li,
+.split-task-card,
+.qa-review-banner {
+  position: relative !important;
+  background: rgba(5, 9, 21, 0.2) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(187, 220, 253, 0.07) !important;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease !important;
+}
+
+/* Dragging state override */
+.admin-task-card.dragging {
+  opacity: 0.5 !important;
+  box-shadow: 0 0 0 2px rgba(187, 220, 253, 0.35) !important;
+}
+
+/* Active split-task card state */
+.split-task-card.active {
+  border-color: rgba(90, 138, 191, 0.4) !important;
+  background: rgba(26, 53, 96, 0.18) !important;
+}
+
+/* Column count badge stays readable */
+.admin-column-head span {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Ensure child content sits above the ::before border mask */
+.admin-task-column > *,
+.admin-task-card > *,
+.task-split-left > *,
+.collapsible-block > *,
+.comment-thread-wrap > *,
+.approval-drawer li > *,
+.split-task-card > *,
+.qa-review-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Metallic gradient border overlay ── */
+.admin-task-column::before,
+.admin-task-card::before,
+.task-split-left::before,
+.collapsible-block::before,
+.comment-thread-wrap::before,
+.approval-drawer li::before,
+.split-task-card::before,
+.qa-review-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.35) 0%,
+      rgba(147, 197, 253, 0.12) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.10) 75%,
+      rgba(187, 220, 253, 0.28) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+/* Hover border highlight */
+.admin-task-column:hover::before,
+.admin-task-card:hover::before,
+.split-task-card:hover::before,
+.collapsible-block:hover::before,
+.comment-thread-wrap:hover::before,
+.approval-drawer li:hover::before,
+.qa-review-banner:hover::before {
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.55) 0%,
+      rgba(147, 197, 253, 0.22) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.18) 75%,
+      rgba(187, 220, 253, 0.45) 100%) !important;
+}
+
+/* ── Task split-right panel: subtle glass background ── */
+.task-split-right {
+  background: rgba(3, 7, 18, 0.25) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+/* ── Approval drawer: edge-docked glass sheet ── */
+.approval-drawer {
+  background: rgba(3, 7, 18, 0.45) !important;
+  backdrop-filter: blur(30px) !important;
+  -webkit-backdrop-filter: blur(30px) !important;
+  border-left: 1px solid rgba(187, 220, 253, 0.12) !important;
+  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Approval drawer header close button */
+.approval-drawer header button {
+  border-color: rgba(187, 220, 253, 0.15) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  transition: border-color 0.2s ease, background 0.2s ease !important;
+}
+
+.approval-drawer header button:hover {
+  border-color: var(--line-strong) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ── Primary action buttons — silver light-blue solid ── */
+.review-now-btn,
+.purple-btn {
+  background: #bbdcfd !important;
+  color: #050a1e !important;
+  -webkit-text-fill-color: #050a1e !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: var(--radius-full) !important;
+  box-shadow: 0 4px 16px rgba(187, 220, 253, 0.25) !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease !important;
+}
+
+.review-now-btn:hover,
+.purple-btn:hover {
+  background: #e0f2fe !important;
+  box-shadow: 0 4px 20px rgba(187, 220, 253, 0.45) !important;
+}
+
+.review-now-btn:active,
+.purple-btn:active {
+  transform: scale(0.97) !important;
+}
+
+/* Column "+" add button inherits brand colour */
+.admin-column-head button {
+  background: rgba(187, 220, 253, 0.15) !important;
+  color: #bbdcfd !important;
+  border: 1px solid rgba(187, 220, 253, 0.2) !important;
+  transition: background 0.15s ease !important;
+}
+
+.admin-column-head button:hover {
+  background: rgba(187, 220, 253, 0.28) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEXT VISIBILITY FIX — Chrome backdrop-filter + background-clip
+   text gradient rendering bug (same fix as projects & members)
+   ═══════════════════════════════════════════════════════════════ */
+
+.admin-task-column p, .admin-task-column span, .admin-task-column label, .admin-task-column time, .admin-task-column strong, .admin-task-column small, .admin-task-column h1, .admin-task-column h2, .admin-task-column h3, .admin-task-column h4, .admin-task-column h5, .admin-task-column h6,
+.admin-task-card p, .admin-task-card span, .admin-task-card label, .admin-task-card time, .admin-task-card strong, .admin-task-card small, .admin-task-card h1, .admin-task-card h2, .admin-task-card h3, .admin-task-card h4, .admin-task-card h5, .admin-task-card h6,
+.task-split-left p, .task-split-left span, .task-split-left label, .task-split-left time, .task-split-left strong, .task-split-left small, .task-split-left h1, .task-split-left h2, .task-split-left h3, .task-split-left h4, .task-split-left h5, .task-split-left h6,
+.task-split-right p, .task-split-right span, .task-split-right label, .task-split-right time, .task-split-right strong, .task-split-right small, .task-split-right h1, .task-split-right h2, .task-split-right h3, .task-split-right h4, .task-split-right h5, .task-split-right h6,
+.collapsible-block p, .collapsible-block span, .collapsible-block label, .collapsible-block time, .collapsible-block strong, .collapsible-block small, .collapsible-block h1, .collapsible-block h2, .collapsible-block h3, .collapsible-block h4, .collapsible-block h5, .collapsible-block h6,
+.comment-thread-wrap p, .comment-thread-wrap span, .comment-thread-wrap label, .comment-thread-wrap time, .comment-thread-wrap strong, .comment-thread-wrap small, .comment-thread-wrap h1, .comment-thread-wrap h2, .comment-thread-wrap h3, .comment-thread-wrap h4, .comment-thread-wrap h5, .comment-thread-wrap h6,
+.approval-drawer p, .approval-drawer span, .approval-drawer label, .approval-drawer time, .approval-drawer strong, .approval-drawer small, .approval-drawer h1, .approval-drawer h2, .approval-drawer h3, .approval-drawer h4, .approval-drawer h5, .approval-drawer h6,
+.split-task-card p, .split-task-card span, .split-task-card label, .split-task-card time, .split-task-card strong, .split-task-card small,
+.qa-review-banner p, .qa-review-banner span, .qa-review-banner label, .qa-review-banner time, .qa-review-banner strong, .qa-review-banner small {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+}
+
+/* Explicit pre fix — pre is not a standard text element but suffers the same bug */
+.collapsible-block pre,
+.task-split-right pre {
+  background: rgba(4, 18, 10, 0.85) !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #6aaa82 !important;
+  color: #6aaa82 !important;
+}
+
+/* ── Specific element colour restoration ── */
+
+/* Column headers */
+.admin-task-column .admin-column-head strong { color: var(--text) !important; }
+.admin-task-column .admin-column-head span { color: var(--muted) !important; }
+
+/* Task cards */
+.admin-task-card h4 { color: var(--text) !important; }
+.admin-task-card p { color: var(--muted) !important; }
+.admin-task-card footer span { color: var(--muted) !important; }
+.admin-task-card .task-card-project { color: var(--muted) !important; }
+.admin-task-card .task-card-assignee-count { color: var(--muted) !important; }
+
+/* Priority colours — restore solid chip colours */
+.task-chip.priority-high, .chip.priority-high { color: #e87070 !important; background: var(--surface-hover) !important; }
+.task-chip.priority-medium, .chip.priority-medium { color: #c49a5a !important; background: var(--surface-hover) !important; }
+.task-chip.priority-low, .chip.priority-low { color: #6aaa82 !important; background: var(--surface-hover) !important; }
+.task-chip.type-research, .chip.type-research { color: #9078c8 !important; background: var(--surface-hover) !important; }
+.task-chip.type-frontend, .chip.type-frontend { color: #5a8abf !important; background: var(--surface-hover) !important; }
+.task-chip.type-backend, .chip.type-backend { color: #5aafaa !important; background: var(--surface-hover) !important; }
+.task-chip.type-audit, .chip.type-audit { color: #c49a5a !important; background: var(--surface-hover) !important; }
+.task-chip.type-db, .chip.type-db { color: #7cb87c !important; background: var(--surface-hover) !important; }
+
+/* Split-view left panel */
+.task-split-left .split-left-head h3 { color: var(--text) !important; }
+.task-split-left .split-left-head span { color: var(--muted) !important; background: rgba(255, 255, 255, 0.04) !important; }
+.split-task-card strong { color: var(--text) !important; }
+.split-task-card footer span { color: var(--muted) !important; }
+
+/* Split-view right panel */
+.task-split-right .split-right-head h2 { color: var(--text) !important; }
+.task-split-right .task-detail-description { color: var(--text-secondary) !important; }
+.collapsible-head span { color: var(--text) !important; }
+
+/* Comments */
+.comment-author strong { color: var(--text) !important; }
+.comment-head time { color: var(--muted) !important; }
+.comment-thread-wrap h3 { color: var(--text) !important; }
+.comment-thread-wrap p { color: var(--text-secondary) !important; }
+
+/* Approval drawer */
+.approval-drawer h3 { color: var(--text) !important; }
+.approval-main strong { color: var(--text) !important; }
+.approval-main span, .approval-main p { color: var(--muted) !important; }
+
+/* QA Banner */
+.qa-review-banner strong { color: var(--text) !important; }
+.qa-review-banner p { color: var(--text-secondary) !important; }
+
+/* QA Push chip colour restoration */
+.qa-push-chip.state-not_pushed { color: var(--muted) !important; background: var(--surface-hover) !important; }
+.qa-push-chip.state-awaiting { color: #c49a5a !important; background: rgba(196, 154, 90, 0.12) !important; }
+.qa-push-chip.state-approved { color: #6aaa82 !important; background: rgba(16, 100, 60, 0.15) !important; }
+.qa-push-chip.state-rejected { color: #e87070 !important; background: rgba(130, 40, 50, 0.15) !important; }
+
+/* Status chips */
+.status-todo { color: #5a8abf !important; }
+.status-in_progress { color: #c49a5a !important; }
+.status-in_review { color: #e87070 !important; }
+.status-done { color: #6aaa82 !important; }
+
+/* ── Column specific custom outlines and metallic borders ── */
+.admin-task-column.column-todo {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(90, 138, 191, 0.35) !important;
+}
+.admin-task-column.column-todo::before {
+  background: linear-gradient(160deg,
+      rgba(90, 138, 191, 0.5) 0%,
+      rgba(90, 138, 191, 0.2) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(90, 138, 191, 0.15) 75%,
+      rgba(90, 138, 191, 0.4) 100%) !important;
+}
+.admin-task-column.column-todo .admin-column-head strong { color: #5a8abf !important; }
+.admin-task-column.column-todo .admin-column-head span { color: #5a8abf !important; background: rgba(90, 138, 191, 0.12) !important; }
+.admin-task-column.column-todo .admin-column-head button {
+  background: rgba(90, 138, 191, 0.15) !important;
+  color: #5a8abf !important;
+  border-color: rgba(90, 138, 191, 0.25) !important;
+}
+.admin-task-column.column-todo .admin-column-head button:hover {
+  background: rgba(90, 138, 191, 0.3) !important;
+}
+
+.admin-task-column.column-in_progress {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(196, 154, 90, 0.35) !important;
+}
+.admin-task-column.column-in_progress::before {
+  background: linear-gradient(160deg,
+      rgba(196, 154, 90, 0.5) 0%,
+      rgba(196, 154, 90, 0.2) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(196, 154, 90, 0.15) 75%,
+      rgba(196, 154, 90, 0.4) 100%) !important;
+}
+.admin-task-column.column-in_progress .admin-column-head strong { color: #c49a5a !important; }
+.admin-task-column.column-in_progress .admin-column-head span { color: #c49a5a !important; background: rgba(196, 154, 90, 0.12) !important; }
+.admin-task-column.column-in_progress .admin-column-head button {
+  background: rgba(196, 154, 90, 0.15) !important;
+  color: #c49a5a !important;
+  border-color: rgba(196, 154, 90, 0.25) !important;
+}
+.admin-task-column.column-in_progress .admin-column-head button:hover {
+  background: rgba(196, 154, 90, 0.3) !important;
+}
+
+.admin-task-column.column-in_review {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(232, 112, 112, 0.35) !important;
+}
+.admin-task-column.column-in_review::before {
+  background: linear-gradient(160deg,
+      rgba(232, 112, 112, 0.5) 0%,
+      rgba(232, 112, 112, 0.2) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(232, 112, 112, 0.15) 75%,
+      rgba(232, 112, 112, 0.4) 100%) !important;
+}
+.admin-task-column.column-in_review .admin-column-head strong { color: #e87070 !important; }
+.admin-task-column.column-in_review .admin-column-head span { color: #e87070 !important; background: rgba(232, 112, 112, 0.12) !important; }
+.admin-task-column.column-in_review .admin-column-head button {
+  background: rgba(232, 112, 112, 0.15) !important;
+  color: #e87070 !important;
+  border-color: rgba(232, 112, 112, 0.25) !important;
+}
+.admin-task-column.column-in_review .admin-column-head button:hover {
+  background: rgba(232, 112, 112, 0.3) !important;
+}
+
+.admin-task-column.column-done {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(106, 170, 130, 0.35) !important;
+}
+.admin-task-column.column-done::before {
+  background: linear-gradient(160deg,
+      rgba(106, 170, 130, 0.5) 0%,
+      rgba(106, 170, 130, 0.2) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(106, 170, 130, 0.15) 75%,
+      rgba(106, 170, 130, 0.4) 100%) !important;
+}
+.admin-task-column.column-done .admin-column-head strong { color: #6aaa82 !important; }
+.admin-task-column.column-done .admin-column-head span { color: #6aaa82 !important; background: rgba(106, 170, 130, 0.12) !important; }
+.admin-task-column.column-done .admin-column-head button {
+  background: rgba(106, 170, 130, 0.15) !important;
+  color: #6aaa82 !important;
+  border-color: rgba(106, 170, 130, 0.25) !important;
+}
+.admin-task-column.column-done .admin-column-head button:hover {
+  background: rgba(106, 170, 130, 0.3) !important;
+}
+

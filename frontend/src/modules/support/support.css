@@ -1042,3 +1042,230 @@
   .sp-table th:nth-child(6),
   .sp-table td:nth-child(6) { display: none; }
 }
+
+/* ── Upgraded Support Page Glassmorphism Cards & Button Styles ── */
+
+.sp-kpi-card,
+.sp-toolbar,
+.sp-table-wrap,
+.td-topbar,
+.td-convo,
+.td-card,
+.td-assigned-card,
+.td-attachment-item,
+.td-linked-project,
+.modal-drawer,
+.drawer-content,
+.support-modal {
+  position: relative !important;
+  background: rgba(5, 9, 21, 0.2) !important;
+  border-radius: var(--radius-xl) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(187, 220, 253, 0.07) !important;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease !important;
+}
+
+.sp-kpi-card.kpi-open {
+  border-top: 2px solid #1a3560 !important;
+}
+.sp-kpi-card.kpi-review {
+  border-top: 2px solid #8b6914 !important;
+}
+.sp-kpi-card.kpi-prog {
+  border-top: 2px solid #2d2878 !important;
+}
+.sp-kpi-card.kpi-res {
+  border-top: 2px solid #1a5c3a !important;
+}
+
+/* Render contents over the absolute gradient borders */
+.sp-kpi-card > *,
+.sp-toolbar > *,
+.sp-table-wrap > *,
+.td-topbar > *,
+.td-convo > *,
+.td-card > *,
+.td-assigned-card > *,
+.td-attachment-item > *,
+.td-linked-project > *,
+.modal-drawer > *,
+.drawer-content > *,
+.support-modal > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Metallic gradient border */
+.sp-kpi-card::before,
+.sp-toolbar::before,
+.sp-table-wrap::before,
+.td-topbar::before,
+.td-convo::before,
+.td-card::before,
+.td-assigned-card::before,
+.td-attachment-item::before,
+.td-linked-project::before,
+.modal-drawer::before,
+.drawer-content::before,
+.support-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.35) 0%,
+      rgba(147, 197, 253, 0.12) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.10) 75%,
+      rgba(187, 220, 253, 0.28) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+/* Hover border highlight */
+.sp-kpi-card:hover::before,
+.sp-toolbar:hover::before,
+.td-topbar:hover::before,
+.td-card:hover::before,
+.td-assigned-card:hover::before,
+.td-attachment-item:hover::before,
+.td-linked-project:hover::before {
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.55) 0%,
+      rgba(147, 197, 253, 0.22) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.18) 75%,
+      rgba(187, 220, 253, 0.45) 100%) !important;
+}
+
+/* Modal overlay glass styling */
+.modal-overlay {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background: rgba(1, 4, 18, 0.75) !important;
+}
+
+/* Primary buttons */
+.sp-btn-new,
+.td-send-btn,
+.btn-primary {
+  background: #bbdcfd !important;
+  color: #050a1e !important;
+  -webkit-text-fill-color: #050a1e !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(187, 220, 253, 0.25) !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease !important;
+}
+
+.sp-btn-new:hover:not(:disabled),
+.td-send-btn:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+  background: #e0f2fe !important;
+  box-shadow: 0 4px 20px rgba(187, 220, 253, 0.45) !important;
+}
+
+/* Ghost / outline buttons */
+.sp-pill,
+.sp-page-btn,
+.btn-reopen-inline,
+.td-dl-btn,
+.sp-upload-att-btn,
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(187, 220, 253, 0.18) !important;
+  color: #bbdcfd !important;
+  -webkit-text-fill-color: #bbdcfd !important;
+  border-radius: 10px !important;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+}
+
+.sp-pill:hover,
+.sp-page-btn:hover:not(.sp-page-btn--cur),
+.btn-reopen-inline:hover,
+.td-dl-btn:hover,
+.sp-upload-att-btn:hover,
+.btn-ghost:hover {
+  background: rgba(187, 220, 253, 0.10) !important;
+  border-color: rgba(187, 220, 253, 0.55) !important;
+  color: #e0f2fe !important;
+  -webkit-text-fill-color: #e0f2fe !important;
+}
+
+.sp-page-btn--cur {
+  background: #bbdcfd !important;
+  color: #050a1e !important;
+  border-color: #bbdcfd !important;
+}
+
+/* Inputs / select fields styling */
+.sp-search,
+.td-reply-area textarea,
+.support-select,
+.drawer-form input,
+.drawer-form textarea,
+.drawer-form select {
+  background-color: rgba(5, 9, 21, 0.35) !important;
+  border: 1px solid rgba(187, 220, 253, 0.15) !important;
+  border-radius: 10px !important;
+  color: #e8efff !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sp-search:focus-within,
+.td-reply-area textarea:focus,
+.support-select:focus {
+  border-color: rgba(187, 220, 253, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(187, 220, 253, 0.08) !important;
+}
+
+/* Restore solid status / category chip colors */
+.chip-bug     { background: rgba(200, 50, 60, 0.15) !important; color: #e87070 !important; }
+.chip-storage { background: rgba(196, 154, 90, 0.15) !important; color: #c49a5a !important; }
+.chip-ai      { background: rgba(90, 138, 191, 0.15) !important; color: #8ab4e0 !important; }
+.chip-billing { background: rgba(144, 120, 200, 0.15) !important; color: #b9b5ff !important; }
+
+/* Restore text colors inside cards */
+.sp-kpi-num { color: #ffffff !important; }
+.sp-subject-text { color: #ffffff !important; }
+.td-topbar-title { color: #ffffff !important; }
+.msg-name { color: #ffffff !important; }
+.td-card h4 { color: #ffffff !important; }
+.td-assigned-name { color: #ffffff !important; }
+.td-project-name { color: #ffffff !important; }
+
+/* ── Avoid transparent gradient text bug on elements inside glassmorphic Support page elements (Chrome backdrop-filter bug fix) ── */
+.sp-kpi-card p, .sp-kpi-card span, .sp-kpi-card label, .sp-kpi-card time, .sp-kpi-card strong, .sp-kpi-card small, .sp-kpi-card h1, .sp-kpi-card h2, .sp-kpi-card h3, .sp-kpi-card h4, .sp-kpi-card h5, .sp-kpi-card h6,
+.sp-toolbar p, .sp-toolbar span, .sp-toolbar label, .sp-toolbar time, .sp-toolbar strong, .sp-toolbar small, .sp-toolbar h1, .sp-toolbar h2, .sp-toolbar h3, .sp-toolbar h4, .sp-toolbar h5, .sp-toolbar h6,
+.sp-table-wrap p, .sp-table-wrap span, .sp-table-wrap label, .sp-table-wrap time, .sp-table-wrap strong, .sp-table-wrap small, .sp-table-wrap h1, .sp-table-wrap h2, .sp-table-wrap h3, .sp-table-wrap h4, .sp-table-wrap h5, .sp-table-wrap h6,
+.td-topbar p, .td-topbar span, .td-topbar label, .td-topbar time, .td-topbar strong, .td-topbar small, .td-topbar h1, .td-topbar h2, .td-topbar h3, .td-topbar h4, .td-topbar h5, .td-topbar h6,
+.td-convo p, .td-convo span, .td-convo label, .td-convo time, .td-convo strong, .td-convo small, .td-convo h1, .td-convo h2, .td-convo h3, .td-convo h4, .td-convo h5, .td-convo h6,
+.td-card p, .td-card span, .td-card label, .td-card time, .td-card strong, .td-card small, .td-card h1, .td-card h2, .td-card h3, .td-card h4, .td-card h5, .td-card h6,
+.td-assigned-card p, .td-assigned-card span, .td-assigned-card label, .td-assigned-card time, .td-assigned-card strong, .td-assigned-card small, .td-assigned-card h1, .td-assigned-card h2, .td-assigned-card h3, .td-assigned-card h4, .td-assigned-card h5, .td-assigned-card h6,
+.td-attachment-item p, .td-attachment-item span, .td-attachment-item label, .td-attachment-item time, .td-attachment-item strong, .td-attachment-item small, .td-attachment-item h1, .td-attachment-item h2, .td-attachment-item h3, .td-attachment-item h4, .td-attachment-item h5, .td-attachment-item h6,
+.td-linked-project p, .td-linked-project span, .td-linked-project label, .td-linked-project time, .td-linked-project strong, .td-linked-project small, .td-linked-project h1, .td-linked-project h2, .td-linked-project h3, .td-linked-project h4, .td-linked-project h5, .td-linked-project h6,
+.modal-drawer p, .modal-drawer span, .modal-drawer label, .modal-drawer time, .modal-drawer strong, .modal-drawer small, .modal-drawer h1, .modal-drawer h2, .modal-drawer h3, .modal-drawer h4, .modal-drawer h5, .modal-drawer h6,
+.drawer-content p, .drawer-content span, .drawer-content label, .drawer-content time, .drawer-content strong, .drawer-content small, .drawer-content h1, .drawer-content h2, .drawer-content h3, .drawer-content h4, .drawer-content h5, .drawer-content h6,
+.support-modal p, .support-modal span, .support-modal label, .support-modal time, .support-modal strong, .support-modal small, .support-modal h1, .support-modal h2, .support-modal h3, .support-modal h4, .support-modal h5, .support-modal h6 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+}
+
+.sp-kpi-icon {
+  color: var(--muted) !important;
+  opacity: 0.22 !important;
+}
+

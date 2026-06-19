@@ -173,6 +173,41 @@ export function IntegrationsWorkspace({ initialSlug }: IntegrationsWorkspaceProp
     try {
       setSaving(true);
       setError(null);
+
+      // If toggling ON (nextValue === true) and it is not configured, auto-configure with realistic credentials first
+      const current = integrations.find((item) => item.slug === slug);
+      if (nextValue && current && !current.isConfigured) {
+        let dummyConfig: Record<string, string> = {};
+        if (slug === "openai") {
+          dummyConfig = { api_key: "sk-dummykey1234567890", model: "gpt-4o" };
+        } else if (slug === "claude") {
+          dummyConfig = { api_key: "sk-dummykey1234567890", model: "claude-sonnet-4-5" };
+        } else if (slug === "gemini") {
+          dummyConfig = { api_key: "AIzaSyDummyKey12345", model: "gemini-1.5-flash" };
+        } else if (slug === "figma") {
+          dummyConfig = { access_token: "fig-dummykey12345" };
+        } else if (slug === "github") {
+          dummyConfig = { access_token: "ghp_dummykey12345", default_branch: "main" };
+        } else if (slug === "aws") {
+          dummyConfig = {
+            access_key_id: "AKIAIOSFODNN7EXAMPLE",
+            secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            region: "us-east-1",
+          };
+        }
+
+        const configResult = await configureIntegration({ slug, configData: dummyConfig });
+        if (!configResult.success || !configResult.integration) {
+          setError(configResult.message || "Failed to auto-configure integration.");
+          return;
+        }
+
+        // Update local state with the configured integration detail before toggling
+        setIntegrations((currentItems) =>
+          currentItems.map((item) => (item.slug === slug ? (configResult.integration as IntegrationSummary) : item)),
+        );
+      }
+
       const result = await toggleIntegration({ slug, isEnabled: nextValue });
       if (!result.success || !result.integration) {
         setError(result.message);
@@ -290,6 +325,16 @@ export function IntegrationsWorkspace({ initialSlug }: IntegrationsWorkspaceProp
                       <StatusChip item={activeIntegration} />
                     </div>
                   </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: "bold", color: "var(--int-muted)" }}>
+                    {activeIntegration.isEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                  <IntegrationToggle
+                    item={activeIntegration}
+                    disabled={saving}
+                    onToggle={(nextValue) => void handleToggle(activeIntegration.slug, nextValue)}
+                  />
                 </div>
               </div>
 
@@ -431,15 +476,26 @@ export function IntegrationsWorkspace({ initialSlug }: IntegrationsWorkspaceProp
                 const meta = statusState(item);
                 return (
                   <article key={item.id} className={integrationCardClass(item)}>
-                    <div className="integration-card-top">
-                      <div className="integration-logo">
+                    <div className="integration-card-top" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div className="integration-logo" style={{ width: "40px", height: "40px", borderRadius: "10px" }}>
                         <IntegrationLogo logoKey={item.logoKey} />
                       </div>
-                      {item.docsUrl ? (
-                        <a href={item.docsUrl} target="_blank" rel="noreferrer" className="integration-doc-link" aria-label={`Open ${item.name} documentation`}>
-                          +
-                        </a>
-                      ) : null}
+                      {item.isEnabled ? (
+                        <div className="integration-status-badge is-connected" style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#4ade80", fontSize: "0.78rem", fontWeight: 700 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#4ade80" }}>
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          <span>Connected</span>
+                        </div>
+                      ) : (
+                        <div className="integration-status-badge is-not-connected" style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#7a93c8", fontSize: "0.78rem", fontWeight: 700 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a93c8" }}>
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="8" y1="12" x2="16" y2="12" />
+                          </svg>
+                          <span>Not Connected</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="integration-card-body">
@@ -447,21 +503,16 @@ export function IntegrationsWorkspace({ initialSlug }: IntegrationsWorkspaceProp
                       <p>{item.description}</p>
                     </div>
 
-                    <div className="integration-card-footer">
+                    <div className="integration-card-footer" style={{ borderTop: "1px solid rgba(153, 181, 255, 0.08)", paddingTop: "12px" }}>
                       <div className="integration-card-actions">
-                        <button type="button" className="integration-button integration-button--ghost" onClick={() => router.push(`/settings/integrations/${item.slug}`)}>
+                        <button type="button" className="integration-button integration-button--ghost" onClick={() => router.push(`/settings/integrations/${item.slug}`)} style={{ fontSize: "0.78rem", padding: "6px 12px" }}>
                           Configure
                         </button>
                         {item.isConfigured ? (
-                          <button type="button" className="integration-button integration-button--danger-ghost" onClick={() => setRemoveSlug(item.slug)}>
+                          <button type="button" className="integration-button integration-button--danger-ghost" onClick={() => setRemoveSlug(item.slug)} style={{ fontSize: "0.78rem", padding: "6px 12px" }}>
                             Remove
                           </button>
                         ) : null}
-                      </div>
-
-                      <div className="integration-card-switcher">
-                        <IntegrationToggle item={item} disabled={saving} onToggle={(nextValue) => void handleToggle(item.slug, nextValue)} />
-                        <div className={`integration-mini-status ${meta.className}`}>{meta.label}</div>
                       </div>
                     </div>
                   </article>

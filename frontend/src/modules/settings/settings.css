@@ -1088,3 +1088,166 @@
     min-width: 120px;
   }
 }
+
+/* ── Upgraded Settings Page Glassmorphism Cards & Button Styles ── */
+
+.st-form-card,
+.st-cluster-card,
+.st-stat-card,
+.st-project-dist,
+.st-mount-card,
+.st-active-plan-banner,
+.st-plan-card,
+.st-team-card,
+.st-billing-card {
+  position: relative !important;
+  background: rgba(5, 9, 21, 0.2) !important;
+  border-radius: var(--radius-xl) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(187, 220, 253, 0.07) !important;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease !important;
+}
+
+/* Render contents over the absolute gradient borders */
+.st-form-card > *,
+.st-cluster-card > *,
+.st-stat-card > *,
+.st-project-dist > *,
+.st-mount-card > *,
+.st-active-plan-banner > *,
+.st-plan-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Metallic gradient border */
+.st-form-card::before,
+.st-cluster-card::before,
+.st-stat-card::before,
+.st-project-dist::before,
+.st-mount-card::before,
+.st-active-plan-banner::before,
+.st-plan-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.35) 0%,
+      rgba(147, 197, 253, 0.12) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.10) 75%,
+      rgba(187, 220, 253, 0.28) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+/* Hover border highlight */
+.st-form-card:hover::before,
+.st-cluster-card:hover::before,
+.st-stat-card:hover::before,
+.st-project-dist:hover::before,
+.st-mount-card:hover::before,
+.st-active-plan-banner:hover::before,
+.st-plan-card:hover::before {
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.55) 0%,
+      rgba(147, 197, 253, 0.22) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.18) 75%,
+      rgba(187, 220, 253, 0.45) 100%) !important;
+}
+
+/* Primary buttons */
+.st-btn-primary {
+  background: #bbdcfd !important;
+  color: #050a1e !important;
+  -webkit-text-fill-color: #050a1e !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(187, 220, 253, 0.25) !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease !important;
+}
+
+.st-btn-primary:hover:not(:disabled) {
+  background: #e0f2fe !important;
+  box-shadow: 0 4px 20px rgba(187, 220, 253, 0.45) !important;
+}
+
+/* Ghost / outline buttons */
+.st-manage-billing-btn,
+.st-filter-btn,
+.st-copy-btn {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(187, 220, 253, 0.18) !important;
+  color: #bbdcfd !important;
+  -webkit-text-fill-color: #bbdcfd !important;
+  border-radius: 10px !important;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+}
+
+.st-manage-billing-btn:hover,
+.st-filter-btn:hover,
+.st-copy-btn:hover {
+  background: rgba(187, 220, 253, 0.10) !important;
+  border-color: rgba(187, 220, 253, 0.55) !important;
+  color: #e0f2fe !important;
+  -webkit-text-fill-color: #e0f2fe !important;
+}
+
+/* Inputs / select fields styling */
+.st-input,
+.st-select {
+  background-color: rgba(5, 9, 21, 0.35) !important;
+  border: 1px solid rgba(187, 220, 253, 0.15) !important;
+  border-radius: 10px !important;
+  color: #e8efff !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.st-input:focus,
+.st-select:focus {
+  border-color: rgba(187, 220, 253, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(187, 220, 253, 0.08) !important;
+}
+
+/* Restore solid status / badge colors */
+.badge-active { background: rgba(187, 220, 253, 0.06) !important; border: 1px solid rgba(187, 220, 253, 0.18) !important; color: #bbdcfd !important; }
+.badge-warn   { background: rgba(245, 166, 35, 0.15) !important; border: 1px solid rgba(245, 166, 35, 0.35) !important; color: #f5c542 !important; }
+.badge-progress { background: rgba(108, 99, 255, 0.16) !important; border: 1px solid rgba(108, 99, 255, 0.35) !important; color: #b9b5ff !important; }
+.st-active-badge { background: rgba(79, 212, 181, 0.18) !important; border: 1px solid rgba(79, 212, 181, 0.4) !important; color: #4fd4b5 !important; }
+
+/* Restore text colors inside cards */
+.st-form-card-title { color: #ffffff !important; }
+.st-cluster-title { color: #ffffff !important; }
+.st-cluster-used { color: #ffffff !important; }
+.st-stat-value { color: #ffffff !important; }
+.st-section-title { color: #ffffff !important; }
+.st-active-plan-name { color: #ffffff !important; }
+
+/* ── Avoid transparent gradient text bug on elements inside glassmorphic Settings page elements (Chrome backdrop-filter bug fix) ── */
+.st-form-card p, .st-form-card span, .st-form-card label, .st-form-card time, .st-form-card strong, .st-form-card small, .st-form-card h1, .st-form-card h2, .st-form-card h3, .st-form-card h4, .st-form-card h5, .st-form-card h6,
+.st-cluster-card p, .st-cluster-card span, .st-cluster-card label, .st-cluster-card time, .st-cluster-card strong, .st-cluster-card small, .st-cluster-card h1, .st-cluster-card h2, .st-cluster-card h3, .st-cluster-card h4, .st-cluster-card h5, .st-cluster-card h6,
+.st-stat-card p, .st-stat-card span, .st-stat-card label, .st-stat-card time, .st-stat-card strong, .st-stat-card small, .st-stat-card h1, .st-stat-card h2, .st-stat-card h3, .st-stat-card h4, .st-stat-card h5, .st-stat-card h6,
+.st-project-dist p, .st-project-dist span, .st-project-dist label, .st-project-dist time, .st-project-dist strong, .st-project-dist small, .st-project-dist h1, .st-project-dist h2, .st-project-dist h3, .st-project-dist h4, .st-project-dist h5, .st-project-dist h6,
+.st-mount-card p, .st-mount-card span, .st-mount-card label, .st-mount-card time, .st-mount-card strong, .st-mount-card small, .st-mount-card h1, .st-mount-card h2, .st-mount-card h3, .st-mount-card h4, .st-mount-card h5, .st-mount-card h6,
+.st-active-plan-banner p, .st-active-plan-banner span, .st-active-plan-banner label, .st-active-plan-banner time, .st-active-plan-banner strong, .st-active-plan-banner small, .st-active-plan-banner h1, .st-active-plan-banner h2, .st-active-plan-banner h3, .st-active-plan-banner h4, .st-active-plan-banner h5, .st-active-plan-banner h6,
+.st-plan-card p, .st-plan-card span, .st-plan-card label, .st-plan-card time, .st-plan-card strong, .st-plan-card small, .st-plan-card h1, .st-plan-card h2, .st-plan-card h3, .st-plan-card h4, .st-plan-card h5, .st-plan-card h6,
+.st-team-card p, .st-team-card span, .st-team-card label, .st-team-card time, .st-team-card strong, .st-team-card small, .st-team-card h1, .st-team-card h2, .st-team-card h3, .st-team-card h4, .st-team-card h5, .st-team-card h6,
+.st-billing-card p, .st-billing-card span, .st-billing-card label, .st-billing-card time, .st-billing-card strong, .st-billing-card small, .st-billing-card h1, .st-billing-card h2, .st-billing-card h3, .st-billing-card h4, .st-billing-card h5, .st-billing-card h6 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+}

@@ -22,9 +22,9 @@ export function StorageWidget({ usedBytes: _usedBytes, totalBytes: _totalBytes }
             value={month}
             onChange={(e) => setMonth(e.target.value)}
             style={{
-              background: "rgba(10, 25, 70, 0.55)",
-              border: "1.5px solid #3a4a78",
-              borderRadius: "20px",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.10)",
+              borderRadius: "10px",
               color: "var(--text)",
               fontSize: "0.72rem",
               padding: "6px 26px 6px 14px",

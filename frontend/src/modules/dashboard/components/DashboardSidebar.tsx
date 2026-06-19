@@ -1,10 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clearStoredSession } from "../../auth/session";
 
-/* ── Custom SVG Icons replicating reference crop exactly ── */
+/* ── Custom SVG Icons matching reference design exactly ── */
 
 function IconLogo() {
   return (
@@ -18,28 +19,33 @@ function IconLogo() {
   );
 }
 
-function IconHomePentagon() {
+/* Dashboard – 2×2 block grid */
+function IconDashboardGrid() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2 L22 9 L18 21 L6 21 L2 9 Z" />
-      <circle cx="12" cy="13" r="1.8" fill="url(#sidebarIconGrad)" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="8" height="9" rx="1.5" />
+      <rect x="13" y="3" width="8" height="5" rx="1.5" />
+      <rect x="3" y="14" width="8" height="7" rx="1.5" />
+      <rect x="13" y="10" width="8" height="11" rx="1.5" />
     </svg>
   );
 }
 
-function IconAnalyticsCircle() {
+/* Projects – folder with code brackets <> */
+function IconCodeFolder() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M7 14 l3.5-3.5 2.5 2.5 4.5-4.5" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      <path d="M9 13l-2.5 2 2.5 2" />
+      <path d="M15 13l2.5 2-2.5 2" />
     </svg>
   );
 }
 
+/* Members – people group (unchanged) */
 function IconPeopleGroup() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      {/* Group outline */}
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a3 3 0 0 0-3-3H5a3 3 0 0 0-3 3v2" />
       <circle cx="9.5" cy="7" r="3.5" />
       <path d="M22 21v-1.8a3 3 0 0 0-2.2-2.9" />
@@ -48,62 +54,95 @@ function IconPeopleGroup() {
   );
 }
 
-function IconCalendarGrid() {
+/* Tasks – clipboard with triple-check list */
+function IconTasksClipboard() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="17" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="5" />
-      <line x1="8" y1="2" x2="8" y2="5" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-      <rect x="7" y="13" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
-      <rect x="11" y="13" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
-      <rect x="15" y="13" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
-      <rect x="7" y="17" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
-      <rect x="11" y="17" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
-      <rect x="15" y="17" width="2" height="2" rx="0.3" fill="url(#sidebarIconGrad)" stroke="none" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {/* Clipboard body */}
+      <rect x="5" y="4" width="14" height="17" rx="2" ry="2" />
+      {/* Clipboard top clip */}
+      <path d="M9 4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1H9V4z" />
+      {/* Check marks */}
+      <path d="M8.5 10l1.2 1.2 2.3-2.3" />
+      <path d="M8.5 14l1.2 1.2 2.3-2.3" />
+      <path d="M8.5 18l1.2 1.2 2.3-2.3" />
+      {/* Lines */}
+      <line x1="13.5" y1="10.5" x2="16" y2="10.5" />
+      <line x1="13.5" y1="14.5" x2="16" y2="14.5" />
+      <line x1="13.5" y1="18.5" x2="16" y2="18.5" />
     </svg>
   );
 }
 
-function IconBranchMerge() {
+/* Integrations – two doc pages with a merge-arrow (like the stock image) */
+function IconIntegration() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="18" cy="18" r="2.5" />
-      <circle cx="6" cy="6" r="2.5" />
-      <circle cx="18" cy="6" r="2.5" />
-      <path d="M6 9v7a3 3 0 0 0 3 3h6" />
-      <path d="M18 9v6" />
+    <svg width="20" height="20" viewBox="0 0 26 26" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {/* Back document */}
+      <path d="M15 3h5a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 20 19h-1" />
+      {/* Front document */}
+      <rect x="5" y="6" width="11" height="15" rx="1.5" ry="1.5" />
+      {/* Fold corner on front doc */}
+      <path d="M12 6v3.5H16" />
+      {/* Inward arrows (merge) */}
+      <path d="M9.5 12.5l-2 2 2 2" />
+      <path d="M13 12.5l2 2-2 2" />
     </svg>
   );
 }
 
-function IconHexMesh() {
+/* Support – headset icon */
+function IconHeadset() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5" />
-      <circle cx="12" cy="12" r="3.5" />
-      <line x1="12" y1="2" x2="12" y2="8.5" />
-      <line x1="2" y1="8.5" x2="12" y2="12" />
-      <line x1="22" y1="8.5" x2="12" y2="12" />
-      <line x1="12" y1="22" x2="12" y2="15.5" />
-      <line x1="2" y1="15.5" x2="12" y2="12" />
-      <line x1="22" y1="15.5" x2="12" y2="12" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {/* Arc headband */}
+      <path d="M3 11a9 9 0 0 1 18 0" />
+      {/* Left ear cup */}
+      <rect x="2" y="11" width="4" height="6" rx="2" />
+      {/* Right ear cup */}
+      <rect x="18" y="11" width="4" height="6" rx="2" />
+      {/* Mic arm */}
+      <path d="M20 17v1a3 3 0 0 1-3 3h-3" />
+      <circle cx="13.5" cy="21" r="0.75" fill="url(#sidebarIconGrad)" stroke="none" />
     </svg>
   );
 }
 
+/* AI Agents – robot head matching reference design */
+function IconRobot() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {/* Head */}
+      <rect x="5" y="9" width="14" height="10" rx="3" />
+      {/* Antenna */}
+      <line x1="12" y1="9" x2="12" y2="5" />
+      <circle cx="12" cy="3.5" r="1.5" fill="url(#sidebarIconGrad)" stroke="none" />
+      {/* Ears */}
+      <rect x="3" y="12" width="2" height="4" rx="1" fill="url(#sidebarIconGrad)" stroke="none" />
+      <rect x="19" y="12" width="2" height="4" rx="1" fill="url(#sidebarIconGrad)" stroke="none" />
+      {/* Eyes */}
+      <circle cx="9" cy="13.5" r="1.5" fill="url(#sidebarIconGrad)" stroke="none" />
+      <circle cx="15" cy="13.5" r="1.5" fill="url(#sidebarIconGrad)" stroke="none" />
+      {/* Smile */}
+      <path d="M9.5 16c1 1.2 4 1.2 5 0" />
+    </svg>
+  );
+}
+
+/* Settings – hollow gear (unchanged) */
 function IconHollowGear() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3.5" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }
 
+/* Logout arrow (unchanged) */
 function IconLogout() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
@@ -112,10 +151,25 @@ function IconLogout() {
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-
-export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unknown } = {}) {
+export function DashboardSidebar({ activeRole }: { activeRole?: string } = {}) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-expanded");
+    if (saved !== null) {
+      setIsExpanded(saved === "true");
+    }
+  }, []);
+
+  const handleToggle = () => {
+    const nextState = !isExpanded;
+    setIsExpanded(nextState);
+    localStorage.setItem("sidebar-expanded", String(nextState));
+  };
+
+  const isSupport = activeRole === "support";
 
   // Helper to determine path active state
   const isActive = (itemPath: string) => {
@@ -130,7 +184,7 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
   };
 
   return (
-    <aside className="dashboard-sidebar sidebar--collapsed" aria-label="Sidebar navigation">
+    <aside className={`dashboard-sidebar ${isExpanded ? "sidebar--expanded" : "sidebar--collapsed"}`} aria-label="Sidebar navigation">
       {/* Shared SVG Gradient Definition */}
       <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden="true">
         <defs>
@@ -142,7 +196,7 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
       </svg>
 
       {/* Logo Wrapper */}
-      <div className="sidebar-header" style={{ padding: "18px 0 12px" }}>
+      <div className="sidebar-header" style={{ padding: "18px 14px 12px", display: "flex", alignItems: "center", gap: "12px", justifyContent: isExpanded ? "flex-start" : "center" }}>
         <Link
           href="/dashboard"
           className="sidebar-logo"
@@ -156,24 +210,31 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
             placeItems: "center",
             boxShadow: "0 4px 12px rgba(0, 60, 220, 0.35)",
             border: "none",
-            color: "#fff"
+            color: "#fff",
+            flexShrink: 0
           }}
         >
           <IconLogo />
         </Link>
+        {isExpanded && (
+          <span className="sidebar-logo-text" style={{ fontSize: "1.1rem", fontWeight: 700, color: "#fff", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+            AIDEV
+          </span>
+        )}
       </div>
 
       {/* Nav Link List */}
       <nav className="sidebar-nav" aria-label="Primary navigation" style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: "6px" }}>
-        
-        {/* Section 1 */}
+
+        {/* ── Section 1: Core navigation ── */}
         <Link
           href="/dashboard"
           className={`sidebar-link ${isActive("/dashboard") ? "sidebar-link--active" : ""}`}
           title="Dashboard"
           aria-label="Dashboard"
         >
-          <span className="sidebar-link-icon"><IconHomePentagon /></span>
+          <span className="sidebar-link-icon"><IconDashboardGrid /></span>
+          <span className="sidebar-link-label">Dashboard</span>
         </Link>
 
         <Link
@@ -182,7 +243,8 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
           title="Projects"
           aria-label="Projects"
         >
-          <span className="sidebar-link-icon"><IconAnalyticsCircle /></span>
+          <span className="sidebar-link-icon"><IconCodeFolder /></span>
+          <span className="sidebar-link-label">Projects</span>
         </Link>
 
         <Link
@@ -192,6 +254,7 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
           aria-label="Members"
         >
           <span className="sidebar-link-icon"><IconPeopleGroup /></span>
+          <span className="sidebar-link-label">Members</span>
         </Link>
 
         <Link
@@ -200,20 +263,32 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
           title="Tasks"
           aria-label="Tasks"
         >
-          <span className="sidebar-link-icon"><IconCalendarGrid /></span>
+          <span className="sidebar-link-icon"><IconTasksClipboard /></span>
+          <span className="sidebar-link-label">Tasks</span>
         </Link>
 
         {/* Separator line */}
         <div style={{ height: "1px", background: "rgba(255, 255, 255, 0.08)", margin: "4px 8px" }} />
 
-        {/* Section 2 */}
+        {/* ── Section 2: Integrations, Support, AI Agents ── */}
+        <Link
+          href="/settings/integrations"
+          className={`sidebar-link ${isActive("/settings/integrations") ? "sidebar-link--active" : ""}`}
+          title="Integrations"
+          aria-label="Integrations"
+        >
+          <span className="sidebar-link-icon"><IconIntegration /></span>
+          <span className="sidebar-link-label">Integrations</span>
+        </Link>
+
         <Link
           href="/support"
           className={`sidebar-link ${isActive("/support") ? "sidebar-link--active" : ""}`}
           title="Support"
           aria-label="Support"
         >
-          <span className="sidebar-link-icon"><IconBranchMerge /></span>
+          <span className="sidebar-link-icon"><IconHeadset /></span>
+          <span className="sidebar-link-label">Support</span>
         </Link>
 
         <Link
@@ -222,13 +297,14 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
           title="AI Agents"
           aria-label="AI Agents"
         >
-          <span className="sidebar-link-icon"><IconHexMesh /></span>
+          <span className="sidebar-link-icon"><IconRobot /></span>
+          <span className="sidebar-link-label">AI Agents</span>
         </Link>
 
         {/* Separator line */}
         <div style={{ height: "1px", background: "rgba(255, 255, 255, 0.08)", margin: "4px 8px" }} />
 
-        {/* Section 3 */}
+        {/* ── Section 3: Settings ── */}
         <Link
           href="/settings"
           className={`sidebar-link ${isActive("/settings") ? "sidebar-link--active" : ""}`}
@@ -236,23 +312,45 @@ export function DashboardSidebar({ activeRole: _activeRole }: { activeRole?: unk
           aria-label="Settings"
         >
           <span className="sidebar-link-icon"><IconHollowGear /></span>
+          <span className="sidebar-link-label">Settings</span>
         </Link>
 
       </nav>
 
-      {/* Logout */}
-      <div className="sidebar-footer" style={{ borderTop: "none", padding: "10px 10px 20px" }}>
+      {/* Footer Logout */}
+      <div className="sidebar-footer" style={{ borderTop: "none", padding: "10px", display: "flex", flexDirection: "column", gap: "6px", alignItems: isExpanded ? "stretch" : "center" }}>
+        {/* Logout Button */}
         <button
           type="button"
           className="sidebar-link sidebar-link--muted"
           title="Logout"
           aria-label="Logout"
           onClick={handleLogout}
-          style={{ width: "44px", height: "44px" }}
+          style={{ width: "100%" }}
         >
           <span className="sidebar-link-icon"><IconLogout /></span>
+          <span className="sidebar-link-label">Logout</span>
         </button>
       </div>
+
+      {/* Floating Toggle Button sitting on the sidebar edge line */}
+      <button
+        type="button"
+        className="sidebar-toggle-btn"
+        onClick={handleToggle}
+        aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+        data-tooltip={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+      >
+        {isExpanded ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#sidebarIconGrad)" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        )}
+      </button>
     </aside>
   );
 }

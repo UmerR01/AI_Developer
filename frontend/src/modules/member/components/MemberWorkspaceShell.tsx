@@ -359,7 +359,8 @@ export function MemberWorkspaceShell() {
                   <button
                     key={role}
                     type="button"
-                    className={`member-role-filter-btn ${roleFilter === role ? "active" : ""}`}
+                    data-reload="true"
+                    className={`member-role-filter-btn member-filter-${role} ${roleFilter === role ? "active" : ""}`}
                     onClick={() => setRoleFilter(role as MemberRoleFilter)}
                   >
                     {role === "all" ? "All" : roleLabel(role)}
@@ -378,7 +379,8 @@ export function MemberWorkspaceShell() {
                   <button
                     key={s}
                     type="button"
-                    className={`member-role-filter-btn ${statusFilter === s ? "active" : ""}`}
+                    data-reload="true"
+                    className={`member-role-filter-btn member-filter-${s} ${statusFilter === s ? "active" : ""}`}
                     onClick={() => setStatusFilter(s as MemberStatusFilter)}
                   >
                     {s === "all" ? "All" : s === "active" ? "Active" : "Pending"}

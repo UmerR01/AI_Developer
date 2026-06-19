@@ -592,28 +592,28 @@ export function SupportWorkspace() {
               <div className="sp-kpi-label">Open</div>
               <div className="sp-kpi-num">{String(kpi.open).padStart(2, "0")}</div>
               <span className="sp-kpi-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5f85ff" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12h8M12 8v8"/></svg>
               </span>
             </button>
             <button type="button" className="sp-kpi-card kpi-review" onClick={() => setFilter("under_review")}>
               <div className="sp-kpi-label">Under Review</div>
               <div className="sp-kpi-num">{String(kpi.under_review).padStart(2, "0")}</div>
               <span className="sp-kpi-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
               </span>
             </button>
             <button type="button" className="sp-kpi-card kpi-prog" onClick={() => setFilter("in_progress")}>
               <div className="sp-kpi-label">In Progress</div>
               <div className="sp-kpi-num">{String(kpi.in_progress).padStart(2, "0")}</div>
               <span className="sp-kpi-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>
               </span>
             </button>
             <button type="button" className="sp-kpi-card kpi-res" onClick={() => setFilter("resolved")}>
               <div className="sp-kpi-label">Resolved</div>
               <div className="sp-kpi-num">{String(kpi.resolved).padStart(2, "0")}</div>
               <span className="sp-kpi-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>
               </span>
             </button>
           </div>

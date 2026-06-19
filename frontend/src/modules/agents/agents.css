@@ -347,7 +347,6 @@
   min-width: 340px;
   max-width: 340px;
   position: relative;
-  overflow: hidden;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -361,17 +360,20 @@
   box-shadow: 0 8px 24px rgba(2, 7, 19, 0.40);
 }
 
-.am-featured-badge {
-  position: absolute;
-  top: 50px;
-  right: 14px;
-  background: rgba(240, 160, 90, 0.15);
-  border: 1px solid rgba(240, 160, 90, 0.30);
-  color: #f0a05a;
+/* Featured inline chip — sits in the footer beside View Agent button */
+.am-featured-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   border-radius: 99px;
-  padding: 2px 10px;
+  padding: 3px 10px;
   font-size: 0.68rem;
   font-weight: 700;
+  background: rgba(240, 160, 90, 0.12);
+  border: 1px solid rgba(240, 160, 90, 0.28);
+  color: #f0a05a;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .am-featured-top {
@@ -660,15 +662,34 @@
   background: rgba(79, 212, 181, 0.10);
 }
 
-/* Full-width owned (detail page) */
+/* Full-width owned chip style — updated to work as compact flex item */
 .am-btn--owned-full {
-  width: 100%;
   background: rgba(79, 212, 181, 0.12);
   border: 1px solid rgba(79, 212, 181, 0.30);
   color: #4fd4b5;
   border-radius: 10px;
-  padding: 12px;
-  font-size: 0.875rem;
+  padding: 10px 16px;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Inline owned chip shown in card footer */
+.am-owned-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 99px;
+  padding: 3px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(79, 212, 181, 0.12);
+  border: 1px solid rgba(79, 212, 181, 0.30);
+  color: #4fd4b5;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* View agent (featured card) */
@@ -1610,3 +1631,255 @@
     gap: 6px;
   }
 }
+
+/* ── Upgraded AI Agents Page Glassmorphism Cards & Button Styles ── */
+
+.am-featured-card,
+.am-card,
+.am-my-row,
+.am-purchase-panel,
+.am-modal,
+.am-desc-card,
+.am-capabilities,
+.am-flow-step {
+  position: relative !important;
+  background: rgba(5, 9, 21, 0.2) !important;
+  border-radius: var(--radius-xl) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid transparent !important;
+  background-clip: padding-box !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(187, 220, 253, 0.07) !important;
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease, transform var(--duration-fast) ease !important;
+}
+
+/* Render contents over the absolute gradient borders */
+.am-featured-card > *,
+.am-card > *,
+.am-my-row > *,
+.am-purchase-panel > *,
+.am-modal > *,
+.am-desc-card > *,
+.am-capabilities > *,
+.am-flow-step > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Metallic gradient border */
+.am-featured-card::before,
+.am-card::before,
+.am-my-row::before,
+.am-purchase-panel::before,
+.am-modal::before,
+.am-desc-card::before,
+.am-capabilities::before,
+.am-flow-step::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit !important;
+  padding: 1px;
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.35) 0%,
+      rgba(147, 197, 253, 0.12) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.10) 75%,
+      rgba(187, 220, 253, 0.28) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+/* Hover card background and transparent border preservation */
+.am-featured-card:hover,
+.am-card:hover,
+.am-my-row:hover,
+.am-purchase-panel:hover,
+.am-modal:hover,
+.am-desc-card:hover,
+.am-capabilities:hover,
+.am-flow-step:hover {
+  background: rgba(5, 9, 21, 0.3) !important;
+  border-color: transparent !important;
+}
+
+/* Hover border highlight */
+.am-featured-card:hover::before,
+.am-card:hover::before,
+.am-my-row:hover::before,
+.am-purchase-panel:hover::before,
+.am-modal:hover::before,
+.am-desc-card:hover::before,
+.am-capabilities:hover::before,
+.am-flow-step:hover::before {
+  background: linear-gradient(160deg,
+      rgba(187, 220, 253, 0.55) 0%,
+      rgba(147, 197, 253, 0.22) 35%,
+      rgba(5, 9, 21, 0.05) 55%,
+      rgba(147, 197, 253, 0.18) 75%,
+      rgba(187, 220, 253, 0.45) 100%) !important;
+}
+
+/* Modal overlay glass styling */
+.am-modal-overlay {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background: rgba(1, 4, 18, 0.75) !important;
+}
+
+/* Solid brand buttons matching the reference style */
+.am-btn--primary,
+.am-btn--view,
+.am-btn--confirm,
+.am-btn--assign-success {
+  background: #bbdcfd !important;
+  color: #050a1e !important;
+  -webkit-text-fill-color: #050a1e !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(187, 220, 253, 0.25) !important;
+  cursor: pointer !important;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease !important;
+}
+
+.am-btn--primary:hover:not(:disabled),
+.am-btn--view:hover:not(:disabled),
+.am-btn--confirm:hover:not(:disabled),
+.am-btn--assign-success:hover:not(:disabled) {
+  background: #e0f2fe !important;
+  box-shadow: 0 4px 20px rgba(187, 220, 253, 0.45) !important;
+}
+
+.am-btn--primary:active,
+.am-btn--view:active,
+.am-btn--confirm:active,
+.am-btn--assign-success:active {
+  transform: scale(0.97) !important;
+}
+
+/* Ghost / outline buttons */
+.am-btn--owned-action,
+.am-btn--owned-full,
+.am-btn--ghost,
+.am-btn--trial {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(187, 220, 253, 0.18) !important;
+  color: #bbdcfd !important;
+  -webkit-text-fill-color: #bbdcfd !important;
+  border-radius: 10px !important;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+}
+
+.am-btn--owned-action:hover,
+.am-btn--owned-full:hover,
+.am-btn--ghost:hover,
+.am-btn--trial:hover {
+  background: rgba(187, 220, 253, 0.10) !important;
+  border-color: rgba(187, 220, 253, 0.55) !important;
+  color: #e0f2fe !important;
+  -webkit-text-fill-color: #e0f2fe !important;
+  box-shadow: 0 4px 16px rgba(187, 220, 253, 0.15) !important;
+}
+
+/* Inputs / select fields styling */
+.am-search-wrap,
+.am-sort-select,
+.am-select {
+  background-color: rgba(5, 9, 21, 0.35) !important;
+  border: 1px solid rgba(187, 220, 253, 0.15) !important;
+  border-radius: 10px !important;
+  color: #e8efff !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.am-search-wrap:focus-within,
+.am-sort-select:focus,
+.am-select:focus {
+  border-color: rgba(187, 220, 253, 0.4) !important;
+  box-shadow: 0 0 0 3px rgba(187, 220, 253, 0.08) !important;
+}
+
+/* Specific text color configurations to restore inside cards */
+.am-featured-name { color: #ffffff !important; }
+.am-featured-desc { color: #8ab4e0 !important; }
+.am-card-name { color: #ffffff !important; }
+.am-card-desc { color: #8ab4e0 !important; }
+.am-desc-text { color: #e8efff !important; }
+.am-flow-title { color: #ffffff !important; }
+.am-flow-desc { color: #8ab4e0 !important; }
+.am-detail-name { color: #ffffff !important; }
+.am-detail-tagline { color: #9db3e3 !important; }
+.am-breadcrumb-btn, .am-breadcrumb-cur { color: #9db3e3 !important; }
+.am-breadcrumb-btn:hover { color: #e8efff !important; }
+.am-card-rating-val { color: #e8efff !important; }
+.am-card-rating-count { color: #9db3e3 !important; }
+.am-section-label { color: #9db3e3 !important; }
+
+/* ── Avoid transparent gradient text bug on elements inside glassmorphic AI Agents page elements (Chrome backdrop-filter bug fix) ── */
+.am-featured-card,
+.am-card,
+.am-my-row,
+.am-purchase-panel,
+.am-modal,
+.am-desc-card,
+.am-capabilities,
+.am-flow-step,
+.am-detail,
+.am-sidebar,
+.am-tabs,
+.am-page-header,
+.am-kpi-strip,
+.am-layout,
+.am-main {
+  isolation: isolate;
+}
+
+/* Elements with custom background styling (chips, badges, pills, buttons) must preserve their backgrounds but override the gradient clip */
+.am-cat-chip,
+.am-task-chip,
+.am-skill-pill,
+.am-flow-num,
+.am-owned-inline,
+.am-featured-inline,
+.am-btn,
+.am-filter-count,
+.am-tab-badge {
+  background-image: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  transform: none !important;
+}
+
+.am-detail .am-flow-num {
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+}
+
+/* Plain text elements get background stripped and text color inherited to avoid transparency bug */
+.am-featured-card p, .am-featured-card span:not(.am-skill-pill):not(.am-cat-chip):not(.am-featured-inline):not(.am-owned-inline), .am-featured-card label, .am-featured-card time, .am-featured-card strong, .am-featured-card small, .am-featured-card h1, .am-featured-card h2, .am-featured-card h3, .am-featured-card h4, .am-featured-card h5, .am-featured-card h6,
+.am-card p, .am-card span:not(.am-skill-pill):not(.am-cat-chip):not(.am-owned-inline), .am-card label, .am-card time, .am-card strong, .am-card small, .am-card h1, .am-card h2, .am-card h3, .am-card h4, .am-card h5, .am-card h6,
+.am-my-row p, .am-my-row span:not(.am-skill-pill):not(.am-cat-chip), .am-my-row label, .am-my-row time, .am-my-row strong, .am-my-row small, .am-my-row h1, .am-my-row h2, .am-my-row h3, .am-my-row h4, .am-my-row h5, .am-my-row h6,
+.am-purchase-panel p, .am-purchase-panel span, .am-purchase-panel label, .am-purchase-panel time, .am-purchase-panel strong, .am-purchase-panel small, .am-purchase-panel h1, .am-purchase-panel h2, .am-purchase-panel h3, .am-purchase-panel h4, .am-purchase-panel h5, .am-purchase-panel h6,
+.am-modal p, .am-modal span, .am-modal label, .am-modal time, .am-modal strong, .am-modal small, .am-modal h1, .am-modal h2, .am-modal h3, .am-modal h4, .am-modal h5, .am-modal h6,
+.am-desc-card p, .am-desc-card span, .am-desc-card label, .am-desc-card time, .am-desc-card strong, .am-desc-card small, .am-desc-card h1, .am-desc-card h2, .am-desc-card h3, .am-desc-card h4, .am-desc-card h5, .am-desc-card h6,
+.am-capabilities p, .am-capabilities span, .am-capabilities label, .am-capabilities time, .am-capabilities strong, .am-capabilities small, .am-capabilities h1, .am-capabilities h2, .am-capabilities h3, .am-capabilities h4, .am-capabilities h5, .am-capabilities h6,
+.am-flow-step p, .am-flow-step span:not(.am-flow-num), .am-flow-step label, .am-flow-step time, .am-flow-step strong, .am-flow-step small, .am-flow-step h1, .am-flow-step h2, .am-flow-step h3, .am-flow-step h4, .am-flow-step h5, .am-flow-step h6,
+.am-detail p, .am-detail span:not(.am-skill-pill):not(.am-task-chip):not(.am-cat-chip):not(.am-flow-num):not(.am-owned-inline):not(.am-featured-inline), .am-detail label, .am-detail time, .am-detail strong, .am-detail small, .am-detail h1, .am-detail h2, .am-detail h3, .am-detail h4, .am-detail h5, .am-detail h6, .am-detail li,
+.am-sidebar p, .am-sidebar span:not(.am-filter-count), .am-sidebar label, .am-sidebar strong, .am-sidebar small, .am-sidebar button,
+.am-tabs button, .am-tabs span:not(.am-tab-badge),
+.am-page-header h1, .am-page-header p, .am-page-header span,
+.am-kpi-chip, .am-kpi-chip strong {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: inherit;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
